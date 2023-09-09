@@ -1,0 +1,73 @@
+@font-face {
+  font-family: 'yekan';
+  src: url('../fonts/Yekan.eot'), url('../fonts/Yekan.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  margin: 0;
+  font-family: 'yekan';
+  font-size: 20;
+}
+thead {
+  text-align: center;
+}
+
+.header {
+  background-image: url('../../pdf/images/Header.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.footer {
+  background-image: url('../../pdf/images/Footer.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  position: absolute; /* Position the child div absolutely within the parent div */
+  bottom: 0; /* Stick the child div to the bottom of the parent div */
+  width: 100%;
+}
+
+.pdf-header,
+.show-in-pdf {
+  display: none;
+}
+
+.main-table {
+  background-color: #c8cbeb;
+  border-radius: 10px;
+}
+.testtt {
+  column-span: 3;
+}
+.color-option {
+  border: 5px;
+  border-color: black;
+  width: 100%;
+  color: red;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.color-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  margin-right: 15px;
+}
+.color-circle-parent {
+  display: flex;
+  align-items: center;
+}
+
+.defualt-margin {
+  margin: 10px;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 100px;
+}
