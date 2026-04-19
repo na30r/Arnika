@@ -18,7 +18,7 @@ public sealed class CrawlerService(
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = _options.PlaywrightHeadless,
+            //Headless = _options.PlaywrightHeadless,
             ExecutablePath = string.IsNullOrWhiteSpace(_options.PlaywrightExecutablePath)
                 ? null
                 : _options.PlaywrightExecutablePath
