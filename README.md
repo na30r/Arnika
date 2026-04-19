@@ -11,7 +11,7 @@ Small .NET tool to mirror a web page locally:
 ## Requirements
 
 - .NET 8 SDK
-- Internet access for first-time Playwright browser download
+- Chromium executable path (manual), or internet access for first-time Playwright browser download
 
 ## Build
 
@@ -23,7 +23,7 @@ dotnet build SiteMirror/SiteMirror.csproj
 ## Run
 
 ```bash
-dotnet run --project SiteMirror -- "https://example.com" "./mirror-output" 4000
+dotnet run --project SiteMirror -- "https://example.com" "./mirror-output" 4000 "/usr/bin/chromium-browser"
 ```
 
 Arguments:
@@ -31,6 +31,9 @@ Arguments:
 1. `url` (required) - page to mirror
 2. `output-folder` (optional, default: `mirror-output`)
 3. `extra-wait-ms` (optional, default: `4000`) - extra wait after network idle for late JS rendering
+4. `chromium-executable-path` (optional) - full path to Chromium/Chrome executable
+
+If argument 4 is provided, the tool launches that browser directly and does not run Playwright browser install.
 
 ## Preview mirrored page
 

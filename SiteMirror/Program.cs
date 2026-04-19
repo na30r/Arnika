@@ -26,6 +26,17 @@ if (args.Length >= 3 && int.TryParse(args[2], NumberStyles.Integer, CultureInfo.
 {
     waitMs = parsedWaitMs;
 }
+var chromiumExecutablePath = args.Length >= 4 ? args[3] : null;
+
+if (!string.IsNullOrWhiteSpace(chromiumExecutablePath))
+{
+    chromiumExecutablePath = Path.GetFullPath(chromiumExecutablePath);
+    if (!File.Exists(chromiumExecutablePath))
+    {
+        Console.WriteLine($"Chromium executable not found: {chromiumExecutablePath}");
+        return;
+    }
+}
 
 Directory.CreateDirectory(outputRoot);
 
@@ -36,13 +47,21 @@ Directory.CreateDirectory(siteOutputPath);
 
 Console.WriteLine($"Mirror source: {startUri}");
 Console.WriteLine($"Output folder: {siteOutputPath}");
-Console.WriteLine("Installing Playwright browser if needed...");
-Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+if (string.IsNullOrWhiteSpace(chromiumExecutablePath))
+{
+    Console.WriteLine("Installing Playwright browser if needed...");
+    Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+}
+else
+{
+    Console.WriteLine($"Using Chromium executable: {chromiumExecutablePath}");
+}
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
 {
-    Headless = true
+    Headless = true,
+    ExecutablePath = chromiumExecutablePath
 });
 
 var context = await browser.NewContextAsync(new BrowserNewContextOptions
@@ -128,10 +147,10 @@ static string SanitizeFileName(string value)
 static void PrintUsage()
 {
     Console.WriteLine("Usage:");
-    Console.WriteLine("  dotnet run --project SiteMirror -- <url> [output-folder] [extra-wait-ms]");
+    Console.WriteLine("  dotnet run --project SiteMirror -- <url> [output-folder] [extra-wait-ms] [chromium-executable-path]");
     Console.WriteLine();
     Console.WriteLine("Example:");
-    Console.WriteLine("  dotnet run --project SiteMirror -- https://example.com ./mirror-output 4000");
+    Console.WriteLine("  dotnet run --project SiteMirror -- https://example.com ./mirror-output 4000 /usr/bin/chromium-browser");
 }
 
 file sealed class MirrorState(Uri rootUri, string outputDir)
