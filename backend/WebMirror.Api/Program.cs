@@ -1,4 +1,5 @@
 using WebMirror.Api.Data;
+using WebMirror.Api.Migrations;
 using WebMirror.Api.Options;
 using WebMirror.Api.Services;
 using WebMirror.Api.Workers;
@@ -15,6 +16,7 @@ builder.Services.Configure<MirrorOptions>(
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
+builder.Services.AddSingleton<IMigrationRunner, SqlMigrationRunner>();
 
 builder.Services.AddScoped<IPageRepository, PageRepository>();
 builder.Services.AddScoped<IAssetRepository, AssetRepository>();
@@ -31,6 +33,12 @@ builder.Services.AddScoped<ICrawlOrchestrator, CrawlOrchestrator>();
 builder.Services.AddHostedService<CrawlQueueWorker>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+    await migrationRunner.ApplyPendingMigrationsAsync(CancellationToken.None);
+}
 
 if (app.Environment.IsDevelopment())
 {

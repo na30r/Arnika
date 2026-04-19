@@ -9,7 +9,8 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
 ├── backend/
 │   └── WebMirror.Api/         # ASP.NET Core API + crawl worker
 ├── database/
-│   └── schema.sql             # SQL Server schema
+│   ├── migrations/            # versioned SQL migrations
+│   └── schema.sql             # bootstrap script (delegates to migrations)
 └── frontend/
     ├── app/                   # Next.js app router pages
     ├── lib/                   # mirror file loader
@@ -42,9 +43,12 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
    dotnet run
    ```
 
-4. Apply DB schema:
-   - Execute `database/schema.sql` on SQL Server.
+4. Database migrations:
+   - On app startup, backend auto-creates DB (if needed) and applies pending SQL migrations from:
+     - `database/migrations/*.sql`
+   - Migration history is stored in `dbo.SchemaMigrations`.
    - Configure `ConnectionStrings__MirrorDb` in environment variables or `appsettings`.
+   - Optional manual bootstrap: execute `database/schema.sql`.
 5. Install Playwright browser runtime (required once per machine):
 
    ```bash
