@@ -1,0 +1,6 @@
+.dotnet/
+mirror-output/
+
+# .NET build artifacts
+**/bin/
+**/obj/
