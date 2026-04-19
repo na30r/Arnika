@@ -30,6 +30,11 @@ public sealed class UrlMapper : IUrlMapper
         return $"/mirror/{host}/assets/{fileName}";
     }
 
+    public bool IsInternalLink(Uri rootUri, Uri candidateUri)
+    {
+        return string.Equals(rootUri.Host, candidateUri.Host, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string SanitizeSegment(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
