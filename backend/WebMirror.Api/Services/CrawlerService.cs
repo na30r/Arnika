@@ -9,7 +9,7 @@ public sealed class CrawlerService(ILogger<CrawlerService> logger) : ICrawlerSer
     {
         var targetUri = new Uri(url);
 
-        await using var playwright = await Playwright.CreateAsync();
+        using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
             Headless = true
@@ -70,8 +70,13 @@ public sealed class CrawlerService(ILogger<CrawlerService> logger) : ICrawlerSer
         var doc = new HtmlAgilityPack.HtmlDocument();
         doc.LoadHtml(html);
 
-        var hrefNodes = doc.DocumentNode.SelectNodes("//a[@href]") ?? [];
+        var hrefNodes = doc.DocumentNode.SelectNodes("//a[@href]");
         var urls = new List<string>();
+
+        if (hrefNodes is null)
+        {
+            return urls;
+        }
 
         foreach (var node in hrefNodes)
         {
@@ -99,7 +104,12 @@ public sealed class CrawlerService(ILogger<CrawlerService> logger) : ICrawlerSer
         string attributeName,
         Uri baseUri)
     {
-        var nodes = doc.DocumentNode.SelectNodes(xpath) ?? [];
+        var nodes = doc.DocumentNode.SelectNodes(xpath);
+        if (nodes is null)
+        {
+            yield break;
+        }
+
         foreach (var node in nodes)
         {
             var value = node.GetAttributeValue(attributeName, string.Empty)?.Trim();
