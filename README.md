@@ -100,6 +100,7 @@ curl http://localhost:5000/crawl/{queueId}
 
 - The crawler stores generated HTML under:
   - `frontend/mirror-data/pages/{domain}/.../index.html`
+  - legacy location compatibility is kept for old data under `frontend/mirror-data/pages/mirror/{domain}/.../index.html`
 - Downloaded assets are stored under:
   - `frontend/public/mirror/{domain}/assets/...`
 - Domain whitelist, rate limiting, max depth, and retry behavior are configurable in `appsettings.json`.

@@ -13,7 +13,14 @@ export function resolveMirrorHtmlPath(slug: string[]) {
 }
 
 export async function readMirroredPage(slug: string[]) {
-  const htmlPath = resolveMirrorHtmlPath(slug);
-  const html = await fs.readFile(htmlPath, 'utf8');
-  return { html, htmlPath };
+  const primaryPath = resolveMirrorHtmlPath(slug);
+  try {
+    const html = await fs.readFile(primaryPath, 'utf8');
+    return { html, htmlPath: primaryPath };
+  } catch {
+    // Backward compatibility for pages saved by older backend path mapping.
+    const legacyPath = path.join(pagesRoot, 'mirror', ...normalizeMirrorSlug(slug), 'index.html');
+    const html = await fs.readFile(legacyPath, 'utf8');
+    return { html, htmlPath: legacyPath };
+  }
 }

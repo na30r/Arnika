@@ -46,7 +46,7 @@ public sealed class StorageService : IStorageService
 
     private string GetPageOutputPath(string localRoute)
     {
-        var normalizedRoute = localRoute.Trim('/');
+        var normalizedRoute = NormalizePageStorageRoute(localRoute);
         if (string.IsNullOrEmpty(normalizedRoute))
         {
             normalizedRoute = "index";
@@ -54,6 +54,21 @@ public sealed class StorageService : IStorageService
 
         var relative = Path.Combine("mirror-data", "pages", normalizedRoute, "index.html");
         return GetFrontendPath(relative);
+    }
+
+    private static string NormalizePageStorageRoute(string localRoute)
+    {
+        var normalized = localRoute.Trim('/');
+        if (normalized.StartsWith("mirror/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["mirror/".Length..];
+        }
+        else if (string.Equals(normalized, "mirror", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = string.Empty;
+        }
+
+        return normalized;
     }
 
     private string GetFrontendPath(string relativePath)
