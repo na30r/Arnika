@@ -1,10 +1,16 @@
 using Microsoft.Playwright;
+using Microsoft.Extensions.Options;
 using WebMirror.Api.Models;
+using WebMirror.Api.Options;
 
 namespace WebMirror.Api.Services;
 
-public sealed class CrawlerService(ILogger<CrawlerService> logger) : ICrawlerService
+public sealed class CrawlerService(
+    IOptions<MirrorOptions> options,
+    ILogger<CrawlerService> logger) : ICrawlerService
 {
+    private readonly MirrorOptions _options = options.Value;
+
     public async Task<CrawlResult> CrawlAsync(string url, CancellationToken cancellationToken)
     {
         var targetUri = new Uri(url);
@@ -12,7 +18,10 @@ public sealed class CrawlerService(ILogger<CrawlerService> logger) : ICrawlerSer
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
-            Headless = true
+            Headless = _options.PlaywrightHeadless,
+            ExecutablePath = string.IsNullOrWhiteSpace(_options.PlaywrightExecutablePath)
+                ? null
+                : _options.PlaywrightExecutablePath
         });
 
         var page = await browser.NewPageAsync();

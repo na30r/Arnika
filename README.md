@@ -53,7 +53,13 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
    - Migration history is stored in `dbo.SchemaMigrations`.
    - Configure `ConnectionStrings__MirrorDb` in environment variables or `appsettings`.
    - Optional manual bootstrap: execute `database/schema.sql`.
-5. Install Playwright browser runtime (required once per machine):
+5. Optional manual Playwright executable override:
+   - If Chromium was downloaded manually to a custom location, set:
+     - `Mirror__PlaywrightExecutablePath`
+   - Example (PowerShell):
+     - `$env:Mirror__PlaywrightExecutablePath = "C:\\tools\\playwright\\chrome\\chrome.exe"`
+   - Or set `Mirror.PlaywrightExecutablePath` in `appsettings.json`.
+6. Install Playwright browser runtime (required once per machine):
 
    ```bash
    cd backend/WebMirror.Api
