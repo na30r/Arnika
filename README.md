@@ -43,6 +43,10 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
    dotnet run
    ```
 
+   Swagger UI:
+   - `http://localhost:5000/swagger`
+   - (or your configured ASP.NET Core port)
+
 4. Database migrations:
    - On app startup, backend auto-creates DB (if needed) and applies pending SQL migrations from:
      - `database/migrations/*.sql`

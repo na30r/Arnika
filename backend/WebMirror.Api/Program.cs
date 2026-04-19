@@ -40,11 +40,8 @@ using (var scope = app.Services.CreateScope())
     await migrationRunner.ApplyPendingMigrationsAsync(CancellationToken.None);
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
