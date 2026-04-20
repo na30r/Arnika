@@ -16,8 +16,8 @@ Small .NET tool to mirror a web page locally:
 ## Build
 
 ```bash
-dotnet restore SiteMirror/SiteMirror.csproj
-dotnet build SiteMirror/SiteMirror.csproj
+dotnet restore SiteMirror.sln
+dotnet build SiteMirror.sln
 ```
 
 ## Run
