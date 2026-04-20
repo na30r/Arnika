@@ -67,21 +67,31 @@ public sealed class MirrorService : ISiteMirrorService
         var mirror = new MirrorState(startUri, siteOutputPath);
         var responseTasks = new ConcurrentBag<Task>();
 
-        page.Response += (_, response) =>
+        EventHandler<IResponse> responseHandler = (_, response) =>
         {
             responseTasks.Add(PersistResponseAsync(response));
         };
+        page.Response += responseHandler;
 
-        await page.GotoAsync(startUri.ToString(), new PageGotoOptions
+        string renderedHtml;
+        try
         {
-            WaitUntil = WaitUntilState.NetworkIdle,
-            Timeout = 120_000
-        });
+            await page.GotoAsync(startUri.ToString(), new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = 120_000
+            });
 
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await page.WaitForTimeoutAsync(waitMs);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await page.WaitForTimeoutAsync(waitMs);
+            renderedHtml = await page.ContentAsync();
+        }
+        finally
+        {
+            // Stop collecting more response tasks before draining current ones.
+            page.Response -= responseHandler;
+        }
 
-        var renderedHtml = await page.ContentAsync();
         await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
         if (!Uri.TryCreate(page.Url, UriKind.Absolute, out var finalUri))
         {
@@ -122,7 +132,15 @@ public sealed class MirrorService : ISiteMirrorService
                     requestUri = parsedRequestUri;
                 }
 
-                var body = await response.BodyAsync();
+                // Some responses are long-lived streams; avoid hanging forever.
+                var bodyTask = response.BodyAsync();
+                var completed = await Task.WhenAny(bodyTask, Task.Delay(TimeSpan.FromSeconds(15)));
+                if (completed != bodyTask)
+                {
+                    return;
+                }
+
+                var body = await bodyTask;
                 await mirror.SaveResponseAsync(responseUri, body, response.Headers, response.Status, requestUri);
             }
             catch
@@ -134,6 +152,7 @@ public sealed class MirrorService : ISiteMirrorService
 
     private static async Task WaitForPendingResponseSavesAsync(ConcurrentBag<Task> responseTasks, CancellationToken cancellationToken)
     {
+        var deadline = DateTime.UtcNow.AddSeconds(20);
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -143,7 +162,18 @@ public sealed class MirrorService : ISiteMirrorService
                 return;
             }
 
-            await Task.WhenAll(pending);
+            var remaining = deadline - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            var allPending = Task.WhenAll(pending);
+            var completed = await Task.WhenAny(allPending, Task.Delay(remaining, cancellationToken));
+            if (completed != allPending)
+            {
+                return;
+            }
         }
     }
 
