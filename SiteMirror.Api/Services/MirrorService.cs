@@ -540,13 +540,9 @@ public sealed class MirrorService : ISiteMirrorService
             var key = NormalizeUri(absolute);
             if (!_urlToRelativePath.TryGetValue(key, out var targetRelativePath))
             {
-                var fallbackPath = MapUriToRelativePath(absolute, "text/html");
-                if (!File.Exists(Path.Combine(outputDir, fallbackPath)))
-                {
-                    return null;
-                }
-
-                targetRelativePath = fallbackPath;
+                // Force URL replacement to local path even if this specific URL
+                // has not been seen in response mapping yet.
+                targetRelativePath = MapUriToRelativePath(absolute, mediaType: null);
             }
 
             var fromDirectory = Path.GetDirectoryName(currentRelativePath) ?? ".";
