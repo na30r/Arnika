@@ -1,17 +1,17 @@
-# SiteMirror (.NET)
+# SiteMirror API (.NET + Swagger)
 
-Small .NET tool to mirror a web page locally:
+ASP.NET Core Web API to mirror a web page locally:
 
-- Opens a URL in a real Chromium browser (Playwright).
-- Waits for the page to fully load (`networkidle`) plus extra wait time.
-- Saves rendered HTML (post-JavaScript rendering).
-- Captures network responses and linked assets (CSS, JS, images, fonts, iframes, etc.).
-- Rewrites links so the mirrored page can be opened from local files/server.
+- Uses Playwright Chromium to render the page (including JavaScript).
+- Waits for complete load (`networkidle`) plus configurable extra wait.
+- Saves rendered HTML + downloaded resources (CSS, JS, images, fonts, iframes, etc.).
+- Rewrites links for local offline preview.
+- Exposes API endpoints with Swagger UI.
 
 ## Requirements
 
 - .NET 8 SDK
-- Chromium executable path (manual), or internet access for first-time Playwright browser download
+- Chromium executable path (optional manual path), or internet access for first-time Playwright browser download
 
 ## Build
 
@@ -20,32 +20,42 @@ dotnet restore SiteMirror.sln
 dotnet build SiteMirror.sln
 ```
 
-## Run
+## Run API
 
 ```bash
-dotnet run --project SiteMirror -- "https://example.com" "./mirror-output" 4000 "/usr/bin/chromium-browser"
+dotnet run --project SiteMirror.Api
 ```
 
-Arguments:
+Open Swagger UI:
+
+- `http://localhost:5107/swagger` (HTTP, default launch profile)
+- `https://localhost:7213/swagger` (HTTPS, default launch profile)
+
+## Mirror endpoint
+
+`POST /api/mirror`
+
+Request body:
+
+```json
+{
+  "url": "https://example.com",
+  "outputFolder": "mirror-output",
+  "extraWaitMs": 4000,
+  "chromiumExecutablePath": "/usr/bin/chromium-browser"
+}
+```
+
+Fields:
 
 1. `url` (required) - page to mirror
-2. `output-folder` (optional, default: `mirror-output`)
-3. `extra-wait-ms` (optional, default: `4000`) - extra wait after network idle for late JS rendering
-4. `chromium-executable-path` (optional) - full path to Chromium/Chrome executable
+2. `outputFolder` (optional, default: `mirror-output`)
+3. `extraWaitMs` (optional, default: `4000`)
+4. `chromiumExecutablePath` (optional) - full path to Chromium/Chrome executable
 
-If argument 4 is provided, the tool launches that browser directly and does not run Playwright browser install.
-
-## Preview mirrored page
-
-Start a static file server from output:
-
-```bash
-python3 -m http.server 8080 --directory "./mirror-output/<generated-folder>"
-```
-
-Then open the generated entry file URL printed by the tool.
+If `chromiumExecutablePath` is provided, the API launches that browser directly and skips Playwright browser install.
 
 ## Notes
 
-- Pages requiring login, anti-bot checks, or highly dynamic runtime APIs may still differ.
-- This tool mirrors the loaded state of a page, not server-side business logic.
+- Pages requiring login, anti-bot checks, or dynamic backend APIs may still differ.
+- This mirrors rendered frontend state, not server-side business actions.
