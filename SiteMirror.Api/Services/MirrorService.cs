@@ -328,8 +328,7 @@ public sealed class MirrorService : ISiteMirrorService
                 ("image[href]", "href"),
                 ("image[xlink\\:href]", "xlink:href"),
                 ("use[href]", "href"),
-                ("use[xlink\\:href]", "xlink:href"),
-                ("a[href]", "href")
+                ("use[xlink\\:href]", "xlink:href")
             };
 
             foreach (var (selector, attribute) in selectors)
@@ -338,6 +337,11 @@ public sealed class MirrorService : ISiteMirrorService
                 {
                     AddToQueue(baseUri, element.GetAttribute(attribute));
                 }
+            }
+
+            foreach (var element in document.QuerySelectorAll("img[srcset],source[srcset]"))
+            {
+                EnqueueResourcesFromSrcSet(baseUri, element.GetAttribute("srcset"));
             }
 
             foreach (var element in document.All.Where(e => e.HasAttribute("style")))
@@ -414,6 +418,17 @@ public sealed class MirrorService : ISiteMirrorService
                     }
                 }
             }
+
+            foreach (var element in document.QuerySelectorAll("img[srcset],source[srcset]"))
+            {
+                var srcSet = element.GetAttribute("srcset");
+                if (string.IsNullOrWhiteSpace(srcSet))
+                {
+                    continue;
+                }
+
+                element.SetAttribute("srcset", RewriteSrcSet(docUri, srcSet));
+            }
         }
 
         private void RewriteCssBlocks(IDocument document, Uri docUri)
@@ -453,26 +468,117 @@ public sealed class MirrorService : ISiteMirrorService
                 return null;
             }
 
+            if (originalUrl.StartsWith('#'))
+            {
+                return originalUrl;
+            }
+
             if (!Uri.TryCreate(baseUri, originalUrl, out var absolute) || !IsHttpOrHttps(absolute))
             {
                 return null;
             }
 
+            var currentRelativePath = ResolveCurrentDocumentRelativePath(baseUri);
             var key = NormalizeUri(absolute);
             if (!_urlToRelativePath.TryGetValue(key, out var targetRelativePath))
             {
-                return null;
+                var fallbackPath = MapUriToRelativePath(absolute, "text/html");
+                if (!File.Exists(Path.Combine(outputDir, fallbackPath)))
+                {
+                    return null;
+                }
+
+                targetRelativePath = fallbackPath;
             }
 
-            var currentRelativePath = MapUriToRelativePath(baseUri, "text/html");
             var fromDirectory = Path.GetDirectoryName(currentRelativePath) ?? ".";
             var relative = Path.GetRelativePath(fromDirectory, targetRelativePath).Replace('\\', '/');
+            if (string.Equals(currentRelativePath, targetRelativePath, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(absolute.Fragment))
+            {
+                return absolute.Fragment;
+            }
+
             if (!string.IsNullOrWhiteSpace(absolute.Fragment))
             {
                 relative += absolute.Fragment;
             }
 
             return relative;
+        }
+
+        private string ResolveCurrentDocumentRelativePath(Uri baseUri)
+        {
+            var normalized = NormalizeUri(baseUri);
+            if (_urlToRelativePath.TryGetValue(normalized, out var mapped))
+            {
+                return mapped;
+            }
+
+            var fallback = MapUriToRelativePath(baseUri, "text/html");
+            if (File.Exists(Path.Combine(outputDir, fallback)))
+            {
+                return fallback;
+            }
+
+            return MapUriToRelativePath(rootUri, "text/html");
+        }
+
+        private void EnqueueResourcesFromSrcSet(Uri baseUri, string? srcSet)
+        {
+            if (string.IsNullOrWhiteSpace(srcSet))
+            {
+                return;
+            }
+
+            var candidates = srcSet.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var candidate in candidates)
+            {
+                var url = ExtractSrcSetUrl(candidate);
+                AddToQueue(baseUri, url);
+            }
+        }
+
+        private string RewriteSrcSet(Uri baseUri, string srcSet)
+        {
+            var candidates = srcSet.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var rewrittenCandidates = new List<string>(candidates.Length);
+            foreach (var candidate in candidates)
+            {
+                var trimmed = candidate.Trim();
+                var url = ExtractSrcSetUrl(trimmed);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    rewrittenCandidates.Add(trimmed);
+                    continue;
+                }
+
+                var descriptor = trimmed[url.Length..].TrimStart();
+                var rewrittenUrl = RewriteUrl(baseUri, url);
+                if (string.IsNullOrWhiteSpace(rewrittenUrl))
+                {
+                    rewrittenCandidates.Add(trimmed);
+                    continue;
+                }
+
+                rewrittenCandidates.Add(string.IsNullOrWhiteSpace(descriptor)
+                    ? rewrittenUrl
+                    : $"{rewrittenUrl} {descriptor}");
+            }
+
+            return string.Join(", ", rewrittenCandidates);
+        }
+
+        private static string ExtractSrcSetUrl(string candidate)
+        {
+            var trimmed = candidate.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                return string.Empty;
+            }
+
+            var separatorIndex = trimmed.IndexOfAny([' ', '\t', '\r', '\n']);
+            return separatorIndex < 0 ? trimmed : trimmed[..separatorIndex];
         }
 
         private Uri ResolveFileUri(string relativePath)
