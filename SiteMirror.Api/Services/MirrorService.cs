@@ -65,23 +65,11 @@ public sealed class MirrorService : ISiteMirrorService
 
         var page = await context.NewPageAsync();
         var mirror = new MirrorState(startUri, siteOutputPath);
+        var responseTasks = new ConcurrentBag<Task>();
 
-        page.Response += async (_, response) =>
+        page.Response += (_, response) =>
         {
-            try
-            {
-                if (!Uri.TryCreate(response.Url, UriKind.Absolute, out var responseUri) || !IsHttpOrHttps(responseUri))
-                {
-                    return;
-                }
-
-                var body = await response.BodyAsync();
-                await mirror.SaveResponseAsync(responseUri, body, response.Headers, response.Status);
-            }
-            catch
-            {
-                // Continue mirroring on individual response failures.
-            }
+            responseTasks.Add(PersistResponseAsync(response));
         };
 
         await page.GotoAsync(startUri.ToString(), new PageGotoOptions
@@ -94,6 +82,7 @@ public sealed class MirrorService : ISiteMirrorService
         await page.WaitForTimeoutAsync(waitMs);
 
         var renderedHtml = await page.ContentAsync();
+        await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
         if (!Uri.TryCreate(page.Url, UriKind.Absolute, out var finalUri))
         {
             finalUri = startUri;
@@ -117,6 +106,45 @@ public sealed class MirrorService : ISiteMirrorService
             UsedChromiumExecutablePath = chromiumExecutablePath,
             WaitMs = waitMs
         };
+
+        async Task PersistResponseAsync(IResponse response)
+        {
+            try
+            {
+                if (!Uri.TryCreate(response.Url, UriKind.Absolute, out var responseUri) || !IsHttpOrHttps(responseUri))
+                {
+                    return;
+                }
+
+                Uri? requestUri = null;
+                if (Uri.TryCreate(response.Request.Url, UriKind.Absolute, out var parsedRequestUri) && IsHttpOrHttps(parsedRequestUri))
+                {
+                    requestUri = parsedRequestUri;
+                }
+
+                var body = await response.BodyAsync();
+                await mirror.SaveResponseAsync(responseUri, body, response.Headers, response.Status, requestUri);
+            }
+            catch
+            {
+                // Continue mirroring on individual response failures.
+            }
+        }
+    }
+
+    private static async Task WaitForPendingResponseSavesAsync(ConcurrentBag<Task> responseTasks, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var pending = responseTasks.Where(task => !task.IsCompleted).ToArray();
+            if (pending.Length == 0)
+            {
+                return;
+            }
+
+            await Task.WhenAll(pending);
+        }
     }
 
     private static bool IsHttpOrHttps(Uri uri) =>
@@ -138,6 +166,17 @@ public sealed class MirrorService : ISiteMirrorService
     private sealed class MirrorState(Uri rootUri, string outputDir)
     {
         private static readonly Regex CssUrlRegex = new(@"url\((?<quote>['""]?)(?<value>[^)'""]+)\k<quote>\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex CssImportRegex = new(
+            @"@import\s+(?:url\((?<quote1>['""]?)(?<url1>[^)'""]+)\k<quote1>\)|(?<quote2>['""])(?<url2>[^'""]+)\k<quote2>)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly HashSet<string> UrlAttributes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "href", "src", "data", "action", "formaction", "poster", "background", "xlink:href", "imagesrc", "longdesc", "cite"
+        };
+        private static readonly HashSet<string> SrcSetAttributes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "srcset", "imagesrcset"
+        };
         private readonly ConcurrentDictionary<string, string> _urlToRelativePath = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, Uri> _htmlSourceByRelativePath = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, byte> _downloadQueue = new(StringComparer.OrdinalIgnoreCase);
@@ -146,7 +185,7 @@ public sealed class MirrorService : ISiteMirrorService
 
         public int TotalFilesWritten => _urlToRelativePath.Count;
 
-        public async Task SaveResponseAsync(Uri resourceUri, byte[] body, IReadOnlyDictionary<string, string> headers, int statusCode)
+        public async Task SaveResponseAsync(Uri resourceUri, byte[] body, IReadOnlyDictionary<string, string> headers, int statusCode, Uri? requestUri = null)
         {
             if (statusCode is < 200 or >= 400 || body.Length == 0)
             {
@@ -160,6 +199,10 @@ public sealed class MirrorService : ISiteMirrorService
             await File.WriteAllBytesAsync(localPath, body);
 
             RegisterMapping(resourceUri, relativePath);
+            if (requestUri is not null)
+            {
+                RegisterMapping(requestUri, relativePath);
+            }
 
             if (mediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
             {
@@ -244,6 +287,10 @@ public sealed class MirrorService : ISiteMirrorService
                         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                         await File.WriteAllBytesAsync(localPath, bytes, cancellationToken);
                         RegisterMapping(uri, relativePath);
+                        if (res.RequestMessage?.RequestUri is { } finalUri && IsHttpOrHttps(finalUri))
+                        {
+                            RegisterMapping(finalUri, relativePath);
+                        }
 
                         if (mediaType.StartsWith("text/css", StringComparison.OrdinalIgnoreCase))
                         {
@@ -312,36 +359,40 @@ public sealed class MirrorService : ISiteMirrorService
             var parser = new HtmlParser();
             var document = parser.ParseDocument(html);
 
-            var selectors = new (string selector, string attribute)[]
+            foreach (var element in document.All)
             {
-                ("link[href]", "href"),
-                ("script[src]", "src"),
-                ("img[src]", "src"),
-                ("source[src]", "src"),
-                ("video[src]", "src"),
-                ("audio[src]", "src"),
-                ("iframe[src]", "src"),
-                ("embed[src]", "src"),
-                ("object[data]", "data"),
-                ("input[src]", "src"),
-                ("track[src]", "src"),
-                ("image[href]", "href"),
-                ("image[xlink\\:href]", "xlink:href"),
-                ("use[href]", "href"),
-                ("use[xlink\\:href]", "xlink:href")
-            };
-
-            foreach (var (selector, attribute) in selectors)
-            {
-                foreach (var element in document.QuerySelectorAll(selector))
+                foreach (var attribute in element.Attributes)
                 {
-                    AddToQueue(baseUri, element.GetAttribute(attribute));
-                }
-            }
+                    var value = attribute.Value;
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        continue;
+                    }
 
-            foreach (var element in document.QuerySelectorAll("img[srcset],source[srcset]"))
-            {
-                EnqueueResourcesFromSrcSet(baseUri, element.GetAttribute("srcset"));
+                    if (SrcSetAttributes.Contains(attribute.Name))
+                    {
+                        EnqueueResourcesFromSrcSet(baseUri, value);
+                        continue;
+                    }
+
+                    if (UrlAttributes.Contains(attribute.Name))
+                    {
+                        // Avoid crawling full navigation trees via anchors.
+                        if (string.Equals(element.LocalName, "a", StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(attribute.Name, "href", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        AddToQueue(baseUri, value);
+                        continue;
+                    }
+
+                    if (attribute.Name.StartsWith("data-", StringComparison.OrdinalIgnoreCase) && LooksLikeUrl(value))
+                    {
+                        AddToQueue(baseUri, value);
+                    }
+                }
             }
 
             foreach (var element in document.All.Where(e => e.HasAttribute("style")))
@@ -366,6 +417,14 @@ public sealed class MirrorService : ISiteMirrorService
                 var value = match.Groups["value"].Value.Trim();
                 AddToQueue(baseUri, value);
             }
+
+            foreach (Match match in CssImportRegex.Matches(css))
+            {
+                var value = match.Groups["url1"].Success
+                    ? match.Groups["url1"].Value.Trim()
+                    : match.Groups["url2"].Value.Trim();
+                AddToQueue(baseUri, value);
+            }
         }
 
         private void AddToQueue(Uri baseUri, string? rawUrl)
@@ -387,47 +446,32 @@ public sealed class MirrorService : ISiteMirrorService
 
         private void RewriteAttributeUrls(IDocument document, Uri docUri)
         {
-            var mappings = new (string selector, string attribute)[]
+            foreach (var element in document.All)
             {
-                ("link[href]", "href"),
-                ("script[src]", "src"),
-                ("img[src]", "src"),
-                ("source[src]", "src"),
-                ("video[src]", "src"),
-                ("audio[src]", "src"),
-                ("iframe[src]", "src"),
-                ("embed[src]", "src"),
-                ("object[data]", "data"),
-                ("input[src]", "src"),
-                ("track[src]", "src"),
-                ("a[href]", "href"),
-                ("image[href]", "href"),
-                ("image[xlink\\:href]", "xlink:href"),
-                ("use[href]", "href"),
-                ("use[xlink\\:href]", "xlink:href")
-            };
-
-            foreach (var (selector, attribute) in mappings)
-            {
-                foreach (var element in document.QuerySelectorAll(selector))
+                foreach (var attribute in element.Attributes.ToArray())
                 {
-                    var rewritten = RewriteUrl(docUri, element.GetAttribute(attribute));
-                    if (rewritten is not null)
+                    var value = attribute.Value;
+                    if (string.IsNullOrWhiteSpace(value))
                     {
-                        element.SetAttribute(attribute, rewritten);
+                        continue;
+                    }
+
+                    if (SrcSetAttributes.Contains(attribute.Name))
+                    {
+                        element.SetAttribute(attribute.Name, RewriteSrcSet(docUri, value));
+                        continue;
+                    }
+
+                    if (UrlAttributes.Contains(attribute.Name) ||
+                        (attribute.Name.StartsWith("data-", StringComparison.OrdinalIgnoreCase) && LooksLikeUrl(value)))
+                    {
+                        var rewritten = RewriteUrl(docUri, value);
+                        if (rewritten is not null)
+                        {
+                            element.SetAttribute(attribute.Name, rewritten);
+                        }
                     }
                 }
-            }
-
-            foreach (var element in document.QuerySelectorAll("img[srcset],source[srcset]"))
-            {
-                var srcSet = element.GetAttribute("srcset");
-                if (string.IsNullOrWhiteSpace(srcSet))
-                {
-                    continue;
-                }
-
-                element.SetAttribute("srcset", RewriteSrcSet(docUri, srcSet));
             }
         }
 
@@ -450,11 +494,25 @@ public sealed class MirrorService : ISiteMirrorService
 
         private string RewriteCss(Uri docUri, string css)
         {
-            return CssUrlRegex.Replace(css, match =>
+            var rewritten = CssUrlRegex.Replace(css, match =>
             {
                 var raw = match.Groups["value"].Value.Trim();
                 var rewritten = RewriteUrl(docUri, raw);
                 return rewritten is null ? match.Value : $"url(\"{rewritten}\")";
+            });
+
+            return CssImportRegex.Replace(rewritten, match =>
+            {
+                var raw = match.Groups["url1"].Success
+                    ? match.Groups["url1"].Value.Trim()
+                    : match.Groups["url2"].Value.Trim();
+                var rewrittenImport = RewriteUrl(docUri, raw);
+                if (rewrittenImport is null)
+                {
+                    return match.Value;
+                }
+
+                return $"@import url(\"{rewrittenImport}\")";
             });
         }
 
@@ -579,6 +637,19 @@ public sealed class MirrorService : ISiteMirrorService
 
             var separatorIndex = trimmed.IndexOfAny([' ', '\t', '\r', '\n']);
             return separatorIndex < 0 ? trimmed : trimmed[..separatorIndex];
+        }
+
+        private static bool LooksLikeUrl(string value)
+        {
+            var trimmed = value.Trim();
+            return trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                   trimmed.StartsWith("/", StringComparison.Ordinal) ||
+                   trimmed.StartsWith("./", StringComparison.Ordinal) ||
+                   trimmed.StartsWith("../", StringComparison.Ordinal) ||
+                   trimmed.StartsWith('#') ||
+                   trimmed.StartsWith("?", StringComparison.Ordinal);
         }
 
         private Uri ResolveFileUri(string relativePath)
