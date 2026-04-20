@@ -30,7 +30,9 @@ public sealed class MirrorService : ISiteMirrorService
 
         var waitMs = request.ExtraWaitMs <= 0 ? 4_000 : request.ExtraWaitMs;
         var outputRoot = string.IsNullOrWhiteSpace(_settings.OutputFolder) ? "mirror-output" : _settings.OutputFolder;
-        var chromiumExecutablePath = "C:\\Users\\Nasir\\AppData\\Local\\ms-playwright\\chromium-1181\\chrome-win\\chrome.exe";
+        var chromiumExecutablePath = string.IsNullOrWhiteSpace(_settings.ChromiumExecutablePath)
+            ? null
+            : Path.GetFullPath(_settings.ChromiumExecutablePath);
 
         if (!string.IsNullOrWhiteSpace(chromiumExecutablePath) && !File.Exists(chromiumExecutablePath))
         {
