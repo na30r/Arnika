@@ -11,7 +11,7 @@ ASP.NET Core Web API to mirror a web page locally:
 ## Requirements
 
 - .NET 8 SDK
-- Chromium executable path (optional manual path), or internet access for first-time Playwright browser download
+- Configure mirror paths in `appsettings.json` / `appsettings.Development.json`
 
 ## Build
 
@@ -24,6 +24,15 @@ dotnet build SiteMirror.sln
 
 ```bash
 dotnet run --project SiteMirror.Api
+```
+
+Mirror configuration now comes from app settings:
+
+```json
+"MirrorSettings": {
+  "OutputFolder": "mirror-output",
+  "ChromiumExecutablePath": "/usr/local/bin/google-chrome"
+}
 ```
 
 Open Swagger UI:
@@ -40,20 +49,16 @@ Request body:
 ```json
 {
   "url": "https://example.com",
-  "outputFolder": "mirror-output",
-  "extraWaitMs": 4000,
-  "chromiumExecutablePath": "/usr/bin/chromium-browser"
+  "extraWaitMs": 4000
 }
 ```
 
 Fields:
 
 1. `url` (required) - page to mirror
-2. `outputFolder` (optional, default: `mirror-output`)
-3. `extraWaitMs` (optional, default: `4000`)
-4. `chromiumExecutablePath` (optional) - full path to Chromium/Chrome executable
+2. `extraWaitMs` (optional, default: `4000`)
 
-If `chromiumExecutablePath` is provided, the API launches that browser directly and skips Playwright browser install.
+Path and folder are read from app settings (`MirrorSettings`) instead of request payload.
 
 ## Notes
 

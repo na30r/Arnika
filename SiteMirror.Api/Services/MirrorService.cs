@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
+using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
 
@@ -13,6 +14,13 @@ namespace SiteMirror.Api.Services;
 
 public sealed class MirrorService : ISiteMirrorService
 {
+    private readonly MirrorSettings _settings;
+
+    public MirrorService(IOptions<MirrorSettings> options)
+    {
+        _settings = options.Value;
+    }
+
     public async Task<MirrorResult> MirrorAsync(MirrorRequest request, CancellationToken cancellationToken)
     {
         if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var startUri))
@@ -21,10 +29,10 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         var waitMs = request.ExtraWaitMs <= 0 ? 4_000 : request.ExtraWaitMs;
-        var outputRoot = string.IsNullOrWhiteSpace(request.OutputFolder) ? "mirror-output" : request.OutputFolder;
-        var chromiumExecutablePath = string.IsNullOrWhiteSpace(request.ChromiumExecutablePath)
+        var outputRoot = string.IsNullOrWhiteSpace(_settings.OutputFolder) ? "mirror-output" : _settings.OutputFolder;
+        var chromiumExecutablePath = string.IsNullOrWhiteSpace(_settings.ChromiumExecutablePath)
             ? null
-            : Path.GetFullPath(request.ChromiumExecutablePath);
+            : Path.GetFullPath(_settings.ChromiumExecutablePath);
 
         if (!string.IsNullOrWhiteSpace(chromiumExecutablePath) && !File.Exists(chromiumExecutablePath))
         {
