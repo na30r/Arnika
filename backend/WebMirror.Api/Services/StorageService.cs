@@ -52,7 +52,7 @@ public sealed class StorageService : IStorageService
             normalizedRoute = "index";
         }
 
-        var relative = Path.Combine("mirror-data", "pages", normalizedRoute, "index.html");
+        var relative = Path.Combine("public", "mirror", normalizedRoute, "index.html");
         return GetFrontendPath(relative);
     }
 

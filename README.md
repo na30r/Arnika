@@ -13,9 +13,7 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
 │   └── schema.sql             # bootstrap script (delegates to migrations)
 └── frontend/
     ├── app/                   # Next.js app router pages
-    ├── lib/                   # mirror file loader
-    ├── mirror-data/pages/     # rendered page HTML output
-    └── public/mirror/         # downloaded asset output
+    └── public/mirror/         # static mirrored pages and assets
 ```
 
 ## What is implemented
@@ -29,7 +27,7 @@ Production-ready baseline for crawling and mirroring websites into a local Next.
 - SQL metadata persistence:
   - `Pages`, `Assets`, `CrawlQueue`
 - Recursive same-domain crawl with depth limit.
-- Next.js catch-all route serves mirrored HTML from local storage.
+- Mirrored pages are served as static files from Next.js `/public/mirror`.
 
 ## Backend setup
 
@@ -75,10 +73,10 @@ npm install
 npm run dev
 ```
 
-Mirrored pages are served via:
+Mirrored pages are served as static files via:
 
-- `/mirror/{domain}/{path...}`
-- Example: `/mirror/example.com/docs/page1`
+- `/mirror/{domain}/{path...}/`
+- Example: `/mirror/example.com/docs/page1/`
 
 ## API examples
 
@@ -99,8 +97,7 @@ curl http://localhost:5000/crawl/{queueId}
 ## Notes
 
 - The crawler stores generated HTML under:
-  - `frontend/mirror-data/pages/{domain}/.../index.html`
-  - legacy location compatibility is kept for old data under `frontend/mirror-data/pages/mirror/{domain}/.../index.html`
+  - `frontend/public/mirror/{domain}/.../index.html`
 - Downloaded assets are stored under:
   - `frontend/public/mirror/{domain}/assets/...`
 - Domain whitelist, rate limiting, max depth, and retry behavior are configurable in `appsettings.json`.
