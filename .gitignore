@@ -4,3 +4,7 @@ mirror-output/
 # .NET build artifacts
 **/bin/
 **/obj/
+/.vs/SiteMirror
+/frontend/.next/dev
+/.vs
+/frontend/node_modules
