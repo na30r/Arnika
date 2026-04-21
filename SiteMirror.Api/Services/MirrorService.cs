@@ -9,6 +9,10 @@ using SiteMirror.Api.Services.Mirroring;
 
 namespace SiteMirror.Api.Services;
 
+/// <summary>
+/// Coordinates end-to-end mirroring workflow:
+/// browser navigation, response capture, resource download, and final HTML rewrite.
+/// </summary>
 public sealed class MirrorService : ISiteMirrorService
 {
     private readonly MirrorSettings _settings;
@@ -119,6 +123,9 @@ public sealed class MirrorService : ISiteMirrorService
 
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
+        _logger.LogInformation(
+            "Mirror completed for {SourceUrl}. FilesSaved: {FilesSaved}, Entry: {EntryFile}",
+            startUri, mirror.TotalFilesWritten, entryFilePath);
 
         return new MirrorResult
         {
@@ -165,7 +172,7 @@ public sealed class MirrorService : ISiteMirrorService
         }
     }
 
-    private static async Task WaitForPendingResponseSavesAsync(ConcurrentBag<Task> responseTasks, CancellationToken cancellationToken)
+    private async Task WaitForPendingResponseSavesAsync(ConcurrentBag<Task> responseTasks, CancellationToken cancellationToken)
     {
         var deadline = DateTime.UtcNow.AddSeconds(20);
         while (true)
@@ -180,6 +187,7 @@ public sealed class MirrorService : ISiteMirrorService
             var remaining = deadline - DateTime.UtcNow;
             if (remaining <= TimeSpan.Zero)
             {
+                _logger.LogWarning("Stopped waiting for response persistence tasks due to deadline.");
                 return;
             }
 
@@ -187,6 +195,7 @@ public sealed class MirrorService : ISiteMirrorService
             var completed = await Task.WhenAny(allPending, Task.Delay(remaining, cancellationToken));
             if (completed != allPending)
             {
+                _logger.LogWarning("Timed out while waiting for response persistence tasks.");
                 return;
             }
         }
