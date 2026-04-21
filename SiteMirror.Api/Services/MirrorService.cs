@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
@@ -11,10 +12,17 @@ namespace SiteMirror.Api.Services;
 public sealed class MirrorService : ISiteMirrorService
 {
     private readonly MirrorSettings _settings;
+    private readonly ILogger<MirrorService> _logger;
+    private readonly ILoggerFactory _loggerFactory;
 
-    public MirrorService(IOptions<MirrorSettings> options)
+    public MirrorService(
+        IOptions<MirrorSettings> options,
+        ILogger<MirrorService> logger,
+        ILoggerFactory loggerFactory)
     {
         _settings = options.Value;
+        _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     public async Task<MirrorResult> MirrorAsync(MirrorRequest request, CancellationToken cancellationToken)
@@ -42,9 +50,18 @@ public sealed class MirrorService : ISiteMirrorService
         var siteOutputPath = Path.GetFullPath(Path.Combine(outputRoot, siteFolderName));
         Directory.CreateDirectory(siteOutputPath);
 
+        _logger.LogInformation(
+            "Mirror started for {SourceUrl}. Output: {OutputPath}, WaitMs: {WaitMs}",
+            startUri, siteOutputPath, waitMs);
+
         if (string.IsNullOrWhiteSpace(chromiumExecutablePath))
         {
+            _logger.LogInformation("Chromium path not configured; running Playwright install.");
             Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+        }
+        else
+        {
+            _logger.LogInformation("Using configured Chromium executable: {ChromiumPath}", chromiumExecutablePath);
         }
 
         using var playwright = await Playwright.CreateAsync();
@@ -60,9 +77,10 @@ public sealed class MirrorService : ISiteMirrorService
         });
 
         var page = await context.NewPageAsync();
-        var mirror = new MirrorState(startUri, siteOutputPath);
+        var mirror = new MirrorState(startUri, siteOutputPath, _loggerFactory.CreateLogger<MirrorState>());
         var responseTasks = new ConcurrentBag<Task>();
 
+        // Collect all response persistence tasks so we can drain them before rewrite.
         EventHandler<IResponse> responseHandler = (_, response) =>
         {
             responseTasks.Add(PersistResponseAsync(response, mirror));
@@ -81,6 +99,7 @@ public sealed class MirrorService : ISiteMirrorService
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             await page.WaitForTimeoutAsync(waitMs);
             renderedHtml = await page.ContentAsync();
+            _logger.LogInformation("Initial page load completed for {CurrentUrl}", page.Url);
         }
         finally
         {
@@ -93,6 +112,7 @@ public sealed class MirrorService : ISiteMirrorService
             finalUri = startUri;
         }
 
+        // Persist rendered HTML first, then crawl and rewrite all local references.
         await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
         await mirror.DownloadLinkedResourcesAsync(cancellationToken);
         await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
@@ -113,7 +133,7 @@ public sealed class MirrorService : ISiteMirrorService
         };
     }
 
-    private static async Task PersistResponseAsync(IResponse response, MirrorState mirror)
+    private async Task PersistResponseAsync(IResponse response, MirrorState mirror)
     {
         try
         {
@@ -132,15 +152,16 @@ public sealed class MirrorService : ISiteMirrorService
             var completed = await Task.WhenAny(bodyTask, Task.Delay(TimeSpan.FromSeconds(15)));
             if (completed != bodyTask)
             {
+                _logger.LogDebug("Skipped response body due to timeout for {ResponseUrl}", response.Url);
                 return;
             }
 
             var body = await bodyTask;
             await mirror.SaveResponseAsync(responseUri, body, response.Headers, response.Status, requestUri);
         }
-        catch
+        catch (Exception ex)
         {
-            // Continue mirroring on individual response failures.
+            _logger.LogDebug(ex, "Failed to persist response {ResponseUrl}", response.Url);
         }
     }
 

@@ -20,12 +20,18 @@ internal sealed class HtmlRewriter
         "srcset", "imagesrcset"
     };
 
+    /// <summary>
+    /// Rewrites URL-bearing attributes and inline CSS blocks to local relative paths.
+    /// </summary>
     public void RewriteHtmlDocument(IDocument document, Uri documentUri, Func<Uri, string, string?> rewriteUrl)
     {
         RewriteAttributeUrls(document, documentUri, rewriteUrl);
         RewriteCssBlocks(document, documentUri, rewriteUrl);
     }
 
+    /// <summary>
+    /// Parses HTML and queues any linked resources for download.
+    /// </summary>
     public void EnqueueResourcesFromHtml(Uri baseUri, string html, Action<Uri, string> enqueueUrl)
     {
         var parser = new AngleSharp.Html.Parser.HtmlParser();
@@ -33,6 +39,9 @@ internal sealed class HtmlRewriter
         EnqueueUrlsFromDocument(document, baseUri, enqueueUrl, EnqueueResourcesFromSrcSet);
     }
 
+    /// <summary>
+    /// Parses CSS content and queues URL and @import references.
+    /// </summary>
     public void EnqueueResourcesFromCss(Uri baseUri, string css, Action<Uri, string> enqueueUrl)
     {
         EnqueueResourcesFromCssInternal(baseUri, css, enqueueUrl);

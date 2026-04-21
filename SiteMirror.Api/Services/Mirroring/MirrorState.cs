@@ -1,17 +1,23 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
+using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
 namespace SiteMirror.Api.Services.Mirroring;
 
+/// <summary>
+/// Maintains mirror lifecycle state: persisted resource map, discovered URLs, and HTML rewrite passes.
+/// </summary>
 internal sealed class MirrorState
 {
     private readonly Uri _rootUri;
     private readonly string _outputDir;
     private readonly MirrorPathHelper _pathHelper;
     private readonly HtmlRewriter _htmlRewriter;
+    private readonly ILogger<MirrorState> _logger;
 
     private readonly ConcurrentDictionary<string, string> _urlToRelativePath = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Uri> _htmlSourceByRelativePath = new(StringComparer.OrdinalIgnoreCase);
@@ -19,16 +25,20 @@ internal sealed class MirrorState
     private readonly HashSet<string> _htmlDocuments = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
-    public MirrorState(Uri rootUri, string outputDir)
+    public MirrorState(Uri rootUri, string outputDir, ILogger<MirrorState> logger)
     {
         _rootUri = rootUri;
         _outputDir = outputDir;
         _pathHelper = new MirrorPathHelper(rootUri);
         _htmlRewriter = new HtmlRewriter();
+        _logger = logger;
     }
 
     public int TotalFilesWritten => _urlToRelativePath.Count;
 
+    /// <summary>
+    /// Persists a browser/network response and registers URL-to-local-file mappings for rewrite.
+    /// </summary>
     public async Task SaveResponseAsync(Uri resourceUri, byte[] body, IReadOnlyDictionary<string, string> headers, int statusCode, Uri? requestUri = null)
     {
         if (statusCode is < 200 or >= 400 || body.Length == 0)
@@ -41,6 +51,7 @@ internal sealed class MirrorState
         var localPath = Path.Combine(_outputDir, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
         await File.WriteAllBytesAsync(localPath, body);
+        _logger.LogDebug("Saved response file {LocalPath} ({Bytes} bytes)", localPath, body.Length);
 
         RegisterMapping(resourceUri, relativePath);
         if (requestUri is not null)
@@ -58,6 +69,9 @@ internal sealed class MirrorState
         }
     }
 
+    /// <summary>
+    /// Saves the final rendered HTML for the entry page and discovers linked resources.
+    /// </summary>
     public async Task SaveRenderedDocumentAsync(Uri pageUri, string html)
     {
         var relativePath = _pathHelper.MapUriToRelativePath(pageUri, "text/html");
@@ -73,8 +87,12 @@ internal sealed class MirrorState
         }
 
         _htmlRewriter.EnqueueResourcesFromHtml(pageUri, html, AddToQueue);
+        _logger.LogDebug("Saved rendered HTML for {PageUri}", pageUri);
     }
 
+    /// <summary>
+    /// Drains the discovered URL queue and downloads linked assets that were not captured by Playwright events.
+    /// </summary>
     public async Task DownloadLinkedResourcesAsync(CancellationToken cancellationToken)
     {
         using var client = new HttpClient(new HttpClientHandler
@@ -94,6 +112,8 @@ internal sealed class MirrorState
             {
                 break;
             }
+
+            _logger.LogDebug("Downloading {Count} queued resources", pending.Count);
 
             foreach (var url in pending)
             {
@@ -131,8 +151,8 @@ internal sealed class MirrorState
                     Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
                     await File.WriteAllBytesAsync(localPath, bytes, cancellationToken);
                     RegisterMapping(uri, relativePath);
-                        var finalUri = res.RequestMessage?.RequestUri;
-                        if (finalUri is not null && MirrorPathHelper.IsHttpOrHttps(finalUri))
+                    var finalUri = res.RequestMessage?.RequestUri;
+                    if (finalUri is not null && MirrorPathHelper.IsHttpOrHttps(finalUri))
                     {
                         RegisterMapping(finalUri, relativePath);
                     }
@@ -157,12 +177,15 @@ internal sealed class MirrorState
                 }
                 catch
                 {
-                    // Keep mirroring resilient.
+                    _logger.LogDebug("Failed to download linked resource: {Url}", url);
                 }
             }
         }
     }
 
+    /// <summary>
+    /// Rewrites all discovered HTML documents to local relative references.
+    /// </summary>
     public async Task RewriteHtmlDocumentsAsync(CancellationToken cancellationToken)
     {
         List<string> htmlFiles;
@@ -190,6 +213,8 @@ internal sealed class MirrorState
             var updated = document.DocumentElement?.OuterHtml ?? html;
             await File.WriteAllTextAsync(fullPath, updated, Encoding.UTF8, cancellationToken);
         }
+
+        _logger.LogInformation("Rewrote {Count} HTML documents to local paths", htmlFiles.Count);
     }
 
     public string GetEntryFile(Uri pageUri)
@@ -198,6 +223,9 @@ internal sealed class MirrorState
         return Path.Combine(_outputDir, relative);
     }
 
+    /// <summary>
+    /// Handles Playwright response events and forwards successfully read bodies to persistence.
+    /// </summary>
     public async Task PersistResponseAsync(IResponse response)
     {
         try
@@ -225,10 +253,13 @@ internal sealed class MirrorState
         }
         catch
         {
-            // Continue mirroring on individual response failures.
+            // Intentionally continue so one failed asset does not abort full mirroring.
         }
     }
 
+    /// <summary>
+    /// Adds resolved HTTP(S) URLs into the pending download queue.
+    /// </summary>
     private void AddToQueue(Uri baseUri, string? rawUrl)
     {
         if (string.IsNullOrWhiteSpace(rawUrl) ||
@@ -267,8 +298,12 @@ internal sealed class MirrorState
     private void RegisterMapping(Uri uri, string relativePath)
     {
         _urlToRelativePath[_pathHelper.NormalizeUri(uri)] = relativePath;
+        _logger.LogTrace("Registered URL mapping {Url} -> {RelativePath}", uri, relativePath);
     }
 
+    /// <summary>
+    /// Rewrites an absolute/relative URL to a local relative path if possible.
+    /// </summary>
     private string? RewriteUrl(Uri baseUri, string? originalUrl)
     {
         if (string.IsNullOrWhiteSpace(originalUrl) ||
