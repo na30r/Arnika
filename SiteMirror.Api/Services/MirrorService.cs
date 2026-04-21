@@ -110,16 +110,45 @@ public sealed class MirrorService : ISiteMirrorService
             page.Response -= responseHandler;
         }
 
-        await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
         if (!Uri.TryCreate(page.Url, UriKind.Absolute, out var finalUri))
         {
             finalUri = startUri;
         }
 
-        // Persist rendered HTML first, then crawl and rewrite all local references.
-        await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
-        await mirror.DownloadLinkedResourcesAsync(cancellationToken);
-        await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
+        var stage = "drain-response-events";
+        try
+        {
+            _logger.LogInformation(
+                "Stage {Stage}: waiting for response persistence tasks. Count={TaskCount}",
+                stage, responseTasks.Count);
+            await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
+            _logger.LogInformation("Stage {Stage}: complete", stage);
+
+            stage = "save-rendered-document";
+            _logger.LogInformation("Stage {Stage}: saving rendered HTML for {FinalUrl}", stage, finalUri);
+            await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
+
+            stage = "download-linked-resources";
+            _logger.LogInformation(
+                "Stage {Stage}: downloading queued resources. QueueCount={QueueCount}",
+                stage, mirror.PendingQueueCount);
+            await mirror.DownloadLinkedResourcesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Stage {Stage}: complete. FilesSaved={FilesSaved}",
+                stage, mirror.TotalFilesWritten);
+
+            stage = "rewrite-html-documents";
+            _logger.LogInformation(
+                "Stage {Stage}: rewriting HTML documents. HtmlCount={HtmlCount}",
+                stage, mirror.HtmlDocumentCount);
+            await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
+            _logger.LogInformation("Stage {Stage}: complete", stage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Mirror pipeline failed at stage {Stage} for {SourceUrl}", stage, startUri);
+            throw;
+        }
 
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');

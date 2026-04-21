@@ -35,6 +35,17 @@ internal sealed class MirrorState
     }
 
     public int TotalFilesWritten => _urlToRelativePath.Count;
+    public int PendingQueueCount => _downloadQueue.Count;
+    public int HtmlDocumentCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _htmlDocuments.Count;
+            }
+        }
+    }
 
     /// <summary>
     /// Persists a browser/network response and registers URL-to-local-file mappings for rewrite.
