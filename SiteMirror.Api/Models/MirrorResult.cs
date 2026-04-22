@@ -1,0 +1,20 @@
+namespace SiteMirror.Api.Models;
+
+public sealed class MirrorResult
+{
+    public required string SourceUrl { get; init; }
+
+    public required string FinalUrl { get; init; }
+
+    public required string OutputFolder { get; init; }
+
+    public required string EntryFilePath { get; init; }
+
+    public required string EntryFileRelativePath { get; init; }
+
+    public int FilesSaved { get; init; }
+
+    public string? UsedChromiumExecutablePath { get; init; }
+
+    public int WaitMs { get; init; }
+}
