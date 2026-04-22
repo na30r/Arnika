@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Globalization;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
@@ -18,26 +16,30 @@ public sealed class MirrorService : ISiteMirrorService
     private readonly MirrorSettings _settings;
     private readonly ILogger<MirrorService> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly string _contentRootPath;
 
     public MirrorService(
         IOptions<MirrorSettings> options,
         ILogger<MirrorService> logger,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IWebHostEnvironment hostEnvironment)
     {
         _settings = options.Value;
         _logger = logger;
         _loggerFactory = loggerFactory;
+        _contentRootPath = hostEnvironment.ContentRootPath;
     }
 
     public async Task<MirrorResult> MirrorAsync(MirrorRequest request, CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var startUri))
+        var normalizedRequestUrl = NormalizeRequestedUrl(request.Url);
+        if (!Uri.TryCreate(normalizedRequestUrl, UriKind.Absolute, out var startUri) || !IsHttpOrHttps(startUri))
         {
-            throw new ArgumentException("Invalid URL.", nameof(request.Url));
+            throw new ArgumentException("Invalid URL. Use an absolute HTTP or HTTPS URL.", nameof(request.Url));
         }
 
         var waitMs = request.ExtraWaitMs <= 0 ? 4_000 : request.ExtraWaitMs;
-        var outputRoot = string.IsNullOrWhiteSpace(_settings.OutputFolder) ? "mirror-output" : _settings.OutputFolder;
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
         var chromiumExecutablePath = string.IsNullOrWhiteSpace(_settings.ChromiumExecutablePath)
             ? null
             : Path.GetFullPath(_settings.ChromiumExecutablePath);
@@ -49,14 +51,12 @@ public sealed class MirrorService : ISiteMirrorService
 
         Directory.CreateDirectory(outputRoot);
 
-        var runStamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        var siteFolderName = $"{SanitizeFileName(startUri.Host)}-{runStamp}";
-        var siteOutputPath = Path.GetFullPath(Path.Combine(outputRoot, siteFolderName));
+        var siteOutputPath = outputRoot;
         Directory.CreateDirectory(siteOutputPath);
 
         _logger.LogInformation(
-            "Mirror started for {SourceUrl}. Output: {OutputPath}, WaitMs: {WaitMs}",
-            startUri, siteOutputPath, waitMs);
+            "Mirror started for {SourceUrl}. Output: {OutputPath}, WaitMs: {WaitMs}, AutoScroll: {AutoScroll}",
+            startUri, siteOutputPath, waitMs, request.AutoScroll);
 
         if (string.IsNullOrWhiteSpace(chromiumExecutablePath))
         {
@@ -111,6 +111,12 @@ public sealed class MirrorService : ISiteMirrorService
                 _logger.LogWarning("Network idle wait timed out for {Url}; continuing with rendered content.", startUri);
             }
 
+            if (request.AutoScroll)
+            {
+                await AutoScrollPageAsync(page, request, cancellationToken);
+                await WaitForNetworkIdleOrContinueAsync(page, 10_000);
+            }
+
             await page.WaitForTimeoutAsync(waitMs);
             renderedHtml = await page.ContentAsync();
             _logger.LogInformation("Initial page load completed for {CurrentUrl}", page.Url);
@@ -143,6 +149,7 @@ public sealed class MirrorService : ISiteMirrorService
 
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
+        var frontendPreviewPath = $"/mirror/{relativeEntry}";
         _logger.LogInformation(
             "Mirror completed for {SourceUrl}. FilesSaved: {FilesSaved}, Entry: {EntryFile}",
             startUri, mirror.TotalFilesWritten, entryFilePath);
@@ -154,6 +161,7 @@ public sealed class MirrorService : ISiteMirrorService
             OutputFolder = siteOutputPath,
             EntryFilePath = entryFilePath,
             EntryFileRelativePath = relativeEntry,
+            FrontendPreviewPath = frontendPreviewPath,
             FilesSaved = mirror.TotalFilesWritten,
             UsedChromiumExecutablePath = chromiumExecutablePath,
             WaitMs = waitMs
@@ -325,15 +333,82 @@ public sealed class MirrorService : ISiteMirrorService
         string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
         string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 
-    private static string SanitizeFileName(string value)
+    private async Task AutoScrollPageAsync(IPage page, MirrorRequest request, CancellationToken cancellationToken)
     {
-        var invalid = Path.GetInvalidFileNameChars();
-        var builder = new StringBuilder(value.Length);
-        foreach (var c in value)
+        var stepPx = request.ScrollStepPx <= 0 ? 1_200 : request.ScrollStepPx;
+        var delayMs = request.ScrollDelayMs <= 0 ? 150 : request.ScrollDelayMs;
+        var maxRounds = request.MaxScrollRounds <= 0 ? 20 : request.MaxScrollRounds;
+
+        _logger.LogDebug(
+            "Auto-scroll enabled. StepPx={StepPx}, DelayMs={DelayMs}, MaxRounds={MaxRounds}",
+            stepPx, delayMs, maxRounds);
+
+        for (var round = 0; round < maxRounds; round++)
         {
-            builder.Append(invalid.Contains(c) ? '-' : c);
+            cancellationToken.ThrowIfCancellationRequested();
+            var reachedBottom = await page.EvaluateAsync<bool>(
+                """
+                ({ stepPx }) => {
+                    const before = window.scrollY;
+                    window.scrollBy(0, stepPx);
+                    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+                    return atBottom || before === window.scrollY;
+                }
+                """,
+                new { stepPx });
+            await page.WaitForTimeoutAsync((float)delayMs);
+            if (reachedBottom)
+            {
+                break;
+            }
         }
 
-        return builder.ToString();
+        await page.EvaluateAsync("() => window.scrollTo(0, 0)");
+    }
+
+    private async Task WaitForNetworkIdleOrContinueAsync(IPage page, float timeoutMs)
+    {
+        try
+        {
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+            {
+                Timeout = timeoutMs
+            });
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogDebug("Network idle wait timed out after auto-scroll; continuing.");
+        }
+    }
+
+    private static string NormalizeRequestedUrl(string rawUrl)
+    {
+        var trimmed = rawUrl?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return string.Empty;
+        }
+
+        if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        return $"https://{trimmed}";
+    }
+
+    private string ResolveOutputRoot(string? configuredOutputFolder)
+    {
+        var configured = string.IsNullOrWhiteSpace(configuredOutputFolder)
+            ? "../frontend/public/mirror"
+            : configuredOutputFolder.Trim();
+
+        if (Path.IsPathRooted(configured))
+        {
+            return Path.GetFullPath(configured);
+        }
+
+        return Path.GetFullPath(Path.Combine(_contentRootPath, configured));
     }
 }

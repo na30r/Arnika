@@ -12,6 +12,8 @@ public sealed class MirrorResult
 
     public required string EntryFileRelativePath { get; init; }
 
+    public required string FrontendPreviewPath { get; init; }
+
     public int FilesSaved { get; init; }
 
     public string? UsedChromiumExecutablePath { get; init; }
