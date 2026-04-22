@@ -1,66 +1,124 @@
-# SiteMirror API (.NET + Swagger)
+# SiteMirror (.NET API + Next.js frontend)
 
-ASP.NET Core Web API to mirror a web page locally:
+Mirror documentation pages (including JavaScript-rendered Next.js/Tailwind sites) and serve them from one local Next.js application.
 
-- Uses Playwright Chromium to render the page (including JavaScript).
-- Waits for complete load (`networkidle`) plus configurable extra wait.
-- Saves rendered HTML + downloaded resources (CSS, JS, images, fonts, iframes, etc.).
-- Rewrites links for local offline preview.
-- Exposes API endpoints with Swagger UI.
+## What this project does
+
+- Crawls a **single page** with Playwright (rendered DOM, scripts, styles, fonts, images, iframes).
+- Captures response assets and downloads linked resources that were not directly observed.
+- Rewrites links to local relative paths for offline/local serving.
+- Saves mirrored output into `frontend/public/mirror` so Next.js serves it at `/mirror/...`.
+- Provides a Next.js UI that:
+  - triggers crawl requests,
+  - returns preview metadata,
+  - previews the mirrored page in an iframe.
+
+## Repository layout
+
+```text
+.
+├── SiteMirror.Api/          # ASP.NET Core mirror API
+├── frontend/                # Next.js frontend + preview UI
+└── SiteMirror.sln
+```
 
 ## Requirements
 
 - .NET 8 SDK
-- Configure mirror paths in `appsettings.json` / `appsettings.Development.json`
+- Node.js 20+
 
-## Build
+## Backend setup (ASP.NET Core)
 
 ```bash
 dotnet restore SiteMirror.sln
 dotnet build SiteMirror.sln
-```
-
-## Run API
-
-```bash
 dotnet run --project SiteMirror.Api
 ```
 
-Mirror configuration now comes from app settings:
+Default API URL (launch profile):
+
+- `http://localhost:5196`
+- Swagger: `http://localhost:5196/swagger`
+
+Mirror settings in `SiteMirror.Api/appsettings*.json`:
 
 ```json
 "MirrorSettings": {
-  "OutputFolder": "mirror-output",
-  "ChromiumExecutablePath": "/usr/local/bin/google-chrome"
+  "OutputFolder": "../frontend/public/mirror",
+  "ChromiumExecutablePath": null
 }
 ```
 
-Open Swagger UI:
+Notes:
 
-- `http://localhost:5107/swagger` (HTTP, default launch profile)
-- `https://localhost:7213/swagger` (HTTPS, default launch profile)
+- If `ChromiumExecutablePath` is `null`, Playwright installs/uses bundled Chromium.
+- In development, HTTPS redirection is disabled to simplify local Next -> API calls.
 
-## Mirror endpoint
+## Frontend setup (Next.js)
 
-`POST /api/mirror`
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Request body:
+Default frontend URL:
+
+- `http://localhost:3000`
+
+Optional environment variable:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.example`:
+
+```bash
+MIRROR_API_BASE_URL=http://localhost:5196
+```
+
+## Crawl and preview flow
+
+1. Open `http://localhost:3000`.
+2. Enter a documentation page URL (for example: `https://nextjs.org/docs`).
+3. Click **Mirror page**.
+4. The UI calls `POST /api/mirror` (Next route handler), which proxies to the ASP.NET API.
+5. The mirrored output is saved under `frontend/public/mirror/<host>/...`.
+6. Preview is served by Next at `/mirror/<host>/...`.
+
+## API: `POST /api/mirror`
+
+Example request:
 
 ```json
 {
-  "url": "https://example.com",
-  "extraWaitMs": 4000
+  "url": "https://nextjs.org/docs",
+  "extraWaitMs": 4000,
+  "autoScroll": true,
+  "scrollStepPx": 1200,
+  "scrollDelayMs": 150,
+  "maxScrollRounds": 24
 }
 ```
 
 Fields:
 
-1. `url` (required) - page to mirror
-2. `extraWaitMs` (optional, default: `4000`)
+1. `url` (required): target page URL. If scheme is missing, API uses `https://`.
+2. `extraWaitMs` (optional): additional wait after page load.
+3. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
+4. `scrollStepPx` (optional): pixels scrolled each step.
+5. `scrollDelayMs` (optional): wait between scroll steps.
+6. `maxScrollRounds` (optional): max scroll iterations.
 
-Path and folder are read from app settings (`MirrorSettings`) instead of request payload.
+Example response fields:
 
-## Notes
+- `frontendPreviewPath`: local route for iframe or browser (`/mirror/...`).
+- `entryFileRelativePath`: mirrored entry file path under mirror root.
+- `filesSaved`: number of mapped files saved.
 
-- Pages requiring login, anti-bot checks, or dynamic backend APIs may still differ.
-- This mirrors rendered frontend state, not server-side business actions.
+## Current scope
+
+- Optimized for **single-page** documentation mirroring.
+- Authentication/cookies are not required for the main flow.
+- Dynamic backend data and gated pages can still differ from source.
