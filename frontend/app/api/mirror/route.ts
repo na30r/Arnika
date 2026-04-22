@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 type MirrorRequestBody = {
   url?: string;
   version?: string;
+  languages?: string[];
   extraWaitMs?: number;
   autoScroll?: boolean;
   scrollStepPx?: number;
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
   const payload = {
     url: trimmedUrl,
     version,
+    languages: body.languages,
     extraWaitMs: body.extraWaitMs ?? 4000,
     autoScroll: body.autoScroll ?? true,
     scrollStepPx: body.scrollStepPx ?? 1200,

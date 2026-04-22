@@ -5,7 +5,7 @@
   }
   window[runtimeMarker] = true;
 
-  function getMirrorPrefix() {
+  function getMirrorContext() {
     const parts = window.location.pathname.split("/");
     if (parts.length < 4 || parts[1] !== "mirror") {
       return null;
@@ -17,13 +17,23 @@
       return null;
     }
 
-    return `/mirror/${host}/${version}`;
+    let basePrefix = `/mirror/${host}/${version}`;
+    let contentPrefix = basePrefix;
+    if (parts.length >= 6 && parts[4] === "_localized") {
+      contentPrefix = `${basePrefix}/_localized/${parts[5]}`;
+    }
+
+    return {
+      basePrefix,
+      contentPrefix
+    };
   }
 
-  const mirrorPrefix = getMirrorPrefix();
-  if (!mirrorPrefix) {
+  const mirrorContext = getMirrorContext();
+  if (!mirrorContext) {
     return;
   }
+  const { basePrefix, contentPrefix } = mirrorContext;
 
   function shouldRewrite(value) {
     if (!value || typeof value !== "string") {
@@ -42,7 +52,7 @@
       return value;
     }
 
-    return `${mirrorPrefix}${value}`;
+    return `${basePrefix}${value}`;
   }
 
   function tryRewriteUrl(input) {
@@ -106,10 +116,24 @@
     return originalOpen.call(this, method, rewritten, async, user, password);
   };
 
+  function rewriteNavigationPath(value) {
+    if (!value || typeof value !== "string") {
+      return value;
+    }
+
+    if (!value.startsWith("/") ||
+      value.startsWith("//") ||
+      value.startsWith("/mirror/")) {
+      return value;
+    }
+
+    return `${contentPrefix}${value}`;
+  }
+
   const originalPushState = history.pushState.bind(history);
   history.pushState = function patchedPushState(state, unused, url) {
     if (typeof url === "string") {
-      return originalPushState(state, unused, tryRewriteUrl(url));
+      return originalPushState(state, unused, rewriteNavigationPath(url));
     }
 
     return originalPushState(state, unused, url);
@@ -118,7 +142,7 @@
   const originalReplaceState = history.replaceState.bind(history);
   history.replaceState = function patchedReplaceState(state, unused, url) {
     if (typeof url === "string") {
-      return originalReplaceState(state, unused, tryRewriteUrl(url));
+      return originalReplaceState(state, unused, rewriteNavigationPath(url));
     }
 
     return originalReplaceState(state, unused, url);

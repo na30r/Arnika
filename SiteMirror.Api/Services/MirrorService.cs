@@ -14,9 +14,11 @@ namespace SiteMirror.Api.Services;
 public sealed class MirrorService : ISiteMirrorService
 {
     private const string MirrorRuntimeFileName = "_mirror-runtime.js";
+    private static readonly string[] FallbackLocalizationLanguages = ["en"];
     private readonly MirrorSettings _settings;
     private readonly ILogger<MirrorService> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly LocalizationGenerator _localizationGenerator;
     private readonly string _contentRootPath;
 
     public MirrorService(
@@ -28,6 +30,7 @@ public sealed class MirrorService : ISiteMirrorService
         _settings = options.Value;
         _logger = logger;
         _loggerFactory = loggerFactory;
+        _localizationGenerator = new LocalizationGenerator(_loggerFactory.CreateLogger<LocalizationGenerator>());
         _contentRootPath = hostEnvironment.ContentRootPath;
     }
 
@@ -151,9 +154,20 @@ public sealed class MirrorService : ISiteMirrorService
         await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
         _logger.LogInformation("Stage rewrite-html-documents: complete");
 
+        var requestedLanguages = (request.Languages is { Length: > 0 })
+            ? request.Languages
+            : FallbackLocalizationLanguages;
+        _logger.LogInformation("Stage generate-localizations: generating localized copies for languages {Languages}",
+            string.Join(", ", requestedLanguages));
+        var localizationResult = await _localizationGenerator.GenerateLocalizedCopiesAsync(
+            siteOutputPath,
+            requestedLanguages,
+            cancellationToken);
+        _logger.LogInformation("Stage generate-localizations: complete");
+
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
-        var frontendPreviewPath = $"/mirror/{siteHost}/{normalizedVersion}/{relativeEntry}";
+        var frontendPreviewPath = BuildFrontendPreviewPath(siteHost, normalizedVersion, localizationResult.DefaultLanguage, relativeEntry);
         _logger.LogInformation(
             "Mirror completed for {SourceUrl}. FilesSaved: {FilesSaved}, Entry: {EntryFile}",
             startUri, mirror.TotalFilesWritten, entryFilePath);
@@ -163,6 +177,8 @@ public sealed class MirrorService : ISiteMirrorService
             SourceUrl = startUri.ToString(),
             SiteHost = siteHost,
             Version = normalizedVersion,
+            DefaultLanguage = localizationResult.DefaultLanguage,
+            AvailableLanguages = localizationResult.AvailableLanguages,
             FinalUrl = finalUri.ToString(),
             OutputFolder = siteOutputPath,
             EntryFilePath = entryFilePath,
@@ -435,6 +451,12 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         return sanitized;
+    }
+
+    private static string BuildFrontendPreviewPath(string siteHost, string version, string language, string relativeEntry)
+    {
+        var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? "en" : language.Trim().ToLowerInvariant();
+        return $"/mirror/{siteHost}/{version}/{LocalizationGenerator.LocalizedRootFolderName}/{normalizedLanguage}/{relativeEntry}";
     }
 
     private string ResolveOutputRoot(string? configuredOutputFolder)

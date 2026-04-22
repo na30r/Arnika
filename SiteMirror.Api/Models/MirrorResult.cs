@@ -8,6 +8,10 @@ public sealed class MirrorResult
 
     public required string Version { get; init; }
 
+    public required string DefaultLanguage { get; init; }
+
+    public required IReadOnlyList<string> AvailableLanguages { get; init; }
+
     public required string FinalUrl { get; init; }
 
     public required string OutputFolder { get; init; }

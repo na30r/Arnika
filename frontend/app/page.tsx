@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 
 type MirrorResponse = {
   sourceUrl?: string;
   siteHost?: string;
   version?: string;
+  defaultLanguage?: string;
+  availableLanguages?: string[];
   finalUrl?: string;
   outputFolder?: string;
   entryFilePath?: string;
@@ -20,18 +22,30 @@ const defaultTarget = "https://nextjs.org/docs";
 export default function HomePage() {
   const [url, setUrl] = useState(defaultTarget);
   const [version, setVersion] = useState("latest");
+  const [languagesText, setLanguagesText] = useState("en");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MirrorResponse | null>(null);
-  const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/docs.html");
+  const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/_localized/en/docs.html");
 
-  const iframeSrc = useMemo(() => {
-    if (result?.frontendPreviewPath) {
-      return result.frontendPreviewPath;
+  let iframeSrc = manualPreviewPath.trim();
+  if (result?.frontendPreviewPath && result?.siteHost && result?.version) {
+    const effectiveLanguage = (selectedLanguage || result.defaultLanguage || "en").trim().toLowerCase();
+    if (effectiveLanguage && result.defaultLanguage) {
+      const basePrefix = `/mirror/${result.siteHost}/${result.version}/_localized/${result.defaultLanguage.toLowerCase()}/`;
+      if (result.frontendPreviewPath.startsWith(basePrefix)) {
+        iframeSrc = result.frontendPreviewPath.replace(
+          basePrefix,
+          `/mirror/${result.siteHost}/${result.version}/_localized/${effectiveLanguage}/`
+        );
+      } else {
+        iframeSrc = result.frontendPreviewPath;
+      }
+    } else {
+      iframeSrc = result.frontendPreviewPath;
     }
-
-    return manualPreviewPath.trim();
-  }, [manualPreviewPath, result?.frontendPreviewPath]);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,6 +53,10 @@ export default function HomePage() {
     setError(null);
 
     try {
+      const parsedLanguages = languagesText
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
       const response = await fetch("/api/mirror", {
         method: "POST",
         headers: {
@@ -47,6 +65,7 @@ export default function HomePage() {
         body: JSON.stringify({
           url,
           version,
+          languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
           extraWaitMs: 4000,
           autoScroll: true,
           scrollStepPx: 1200,
@@ -63,6 +82,12 @@ export default function HomePage() {
       setResult(payload);
       if (payload.frontendPreviewPath) {
         setManualPreviewPath(payload.frontendPreviewPath);
+      }
+      if (payload.defaultLanguage) {
+        setSelectedLanguage(payload.defaultLanguage);
+      }
+      if (payload.availableLanguages && payload.availableLanguages.length > 0) {
+        setLanguagesText(payload.availableLanguages.join(", "));
       }
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Unexpected error.";
@@ -106,6 +131,16 @@ export default function HomePage() {
               {isLoading ? "Mirroring..." : "Mirror page"}
             </button>
           </div>
+          <label htmlFor="languages-input">Languages (comma-separated)</label>
+          <div className="row">
+            <input
+              id="languages-input"
+              value={languagesText}
+              onChange={(event) => setLanguagesText(event.target.value)}
+              placeholder="en, fa, ar"
+              autoComplete="off"
+            />
+          </div>
         </form>
 
         {error && <p className="error">{error}</p>}
@@ -122,6 +157,12 @@ export default function HomePage() {
             <strong>Version:</strong> {result?.version ?? "-"}
           </div>
           <div>
+            <strong>Default language:</strong> {result?.defaultLanguage ?? "-"}
+          </div>
+          <div>
+            <strong>Available languages:</strong> {(result?.availableLanguages ?? []).join(", ") || "-"}
+          </div>
+          <div>
             <strong>Files saved:</strong> {result?.filesSaved ?? 0}
           </div>
           <div>
@@ -130,12 +171,20 @@ export default function HomePage() {
         </div>
 
         <div className="form">
+          <label htmlFor="language-select-input">Preview language</label>
+          <input
+            id="language-select-input"
+            value={selectedLanguage}
+            onChange={(event) => setSelectedLanguage(event.target.value.toLowerCase())}
+            placeholder="en"
+            autoComplete="off"
+          />
           <label htmlFor="manual-preview-input">Open existing mirrored page</label>
           <input
             id="manual-preview-input"
             value={manualPreviewPath}
             onChange={(event) => setManualPreviewPath(event.target.value)}
-            placeholder="/mirror/nextjs.org/latest/docs.html"
+            placeholder="/mirror/nextjs.org/latest/_localized/en/docs.html"
             autoComplete="off"
           />
         </div>
