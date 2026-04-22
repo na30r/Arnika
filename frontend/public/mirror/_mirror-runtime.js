@@ -7,16 +7,17 @@
 
   function getMirrorPrefix() {
     const parts = window.location.pathname.split("/");
-    if (parts.length < 3 || parts[1] !== "mirror") {
+    if (parts.length < 4 || parts[1] !== "mirror") {
       return null;
     }
 
     const host = parts[2];
-    if (!host) {
+    const version = parts[3];
+    if (!host || !version) {
       return null;
     }
 
-    return `/mirror/${host}`;
+    return `/mirror/${host}/${version}`;
   }
 
   const mirrorPrefix = getMirrorPrefix();

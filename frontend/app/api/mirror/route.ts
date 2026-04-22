@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 type MirrorRequestBody = {
   url?: string;
+  version?: string;
   extraWaitMs?: number;
   autoScroll?: boolean;
   scrollStepPx?: number;
@@ -27,11 +28,13 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  const version = body.version?.trim() || "latest";
 
   const backendBaseUrl = process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
   const backendUrl = new URL("/api/mirror", backendBaseUrl).toString();
   const payload = {
     url: trimmedUrl,
+    version,
     extraWaitMs: body.extraWaitMs ?? 4000,
     autoScroll: body.autoScroll ?? true,
     scrollStepPx: body.scrollStepPx ?? 1200,

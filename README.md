@@ -94,6 +94,7 @@ Example request:
 ```json
 {
   "url": "https://nextjs.org/docs",
+  "version": "v14.2.0",
   "extraWaitMs": 4000,
   "autoScroll": true,
   "scrollStepPx": 1200,
@@ -105,15 +106,18 @@ Example request:
 Fields:
 
 1. `url` (required): target page URL. If scheme is missing, API uses `https://`.
-2. `extraWaitMs` (optional): additional wait after page load.
-3. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
-4. `scrollStepPx` (optional): pixels scrolled each step.
-5. `scrollDelayMs` (optional): wait between scroll steps.
-6. `maxScrollRounds` (optional): max scroll iterations.
+2. `version` (optional): mirror version folder name (default: `latest`).
+3. `extraWaitMs` (optional): additional wait after page load.
+4. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
+5. `scrollStepPx` (optional): pixels scrolled each step.
+6. `scrollDelayMs` (optional): wait between scroll steps.
+7. `maxScrollRounds` (optional): max scroll iterations.
 
 Example response fields:
 
-- `frontendPreviewPath`: local route for iframe or browser (`/mirror/...`).
+- `siteHost`: sanitized target host folder name (for example `nextjs.org`).
+- `version`: effective mirror version used for storage/routing.
+- `frontendPreviewPath`: local route for iframe or browser (`/mirror/<site>/<version>/...`).
 - `entryFileRelativePath`: mirrored entry file path under mirror root.
 - `filesSaved`: number of mapped files saved.
 

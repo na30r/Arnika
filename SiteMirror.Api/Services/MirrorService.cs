@@ -13,6 +13,7 @@ namespace SiteMirror.Api.Services;
 /// </summary>
 public sealed class MirrorService : ISiteMirrorService
 {
+    private const string MirrorRuntimeFileName = "_mirror-runtime.js";
     private readonly MirrorSettings _settings;
     private readonly ILogger<MirrorService> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -37,6 +38,8 @@ public sealed class MirrorService : ISiteMirrorService
         {
             throw new ArgumentException("Invalid URL. Use an absolute HTTP or HTTPS URL.", nameof(request.Url));
         }
+        var normalizedVersion = NormalizeVersion(request.Version);
+        var siteHost = MirrorPathHelper.SanitizePathSegment(startUri.Host);
 
         var waitMs = request.ExtraWaitMs <= 0 ? 4_000 : request.ExtraWaitMs;
         var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
@@ -51,12 +54,13 @@ public sealed class MirrorService : ISiteMirrorService
 
         Directory.CreateDirectory(outputRoot);
 
-        var siteOutputPath = outputRoot;
+        var siteOutputPath = Path.Combine(outputRoot, siteHost, normalizedVersion);
         Directory.CreateDirectory(siteOutputPath);
+        await EnsureRuntimeScriptAvailableAsync(outputRoot, cancellationToken);
 
         _logger.LogInformation(
-            "Mirror started for {SourceUrl}. Output: {OutputPath}, WaitMs: {WaitMs}, AutoScroll: {AutoScroll}",
-            startUri, siteOutputPath, waitMs, request.AutoScroll);
+            "Mirror started for {SourceUrl}. Output: {OutputPath}, WaitMs: {WaitMs}, AutoScroll: {AutoScroll}, Version: {Version}",
+            startUri, siteOutputPath, waitMs, request.AutoScroll, normalizedVersion);
 
         if (string.IsNullOrWhiteSpace(chromiumExecutablePath))
         {
@@ -149,7 +153,7 @@ public sealed class MirrorService : ISiteMirrorService
 
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
-        var frontendPreviewPath = $"/mirror/{relativeEntry}";
+        var frontendPreviewPath = $"/mirror/{siteHost}/{normalizedVersion}/{relativeEntry}";
         _logger.LogInformation(
             "Mirror completed for {SourceUrl}. FilesSaved: {FilesSaved}, Entry: {EntryFile}",
             startUri, mirror.TotalFilesWritten, entryFilePath);
@@ -157,6 +161,8 @@ public sealed class MirrorService : ISiteMirrorService
         return new MirrorResult
         {
             SourceUrl = startUri.ToString(),
+            SiteHost = siteHost,
+            Version = normalizedVersion,
             FinalUrl = finalUri.ToString(),
             OutputFolder = siteOutputPath,
             EntryFilePath = entryFilePath,
@@ -300,7 +306,8 @@ public sealed class MirrorService : ISiteMirrorService
 
     private static string InferMirrorRootFromHtmlPath(string htmlFilePath, out string hostSegment)
     {
-        var directory = new DirectoryInfo(Path.GetDirectoryName(htmlFilePath)!);
+        var htmlDirectory = new DirectoryInfo(Path.GetDirectoryName(htmlFilePath)!);
+        var directory = htmlDirectory;
         DirectoryInfo? hostDirectory = null;
         while (directory is not null)
         {
@@ -320,7 +327,22 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         hostSegment = hostDirectory.Name;
-        return hostDirectory.Parent.FullName;
+
+        if (hostDirectory.FullName == htmlDirectory.FullName)
+        {
+            return hostDirectory.FullName;
+        }
+
+        var relativeInsideHost = Path.GetRelativePath(hostDirectory.FullName, htmlDirectory.FullName);
+        var firstSegment = relativeInsideHost
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .FirstOrDefault(segment => !string.IsNullOrWhiteSpace(segment));
+        if (!string.IsNullOrWhiteSpace(firstSegment))
+        {
+            return Path.Combine(hostDirectory.FullName, firstSegment);
+        }
+
+        return hostDirectory.FullName;
     }
 
     private static bool LooksLikeHostSegment(string segment) =>
@@ -398,6 +420,23 @@ public sealed class MirrorService : ISiteMirrorService
         return $"https://{trimmed}";
     }
 
+    private static string NormalizeVersion(string rawVersion)
+    {
+        var candidate = string.IsNullOrWhiteSpace(rawVersion) ? "latest" : rawVersion.Trim();
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitized = new string(candidate.Select(ch => invalidChars.Contains(ch) ? '-' : ch).ToArray())
+            .Replace('/', '-')
+            .Replace('\\', '-');
+        if (string.IsNullOrWhiteSpace(sanitized) ||
+            string.Equals(sanitized, ".", StringComparison.Ordinal) ||
+            string.Equals(sanitized, "..", StringComparison.Ordinal))
+        {
+            return "latest";
+        }
+
+        return sanitized;
+    }
+
     private string ResolveOutputRoot(string? configuredOutputFolder)
     {
         var configured = string.IsNullOrWhiteSpace(configuredOutputFolder)
@@ -410,5 +449,26 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         return Path.GetFullPath(Path.Combine(_contentRootPath, configured));
+    }
+
+    private async Task EnsureRuntimeScriptAvailableAsync(string outputRoot, CancellationToken cancellationToken)
+    {
+        var runtimeTargetPath = Path.Combine(outputRoot, MirrorRuntimeFileName);
+        if (File.Exists(runtimeTargetPath))
+        {
+            return;
+        }
+
+        var runtimeSourcePath = Path.GetFullPath(Path.Combine(_contentRootPath, "..", "frontend", "public", "mirror", MirrorRuntimeFileName));
+        if (!File.Exists(runtimeSourcePath))
+        {
+            _logger.LogWarning(
+                "Mirror runtime script not found at {RuntimeSourcePath}. Interactive controls may fail in mirrored pages.",
+                runtimeSourcePath);
+            return;
+        }
+
+        var runtimeContent = await File.ReadAllTextAsync(runtimeSourcePath, cancellationToken);
+        await File.WriteAllTextAsync(runtimeTargetPath, runtimeContent, cancellationToken);
     }
 }

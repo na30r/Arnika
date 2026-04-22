@@ -4,6 +4,8 @@ import { FormEvent, useMemo, useState } from "react";
 
 type MirrorResponse = {
   sourceUrl?: string;
+  siteHost?: string;
+  version?: string;
   finalUrl?: string;
   outputFolder?: string;
   entryFilePath?: string;
@@ -17,10 +19,11 @@ const defaultTarget = "https://nextjs.org/docs";
 
 export default function HomePage() {
   const [url, setUrl] = useState(defaultTarget);
+  const [version, setVersion] = useState("latest");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MirrorResponse | null>(null);
-  const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/docs.html");
+  const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/docs.html");
 
   const iframeSrc = useMemo(() => {
     if (result?.frontendPreviewPath) {
@@ -43,6 +46,7 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           url,
+          version,
           extraWaitMs: 4000,
           autoScroll: true,
           scrollStepPx: 1200,
@@ -87,6 +91,17 @@ export default function HomePage() {
               autoComplete="off"
               required
             />
+          </div>
+          <label htmlFor="version-input">Version</label>
+          <div className="row">
+            <input
+              id="version-input"
+              value={version}
+              onChange={(event) => setVersion(event.target.value)}
+              placeholder="latest, 14.2.0, v1"
+              autoComplete="off"
+              required
+            />
             <button type="submit" disabled={isLoading}>
               {isLoading ? "Mirroring..." : "Mirror page"}
             </button>
@@ -99,6 +114,12 @@ export default function HomePage() {
           <div>
             <strong>Preview path:</strong>{" "}
             <code>{result?.frontendPreviewPath ?? "(none yet)"}</code>
+          </div>
+          <div>
+            <strong>Site:</strong> {result?.siteHost ?? "-"}
+          </div>
+          <div>
+            <strong>Version:</strong> {result?.version ?? "-"}
           </div>
           <div>
             <strong>Files saved:</strong> {result?.filesSaved ?? 0}
@@ -114,7 +135,7 @@ export default function HomePage() {
             id="manual-preview-input"
             value={manualPreviewPath}
             onChange={(event) => setManualPreviewPath(event.target.value)}
-            placeholder="/mirror/nextjs.org/docs.html"
+            placeholder="/mirror/nextjs.org/latest/docs.html"
             autoComplete="off"
           />
         </div>

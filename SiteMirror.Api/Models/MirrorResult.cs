@@ -4,6 +4,10 @@ public sealed class MirrorResult
 {
     public required string SourceUrl { get; init; }
 
+    public required string SiteHost { get; init; }
+
+    public required string Version { get; init; }
+
     public required string FinalUrl { get; init; }
 
     public required string OutputFolder { get; init; }

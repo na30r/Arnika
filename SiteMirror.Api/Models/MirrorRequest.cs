@@ -4,6 +4,8 @@ public sealed class MirrorRequest
 {
     public string Url { get; init; } = string.Empty;
 
+    public string Version { get; init; } = "latest";
+
     public int ExtraWaitMs { get; init; } = 4_000;
 
     public bool AutoScroll { get; init; } = true;
