@@ -27,6 +27,7 @@ internal sealed class HtmlRewriter
     {
         RewriteAttributeUrls(document, documentUri, rewriteUrl);
         RewriteCssBlocks(document, documentUri, rewriteUrl);
+        InjectMirrorRuntimeScript(document);
     }
 
     /// <summary>
@@ -259,5 +260,24 @@ internal sealed class HtmlRewriter
                trimmed.StartsWith("../", StringComparison.Ordinal) ||
                trimmed.StartsWith('#') ||
                trimmed.StartsWith("?", StringComparison.Ordinal);
+    }
+
+    private static void InjectMirrorRuntimeScript(IDocument document)
+    {
+        var head = document.Head;
+        if (head is null)
+        {
+            return;
+        }
+
+        if (head.QuerySelector("script[data-site-mirror-runtime='1']") is not null)
+        {
+            return;
+        }
+
+        var runtimeScript = document.CreateElement("script");
+        runtimeScript.SetAttribute("data-site-mirror-runtime", "1");
+        runtimeScript.SetAttribute("src", "/mirror/_mirror-runtime.js");
+        head.InsertBefore(runtimeScript, head.FirstChild);
     }
 }
