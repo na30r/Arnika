@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,10 @@ namespace SiteMirror.Api.Services.Mirroring;
 /// </summary>
 internal sealed class MirrorState
 {
+    private static readonly Regex HostLikeSegmentRegex = new(
+        "^[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly Uri _rootUri;
     private readonly string _outputDir;
     private readonly MirrorPathHelper _pathHelper;
@@ -228,10 +233,77 @@ internal sealed class MirrorState
         _logger.LogInformation("Rewrote {Count} HTML documents to local paths", htmlFiles.Count);
     }
 
+    public async Task<int> RewriteSingleHtmlFileAsync(string htmlFilePath, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(htmlFilePath))
+        {
+            return 0;
+        }
+
+        var html = await File.ReadAllTextAsync(htmlFilePath, Encoding.UTF8, cancellationToken);
+        var parser = new HtmlParser();
+        var document = await parser.ParseDocumentAsync(html, cancellationToken);
+
+        var relativePath = Path.GetRelativePath(_outputDir, htmlFilePath);
+        var normalizedRelativePath = relativePath.Replace('\\', '/');
+        var docUri = ResolveFileUri(normalizedRelativePath);
+
+        _htmlRewriter.RewriteHtmlDocument(document, docUri, RewriteUrl);
+        var updated = document.DocumentElement?.OuterHtml ?? html;
+        await File.WriteAllTextAsync(htmlFilePath, updated, Encoding.UTF8, cancellationToken);
+
+        return 1;
+    }
+
+    public Task<int> SeedMappingsFromExistingFilesAsync(CancellationToken cancellationToken)
+    {
+        var htmlCount = 0;
+        foreach (var file in Directory.EnumerateFiles(_outputDir, "*", SearchOption.AllDirectories))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var relativePath = Path.GetRelativePath(_outputDir, file);
+            var normalizedRelativePath = relativePath.Replace('\\', '/');
+            if (string.IsNullOrWhiteSpace(normalizedRelativePath))
+            {
+                continue;
+            }
+
+            var uri = BuildUriFromRelativePath(normalizedRelativePath);
+            RegisterMapping(uri, normalizedRelativePath);
+
+            if (string.Equals(Path.GetExtension(file), ".html", StringComparison.OrdinalIgnoreCase))
+            {
+                lock (_lock)
+                {
+                    _htmlDocuments.Add(normalizedRelativePath);
+                    _htmlSourceByRelativePath[normalizedRelativePath] = uri;
+                }
+
+                htmlCount++;
+            }
+        }
+
+        return Task.FromResult(htmlCount);
+    }
+
     public string GetEntryFile(Uri pageUri)
     {
         var relative = _pathHelper.MapUriToRelativePath(pageUri, "text/html");
         return Path.Combine(_outputDir, relative);
+    }
+
+    private Uri BuildUriFromRelativePath(string relativePath)
+    {
+        var withSlashes = relativePath.Replace('\\', '/');
+        var hostPrefix = $"{MirrorPathHelper.SanitizePathSegment(_rootUri.Host)}/";
+        if (withSlashes.StartsWith(hostPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var uriPath = "/" + withSlashes[hostPrefix.Length..];
+            return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}{uriPath}", UriKind.Absolute);
+        }
+
+        return _rootUri;
     }
 
     /// <summary>
@@ -330,7 +402,13 @@ internal sealed class MirrorState
             return originalUrl;
         }
 
-        if (!Uri.TryCreate(baseUri, originalUrl, out var absolute) || !MirrorPathHelper.IsHttpOrHttps(absolute))
+        var candidateUrl = originalUrl;
+        if (TryRepairSyntheticHostReference(originalUrl, out var repairedAbsoluteUrl))
+        {
+            candidateUrl = repairedAbsoluteUrl;
+        }
+
+        if (!Uri.TryCreate(baseUri, candidateUrl, out var absolute) || !MirrorPathHelper.IsHttpOrHttps(absolute))
         {
             return null;
         }
@@ -348,7 +426,7 @@ internal sealed class MirrorState
             {
                 // Do not rewrite to a synthetic path when we have not actually downloaded the target.
                 _logger.LogDebug("No local mapping found for {Url}; keeping original reference.", absolute);
-                return originalUrl;
+                return candidateUrl;
             }
         }
 
@@ -368,6 +446,52 @@ internal sealed class MirrorState
         return relative;
     }
 
+    /// <summary>
+    /// Repairs previously broken synthetic relative references like "../../../cdn.example.com/index.html"
+    /// back to absolute URLs so they no longer point to wrong local paths.
+    /// </summary>
+    private static bool TryRepairSyntheticHostReference(string originalUrl, out string repairedAbsoluteUrl)
+    {
+        repairedAbsoluteUrl = string.Empty;
+
+        var trimmed = originalUrl.Trim();
+        if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("//", StringComparison.Ordinal) ||
+            trimmed.StartsWith("/", StringComparison.Ordinal) ||
+            trimmed.StartsWith("#", StringComparison.Ordinal) ||
+            trimmed.StartsWith("?", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var remainder = trimmed;
+        while (remainder.StartsWith("../", StringComparison.Ordinal) || remainder.StartsWith("./", StringComparison.Ordinal))
+        {
+            remainder = remainder.StartsWith("../", StringComparison.Ordinal)
+                ? remainder[3..]
+                : remainder[2..];
+        }
+
+        if (string.IsNullOrWhiteSpace(remainder))
+        {
+            return false;
+        }
+
+        var slashIndex = remainder.IndexOf('/');
+        var firstSegment = slashIndex < 0 ? remainder : remainder[..slashIndex];
+        if (!HostLikeSegmentRegex.IsMatch(firstSegment))
+        {
+            return false;
+        }
+
+        var trailing = slashIndex < 0 ? string.Empty : remainder[(slashIndex + 1)..];
+        repairedAbsoluteUrl = string.IsNullOrWhiteSpace(trailing)
+            ? $"https://{firstSegment}/"
+            : $"https://{firstSegment}/{trailing}";
+        return true;
+    }
+
     private string ResolveCurrentDocumentRelativePath(Uri baseUri)
     {
         var normalized = _pathHelper.NormalizeUri(baseUri);
@@ -383,5 +507,68 @@ internal sealed class MirrorState
         }
 
         return _pathHelper.MapUriToRelativePath(_rootUri, "text/html");
+    }
+
+    public async Task NormalizeUnmappedHttpUrlsAsync(string htmlFilePath, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(htmlFilePath))
+        {
+            return;
+        }
+
+        var html = await File.ReadAllTextAsync(htmlFilePath, Encoding.UTF8, cancellationToken);
+        var parser = new HtmlParser();
+        var document = await parser.ParseDocumentAsync(html, cancellationToken);
+
+        foreach (var element in document.All)
+        {
+            foreach (var attribute in element.Attributes.ToArray())
+            {
+                var value = attribute.Value?.Trim();
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                if (!LooksLikeRelativeHostPath(value))
+                {
+                    continue;
+                }
+
+                var host = value.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(host) || !host.Contains('.'))
+                {
+                    continue;
+                }
+
+                var asAbsolute = $"https://{value.TrimStart('/')}";
+                if (Uri.TryCreate(asAbsolute, UriKind.Absolute, out var absolute) &&
+                    _urlToRelativePath.ContainsKey(_pathHelper.NormalizeUri(absolute)))
+                {
+                    continue;
+                }
+
+                element.SetAttribute(attribute.Name, asAbsolute);
+            }
+        }
+
+        var updated = document.DocumentElement?.OuterHtml ?? html;
+        await File.WriteAllTextAsync(htmlFilePath, updated, Encoding.UTF8, cancellationToken);
+    }
+
+    private static bool LooksLikeRelativeHostPath(string value)
+    {
+        if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            value.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            value.StartsWith("//", StringComparison.Ordinal) ||
+            value.StartsWith("#", StringComparison.Ordinal) ||
+            value.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
+            value.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase) ||
+            value.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return value.Contains('.') && value.Contains('/');
     }
 }

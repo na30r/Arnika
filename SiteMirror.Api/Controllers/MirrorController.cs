@@ -40,4 +40,28 @@ public sealed class MirrorController(ISiteMirrorService mirrorService) : Control
             });
         }
     }
+
+    [HttpPost("rewrite-links")]
+    [ProducesResponseType(typeof(RewriteLinksResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<RewriteLinksResult>> RewriteLinks([FromBody] RewriteLinksRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.RewriteLinksAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

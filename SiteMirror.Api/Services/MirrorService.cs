@@ -84,7 +84,6 @@ public sealed class MirrorService : ISiteMirrorService
         var mirror = new MirrorState(startUri, siteOutputPath, _loggerFactory.CreateLogger<MirrorState>());
         var responseTasks = new ConcurrentBag<Task>();
 
-        // Collect all response persistence tasks so we can drain them before rewrite.
         EventHandler<IResponse> responseHandler = (_, response) =>
         {
             responseTasks.Add(PersistResponseAsync(response, mirror));
@@ -96,11 +95,22 @@ public sealed class MirrorService : ISiteMirrorService
         {
             await page.GotoAsync(startUri.ToString(), new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.DOMContentLoaded,
                 Timeout = 120_000
             });
 
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            try
+            {
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+                {
+                    Timeout = 15_000
+                });
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("Network idle wait timed out for {Url}; continuing with rendered content.", startUri);
+            }
+
             await page.WaitForTimeoutAsync(waitMs);
             renderedHtml = await page.ContentAsync();
             _logger.LogInformation("Initial page load completed for {CurrentUrl}", page.Url);
@@ -110,45 +120,26 @@ public sealed class MirrorService : ISiteMirrorService
             page.Response -= responseHandler;
         }
 
+        await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
         if (!Uri.TryCreate(page.Url, UriKind.Absolute, out var finalUri))
         {
             finalUri = startUri;
         }
 
-        var stage = "drain-response-events";
-        try
-        {
-            _logger.LogInformation(
-                "Stage {Stage}: waiting for response persistence tasks. Count={TaskCount}",
-                stage, responseTasks.Count);
-            await WaitForPendingResponseSavesAsync(responseTasks, cancellationToken);
-            _logger.LogInformation("Stage {Stage}: complete", stage);
+        _logger.LogInformation("Stage save-rendered-document: saving rendered HTML for {FinalUrl}", finalUri);
+        await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
 
-            stage = "save-rendered-document";
-            _logger.LogInformation("Stage {Stage}: saving rendered HTML for {FinalUrl}", stage, finalUri);
-            await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
+        _logger.LogInformation(
+            "Stage download-linked-resources: downloading queued resources. QueueCount={QueueCount}",
+            mirror.PendingQueueCount);
+        await mirror.DownloadLinkedResourcesAsync(cancellationToken);
+        _logger.LogInformation("Stage download-linked-resources: complete. FilesSaved={FilesSaved}", mirror.TotalFilesWritten);
 
-            stage = "download-linked-resources";
-            _logger.LogInformation(
-                "Stage {Stage}: downloading queued resources. QueueCount={QueueCount}",
-                stage, mirror.PendingQueueCount);
-            await mirror.DownloadLinkedResourcesAsync(cancellationToken);
-            _logger.LogInformation(
-                "Stage {Stage}: complete. FilesSaved={FilesSaved}",
-                stage, mirror.TotalFilesWritten);
-
-            stage = "rewrite-html-documents";
-            _logger.LogInformation(
-                "Stage {Stage}: rewriting HTML documents. HtmlCount={HtmlCount}",
-                stage, mirror.HtmlDocumentCount);
-            await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
-            _logger.LogInformation("Stage {Stage}: complete", stage);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Mirror pipeline failed at stage {Stage} for {SourceUrl}", stage, startUri);
-            throw;
-        }
+        _logger.LogInformation(
+            "Stage rewrite-html-documents: rewriting HTML documents. HtmlCount={HtmlCount}",
+            mirror.HtmlDocumentCount);
+        await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
+        _logger.LogInformation("Stage rewrite-html-documents: complete");
 
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
@@ -166,6 +157,75 @@ public sealed class MirrorService : ISiteMirrorService
             FilesSaved = mirror.TotalFilesWritten,
             UsedChromiumExecutablePath = chromiumExecutablePath,
             WaitMs = waitMs
+        };
+    }
+
+    /// <summary>
+    /// Rewrite mode: takes an existing mirrored html path, rebuilds file mappings from disk,
+    /// and rewrites links to local relative paths.
+    /// </summary>
+    public async Task<RewriteLinksResult> RewriteLinksAsync(RewriteLinksRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.HtmlFilePath))
+        {
+            throw new ArgumentException("HtmlFilePath is required.", nameof(request.HtmlFilePath));
+        }
+
+        var htmlFilePath = Path.GetFullPath(request.HtmlFilePath);
+        if (!File.Exists(htmlFilePath))
+        {
+            throw new FileNotFoundException($"HTML file not found: {htmlFilePath}", htmlFilePath);
+        }
+
+        string inferredHost = string.Empty;
+        var mirrorRoot = string.IsNullOrWhiteSpace(request.MirrorRootFolder)
+            ? InferMirrorRootFromHtmlPath(htmlFilePath, out inferredHost)
+            : Path.GetFullPath(request.MirrorRootFolder);
+
+        if (!Directory.Exists(mirrorRoot))
+        {
+            throw new DirectoryNotFoundException($"Mirror root folder not found: {mirrorRoot}");
+        }
+
+        var rootUrl = request.RootUrl;
+        if (string.IsNullOrWhiteSpace(rootUrl))
+        {
+            rootUrl = $"https://{inferredHost}/";
+        }
+
+        if (!Uri.TryCreate(rootUrl, UriKind.Absolute, out var rootUri))
+        {
+            throw new ArgumentException("RootUrl must be a valid absolute URL.", nameof(request.RootUrl));
+        }
+
+        _logger.LogInformation(
+            "Rewrite-links started. HtmlFilePath={HtmlFilePath}, MirrorRoot={MirrorRoot}, RootUrl={RootUrl}",
+            htmlFilePath, mirrorRoot, rootUri);
+
+        var mirror = new MirrorState(rootUri, mirrorRoot, _loggerFactory.CreateLogger<MirrorState>());
+        var htmlDiscovered = await mirror.SeedMappingsFromExistingFilesAsync(cancellationToken);
+
+        int htmlRewritten;
+        if (request.RewriteAllHtmlFiles)
+        {
+            await mirror.RewriteHtmlDocumentsAsync(cancellationToken);
+            htmlRewritten = mirror.HtmlDocumentCount;
+        }
+        else
+        {
+            htmlRewritten = await mirror.RewriteSingleHtmlFileAsync(htmlFilePath, cancellationToken);
+        }
+
+        _logger.LogInformation(
+            "Rewrite-links completed. HtmlDiscovered={HtmlDiscovered}, HtmlRewritten={HtmlRewritten}",
+            htmlDiscovered, htmlRewritten);
+
+        return new RewriteLinksResult
+        {
+            StartHtmlPath = htmlFilePath,
+            MirrorRootFolder = mirrorRoot,
+            HtmlFilesDiscovered = htmlDiscovered,
+            HtmlFilesRewritten = htmlRewritten
         };
     }
 
@@ -229,6 +289,37 @@ public sealed class MirrorService : ISiteMirrorService
             }
         }
     }
+
+    private static string InferMirrorRootFromHtmlPath(string htmlFilePath, out string hostSegment)
+    {
+        var directory = new DirectoryInfo(Path.GetDirectoryName(htmlFilePath)!);
+        DirectoryInfo? hostDirectory = null;
+        while (directory is not null)
+        {
+            if (LooksLikeHostSegment(directory.Name))
+            {
+                hostDirectory = directory;
+                break;
+            }
+
+            directory = directory.Parent;
+        }
+
+        if (hostDirectory is null || hostDirectory.Parent is null)
+        {
+            throw new ArgumentException(
+                "Could not infer mirror root from HtmlFilePath. Provide MirrorRootFolder and RootUrl explicitly.");
+        }
+
+        hostSegment = hostDirectory.Name;
+        return hostDirectory.Parent.FullName;
+    }
+
+    private static bool LooksLikeHostSegment(string segment) =>
+        !string.IsNullOrWhiteSpace(segment) &&
+        segment.Contains('.') &&
+        !segment.Contains(Path.DirectorySeparatorChar) &&
+        !segment.Contains(Path.AltDirectorySeparatorChar);
 
     private static bool IsHttpOrHttps(Uri uri) =>
         string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
