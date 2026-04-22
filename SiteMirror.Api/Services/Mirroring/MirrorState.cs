@@ -339,7 +339,17 @@ internal sealed class MirrorState
         var key = _pathHelper.NormalizeUri(absolute);
         if (!_urlToRelativePath.TryGetValue(key, out var targetRelativePath))
         {
-            targetRelativePath = _pathHelper.MapUriToRelativePath(absolute, mediaType: null);
+            var fallbackPath = _pathHelper.MapUriToRelativePath(absolute, mediaType: null);
+            if (File.Exists(Path.Combine(_outputDir, fallbackPath)))
+            {
+                targetRelativePath = fallbackPath;
+            }
+            else
+            {
+                // Do not rewrite to a synthetic path when we have not actually downloaded the target.
+                _logger.LogDebug("No local mapping found for {Url}; keeping original reference.", absolute);
+                return originalUrl;
+            }
         }
 
         var fromDirectory = Path.GetDirectoryName(currentRelativePath) ?? ".";
