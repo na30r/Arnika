@@ -8,3 +8,17 @@ mirror-output/
 /frontend/.next/dev
 /.vs
 /frontend/node_modules
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/SiteMirror/bin/Debug/net8.0
+/SiteMirror/obj/Debug/net8.0
+/SiteMirror/obj/Release/net8.0
+/frontend/.next/dev
+/frontend/node_modules
+/SiteMirror.Api/bin/Debug/net8.0
+/SiteMirror.Api/mirror-output
+/SiteMirror.Api/obj/Debug/net8.0
+/SiteMirror.Api/obj/Release/net8.0
