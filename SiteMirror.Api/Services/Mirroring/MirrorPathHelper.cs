@@ -44,9 +44,7 @@ internal sealed class MirrorPathHelper
             normalizedPath = string.IsNullOrWhiteSpace(dir) ? merged : $"{dir}/{merged}";
         }
 
-        var sanitized = normalizedPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var hostSegment = SanitizePathSegment(resourceUri.Host);
-        return Path.Combine(hostSegment, sanitized);
+        return normalizedPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
     }
 
     public Uri ResolveFileUri(string relativePath, IReadOnlyDictionary<string, Uri> htmlSourceByRelativePath)
@@ -56,15 +54,8 @@ internal sealed class MirrorPathHelper
             return sourceUri;
         }
 
-        var withSlashes = relativePath.Replace('\\', '/');
-        var hostPrefix = $"{SanitizePathSegment(_rootUri.Host)}/";
-        if (withSlashes.StartsWith(hostPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            var uriPath = "/" + withSlashes[hostPrefix.Length..];
-            return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}{uriPath}", UriKind.Absolute);
-        }
-
-        return _rootUri;
+        var withSlashes = relativePath.Replace('\\', '/').TrimStart('/');
+        return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}/{withSlashes}", UriKind.Absolute);
     }
 
     public static string SanitizePathSegment(string value)

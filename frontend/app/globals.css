@@ -1,0 +1,142 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: #f6f7fb;
+  color: #131722;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 1.5rem auto;
+  padding: 0 1rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+}
+
+.controls h1 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.muted {
+  margin-top: 0;
+  color: #4b5565;
+}
+
+.form {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+input {
+  width: 100%;
+  border: 1px solid #d5dbe5;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+}
+
+textarea {
+  width: 100%;
+  border: 1px solid #d5dbe5;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  resize: vertical;
+  min-height: 6rem;
+}
+
+button {
+  border: 1px solid #3f6fff;
+  background: #3f6fff;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.meta {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.queue-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.queue-item {
+  width: 100%;
+  text-align: left;
+  background: #f7f9ff;
+  color: #1b2335;
+  border: 1px solid #d5dbe5;
+}
+
+.error {
+  margin-top: 0.8rem;
+  color: #ba1124;
+  font-weight: 600;
+}
+
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.viewer-header h2 {
+  margin: 0;
+}
+
+code {
+  background: #eef2f9;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+
+iframe {
+  width: 100%;
+  min-height: 72vh;
+  border: 1px solid #d5dbe5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+@media (max-width: 820px) {
+  .row {
+    flex-direction: column;
+  }
+}

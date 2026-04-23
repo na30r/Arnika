@@ -64,4 +64,26 @@ public sealed class MirrorController(ISiteMirrorService mirrorService) : Control
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpGet("crawls/{crawlId}")]
+    [ProducesResponseType(typeof(CrawlStatusResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CrawlStatusResult>> GetCrawlStatus([FromRoute] string crawlId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.GetCrawlStatusAsync(crawlId, cancellationToken);
+            if (result is null)
+            {
+                return NotFound(new { message = $"Crawl not found: {crawlId}" });
+            }
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

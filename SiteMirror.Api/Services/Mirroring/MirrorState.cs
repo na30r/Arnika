@@ -295,15 +295,8 @@ internal sealed class MirrorState
 
     private Uri BuildUriFromRelativePath(string relativePath)
     {
-        var withSlashes = relativePath.Replace('\\', '/');
-        var hostPrefix = $"{MirrorPathHelper.SanitizePathSegment(_rootUri.Host)}/";
-        if (withSlashes.StartsWith(hostPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            var uriPath = "/" + withSlashes[hostPrefix.Length..];
-            return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}{uriPath}", UriKind.Absolute);
-        }
-
-        return _rootUri;
+        var withSlashes = relativePath.Replace('\\', '/').TrimStart('/');
+        return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}/{withSlashes}", UriKind.Absolute);
     }
 
     /// <summary>
@@ -367,15 +360,8 @@ internal sealed class MirrorState
             return sourceUri;
         }
 
-        var withSlashes = relativePath.Replace('\\', '/');
-        var hostPrefix = $"{MirrorPathHelper.SanitizePathSegment(_rootUri.Host)}/";
-        if (withSlashes.StartsWith(hostPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            var uriPath = "/" + withSlashes[hostPrefix.Length..];
-            return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}{uriPath}", UriKind.Absolute);
-        }
-
-        return _rootUri;
+        var withSlashes = relativePath.Replace('\\', '/').TrimStart('/');
+        return new Uri($"{_rootUri.Scheme}://{_rootUri.Host}/{withSlashes}", UriKind.Absolute);
     }
 
     private void RegisterMapping(Uri uri, string relativePath)

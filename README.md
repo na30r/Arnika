@@ -1,66 +1,173 @@
-# SiteMirror API (.NET + Swagger)
+# SiteMirror (.NET API + Next.js frontend)
 
-ASP.NET Core Web API to mirror a web page locally:
+Mirror documentation pages (including JavaScript-rendered Next.js/Tailwind sites) and serve them from one local Next.js application.
 
-- Uses Playwright Chromium to render the page (including JavaScript).
-- Waits for complete load (`networkidle`) plus configurable extra wait.
-- Saves rendered HTML + downloaded resources (CSS, JS, images, fonts, iframes, etc.).
-- Rewrites links for local offline preview.
-- Exposes API endpoints with Swagger UI.
+## What this project does
+
+- Crawls a **single page** with Playwright (rendered DOM, scripts, styles, fonts, images, iframes).
+- Captures response assets and downloads linked resources that were not directly observed.
+- Rewrites links to local relative paths for offline/local serving.
+- Saves mirrored output into `frontend/public/mirror` so Next.js serves it at `/mirror/...`.
+- Pre-generates localized HTML copies and translation catalogs per mirrored site/version.
+- Provides a Next.js UI that:
+  - triggers crawl requests,
+  - returns preview metadata,
+  - previews the mirrored page in an iframe.
+
+## Repository layout
+
+```text
+.
+├── SiteMirror.Api/          # ASP.NET Core mirror API
+├── frontend/                # Next.js frontend + preview UI
+└── SiteMirror.sln
+```
 
 ## Requirements
 
 - .NET 8 SDK
-- Configure mirror paths in `appsettings.json` / `appsettings.Development.json`
+- Node.js 20+
 
-## Build
+## Backend setup (ASP.NET Core)
 
 ```bash
 dotnet restore SiteMirror.sln
 dotnet build SiteMirror.sln
-```
-
-## Run API
-
-```bash
 dotnet run --project SiteMirror.Api
 ```
 
-Mirror configuration now comes from app settings:
+Default API URL (launch profile):
+
+- `http://localhost:5196`
+- Swagger: `http://localhost:5196/swagger`
+
+Mirror settings in `SiteMirror.Api/appsettings*.json`:
 
 ```json
 "MirrorSettings": {
-  "OutputFolder": "mirror-output",
-  "ChromiumExecutablePath": "/usr/local/bin/google-chrome"
+  "OutputFolder": "../frontend/public/mirror",
+  "ChromiumExecutablePath": null
 }
 ```
 
-Open Swagger UI:
+Notes:
 
-- `http://localhost:5107/swagger` (HTTP, default launch profile)
-- `https://localhost:7213/swagger` (HTTPS, default launch profile)
+- If `ChromiumExecutablePath` is `null`, Playwright installs/uses bundled Chromium.
+- In development, HTTPS redirection is disabled to simplify local Next -> API calls.
 
-## Mirror endpoint
+## Frontend setup (Next.js)
 
-`POST /api/mirror`
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Request body:
+Default frontend URL:
+
+- `http://localhost:3000`
+
+Optional environment variable:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.example`:
+
+```bash
+MIRROR_API_BASE_URL=http://localhost:5196
+```
+
+## Crawl and preview flow
+
+1. Open `http://localhost:3000`.
+2. Enter a documentation page URL (for example: `https://nextjs.org/docs`).
+3. Click **Mirror page**.
+4. The UI calls `POST /api/mirror` (Next route handler), which proxies to the ASP.NET API.
+5. The mirrored output is saved under `frontend/public/mirror/<host>/<version>/...`.
+6. Localized copies are generated under:
+   - `frontend/public/mirror/<host>/<version>/_localized/<lang>/...`
+   - translation catalogs under `frontend/public/mirror/<host>/<version>/_i18n/`
+7. Preview is served by Next at `/mirror/<host>/<version>/_localized/<lang>/...`.
+
+## API: `POST /api/mirror`
+
+Example request:
 
 ```json
 {
-  "url": "https://example.com",
-  "extraWaitMs": 4000
+  "url": "https://nextjs.org/docs",
+  "version": "v14.2.0",
+  "linkDrillCount": 5,
+  "languages": ["en", "fa"],
+  "doNotTranslateTexts": ["API", "HTTP", "Next.js"],
+  "extraWaitMs": 4000,
+  "autoScroll": true,
+  "scrollStepPx": 1200,
+  "scrollDelayMs": 150,
+  "maxScrollRounds": 24
 }
 ```
 
 Fields:
 
-1. `url` (required) - page to mirror
-2. `extraWaitMs` (optional, default: `4000`)
+1. `url` (required): target page URL. If scheme is missing, API uses `https://`.
+2. `version` (optional): mirror version folder name (default: `latest`).
+3. `languages` (optional): list of language codes to pre-generate. `en` is always generated and used as default.
+4. `linkDrillCount` (optional): number of first-level links from the start page to enqueue and crawl. Queue is non-recursive (default: `0`).
+5. `doNotTranslateTexts` (optional): exact text values to keep unchanged in every language.
+6. `extraWaitMs` (optional): additional wait after page load.
+7. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
+8. `scrollStepPx` (optional): pixels scrolled each step.
+9. `scrollDelayMs` (optional): wait between scroll steps.
+10. `maxScrollRounds` (optional): max scroll iterations.
 
-Path and folder are read from app settings (`MirrorSettings`) instead of request payload.
+Example response fields:
 
-## Notes
+- `siteHost`: sanitized target host folder name (for example `nextjs.org`).
+- `version`: effective mirror version used for storage/routing.
+- `defaultLanguage`: default generated language (`en`).
+- `availableLanguages`: generated language list.
+- `frontendPreviewPath`: local route for iframe or browser (`/mirror/<site>/<version>/_localized/<lang>/...`).
+- `entryFileRelativePath`: mirrored entry file path under mirror root.
+- `filesSaved`: number of mapped files saved.
+- `crawlId`: persisted crawl identifier for querying crawl/page history.
+- `batch`: includes queue details (`requestedLinkLimit`, `processedPages`, `pages` list).
 
-- Pages requiring login, anti-bot checks, or dynamic backend APIs may still differ.
-- This mirrors rendered frontend state, not server-side business actions.
+## API: `GET /api/mirror/crawls/{crawlId}`
+
+Fetch a persisted crawl run and its pages from SQL Server.
+
+Response includes:
+
+- crawl metadata (`status`, `sourceUrl`, `siteHost`, `version`, timestamps)
+- processed pages list (`requestedUrl`, `finalUrl`, `frontendPreviewPath`, queue order)
+
+## SQL Server persistence
+
+The API persists crawl history to SQL Server when `Database.ConnectionString` is configured:
+
+```json
+"Database": {
+  "ConnectionString": "Server=...;Database=SiteMirror;User Id=...;Password=...;TrustServerCertificate=True"
+}
+```
+
+Schema is auto-created at startup:
+
+- `dbo.CrawlRuns`
+- `dbo.CrawlPages`
+
+Stored fields include real requested/final URLs, version, link drill count, status, languages, file counts, and timestamps.
+
+Behavior notes:
+
+- Each localized page reads text from its own language catalog (`_i18n/<lang>.json`) with fallback to source only when a key is missing.
+- Persian (`fa`) localized pages are generated with RTL direction (`dir="rtl"`) and section-level RTL text alignment.
+
+## Current scope
+
+- Supports single-page mirroring and **first-level queued link drilling** (`linkDrillCount`) without recursive crawl expansion.
+- Authentication/cookies are not required for the main flow.
+- Dynamic backend data and gated pages can still differ from source.
