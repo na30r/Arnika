@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useParams } from "next/navigation";
-import { authHeaders, getToken } from "../../lib/auth";
-import { type Locale, t } from "../../lib/i18n";
+import { authHeaders, getToken } from "../../../lib/auth";
+import { type Locale, t } from "../../../lib/i18n";
 
 type MirrorResponse = {
   crawlId?: string;
@@ -101,12 +101,21 @@ export default function HomePage() {
         })
       });
 
-      const payload = (await response.json()) as MirrorResponse & { message?: string; hint?: string };
+      const text = await response.text();
+      let payload: (MirrorResponse & { message?: string; hint?: string }) | null = null;
+      try {
+        payload = text ? (JSON.parse(text) as typeof payload) : null;
+      } catch {
+        throw new Error(`Mirror API error (${response.status}). ${text.slice(0, 200)}`);
+      }
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error(t("error.signIn", locale));
         }
-        throw new Error(payload.message ?? "Mirror request failed.");
+        throw new Error(payload?.message ?? `Mirror request failed (${response.status}).`);
+      }
+      if (!payload) {
+        throw new Error("Empty response from mirror API.");
       }
 
       setResult(payload);

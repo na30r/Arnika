@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { authHeaders, getToken, getStoredUser, type UserPayload } from "../../../lib/auth";
-import { type Locale, t } from "../../../lib/i18n";
+import { authHeaders, getToken, getStoredUser, type UserPayload } from "../../../../lib/auth";
+import { localePath } from "../../../../lib/appPath";
+import { type Locale, t } from "../../../../lib/i18n";
 
 type HistoryRow = {
   crawlId: string;
@@ -20,7 +21,6 @@ type HistoryRow = {
 export default function ProfilePage() {
   const params = useParams();
   const locale = (params?.locale as Locale) || "en";
-  const base = `/${locale}`;
   const [user, setUser] = useState<UserPayload | null>(null);
   const [remote, setRemote] = useState<UserPayload | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -70,7 +70,7 @@ export default function ProfilePage() {
         <section className="card controls">
           <p className="muted">{t("error.signIn", locale)}</p>
           <p>
-            <Link href={`${base}/login`}>{t("nav.signIn", locale)}</Link>
+            <Link href={localePath(locale, "auth/login")}>{t("nav.signIn", locale)}</Link>
           </p>
         </section>
       </main>
