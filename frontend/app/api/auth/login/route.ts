@@ -15,6 +15,13 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify(body),
     cache: "no-store"
   });
-  const data = await res.json().catch(() => ({}));
-  return NextResponse.json(data, { status: res.status });
+  const text = await res.text();
+  try {
+    return NextResponse.json(JSON.parse(text), { status: res.status });
+  } catch {
+    return new NextResponse(text, {
+      status: res.status,
+      headers: { "content-type": res.headers.get("content-type") ?? "text/plain" }
+    });
+  }
 }

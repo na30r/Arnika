@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { localePath } from "../lib/appPath";
 import { type Locale, t, locales } from "../lib/i18n";
 import { clearSession, getStoredUser } from "../lib/auth";
 import { useEffect, useState } from "react";
@@ -35,20 +36,19 @@ export function Navbar({ locale }: Props) {
   function signOut() {
     clearSession();
     setUser(null);
-    window.location.href = `/${locale}`;
+    window.location.href = localePath(locale, "");
   }
 
-  const base = `/${locale}`;
-
+  const home = localePath(locale, "");
   return (
     <header className="site-nav">
       <div className="nav-inner">
-        <Link href={base} className="nav-brand">
+        <Link href={home} className="nav-brand">
           Web Mirror
         </Link>
         <nav className="nav-links">
-          <Link href={base}>{t("nav.home", locale)}</Link>
-          <Link href={`${base}/profile`}>{t("nav.profile", locale)}</Link>
+          <Link href={home}>{t("nav.home", locale)}</Link>
+          <Link href={localePath(locale, "profile")}>{t("nav.profile", locale)}</Link>
         </nav>
         <div className="nav-actions">
           <label className="nav-lang">
@@ -74,10 +74,10 @@ export function Navbar({ locale }: Props) {
             </>
           ) : (
             <>
-              <Link href={`${base}/login`} className="btn-ghost">
+              <Link href={localePath(locale, "auth/login")} className="btn-ghost">
                 {t("nav.signIn", locale)}
               </Link>
-              <Link href={`${base}/register`} className="btn-primary small">
+              <Link href={localePath(locale, "auth/register")} className="btn-primary small">
                 {t("nav.signUp", locale)}
               </Link>
             </>
