@@ -1,4 +1,3 @@
-using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Data.SqlClient;
@@ -134,7 +133,7 @@ public sealed class SqlUserRepository : IUserRepository
         }
     }
 
-    private static UserRecord ReadUser(IDataRecord r)
+    private static UserRecord ReadUser(SqlDataReader r)
     {
         var subOrdinal = r.GetOrdinal("SubscriptionEndDateUtc");
         return new UserRecord
