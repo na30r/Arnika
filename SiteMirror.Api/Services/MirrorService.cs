@@ -63,7 +63,7 @@ public sealed class MirrorService : ISiteMirrorService
         Directory.CreateDirectory(siteOutputPath);
         await EnsureRuntimeScriptAvailableAsync(outputRoot, cancellationToken);
 
-        var crawlId = $"crawl-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N[..8]}";
+        var crawlId = $"crawl-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N", null)[..8]}";
         var linkDrillCount = Math.Max(0, request.LinkDrillCount);
         var requestedLanguages = (request.Languages is { Length: > 0 })
             ? request.Languages
