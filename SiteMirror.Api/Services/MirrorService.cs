@@ -87,8 +87,7 @@ public sealed class MirrorService : ISiteMirrorService
                 UpdatedAtUtc = crawlStart,
                 ErrorMessage = null
             },
-            [],
-            cancellationToken);
+            []);
 
         try
         {
@@ -200,8 +199,7 @@ public sealed class MirrorService : ISiteMirrorService
                     UpdatedAtUtc = DateTimeOffset.UtcNow,
                     ErrorMessage = null
                 },
-                pageRecords,
-                cancellationToken);
+                pageRecords);
 
             var firstPageInfo = pageInfos[0];
             var firstExecution = crawledPages[0];
@@ -245,8 +243,7 @@ public sealed class MirrorService : ISiteMirrorService
                     UpdatedAtUtc = DateTimeOffset.UtcNow,
                     ErrorMessage = ex.Message
                 },
-                [],
-                cancellationToken);
+                []);
             throw;
         }
     }
@@ -772,11 +769,14 @@ public sealed class MirrorService : ISiteMirrorService
         await File.WriteAllTextAsync(runtimeTargetPath, runtimeContent, cancellationToken);
     }
 
-    private async Task PersistCrawlSafeAsync(CrawlRecord crawl, IReadOnlyList<CrawlPageRecord> pages, CancellationToken cancellationToken)
+    private async Task PersistCrawlSafeAsync(CrawlRecord crawl, IReadOnlyList<CrawlPageRecord> pages)
     {
         try
         {
-            await _crawlRepository.SaveCrawlAsync(crawl, pages, cancellationToken);
+            // Intentionally not using the HTTP request's CancellationToken: that token fires when the
+            // client disconnects (close Swagger tab, proxy/timeout) and would cancel these DB calls even
+            // if the server-side mirror work is still finishing or about to return 200.
+            await _crawlRepository.SaveCrawlAsync(crawl, pages, cancellationToken: default);
         }
         catch (Exception ex)
         {
