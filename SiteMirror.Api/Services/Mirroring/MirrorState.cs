@@ -416,7 +416,9 @@ internal sealed class MirrorState
             }
         }
 
-        var fromDirectory = Path.GetDirectoryName(currentRelativePath) ?? ".";
+        // GetDirectoryName returns "" (not null) for root-level files like "index.html"; GetRelativePath then throws.
+        var fromDir = Path.GetDirectoryName(currentRelativePath);
+        var fromDirectory = string.IsNullOrEmpty(fromDir) ? "." : fromDir;
         var relative = Path.GetRelativePath(fromDirectory, targetRelativePath).Replace('\\', '/');
         if (string.Equals(currentRelativePath, targetRelativePath, StringComparison.OrdinalIgnoreCase) &&
             !string.IsNullOrWhiteSpace(absolute.Fragment))
