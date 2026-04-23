@@ -65,11 +65,6 @@ export default function LoginPage() {
 
   return (
     <main className="page narrow">
-      <p className="muted small-note" style={{ marginBottom: "0.5rem" }}>
-        <a href={localePath("en", "auth/login")}>EN</a>
-        {" · "}
-        <a href={localePath("fa", "auth/login")}>FA</a>
-      </p>
       <section className="card controls">
         <h1>{t("auth.loginTitle", locale)}</h1>
         <form className="form" onSubmit={onSubmit}>

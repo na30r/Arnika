@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { LocaleShell } from "../../components/LocaleShell";
+import { Navbar } from "../../components/Navbar";
 import { defaultLocale, locales, type Locale } from "../../lib/i18n";
 
 type Props = {
@@ -8,8 +9,7 @@ type Props = {
 };
 
 /**
- * All locale routes: `dir` + i18n shell. Navbar only under `(app)/` (home + profile);
- * auth pages (login, register) have no nav.
+ * All locale routes: `dir` + i18n shell + site navbar (home, profile, sign in, language).
  */
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale: raw } = await params;
@@ -17,5 +17,10 @@ export default async function LocaleLayout({ children, params }: Props) {
     notFound();
   }
   const locale = (raw as Locale) || defaultLocale;
-  return <LocaleShell locale={locale}>{children}</LocaleShell>;
+  return (
+    <LocaleShell locale={locale}>
+      <Navbar locale={locale} />
+      {children}
+    </LocaleShell>
+  );
 }
