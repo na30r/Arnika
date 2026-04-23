@@ -39,6 +39,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 CREATE TABLE dbo.CrawlRuns
                 (
                     CrawlId NVARCHAR(64) NOT NULL PRIMARY KEY,
+                    UserId UNIQUEIDENTIFIER NULL,
                     SourceUrl NVARCHAR(2048) NOT NULL,
                     SiteHost NVARCHAR(255) NOT NULL,
                     Version NVARCHAR(128) NOT NULL,
@@ -52,7 +53,12 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                     UpdatedAtUtc DATETIMEOFFSET NOT NULL,
                     ErrorMessage NVARCHAR(MAX) NULL
                 );
-            END;
+            END
+            ELSE
+            BEGIN
+                IF COL_LENGTH('dbo.CrawlRuns', 'UserId') IS NULL
+                    ALTER TABLE dbo.CrawlRuns ADD UserId UNIQUEIDENTIFIER NULL;
+            END
 
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'CrawlPages')
             BEGIN
@@ -140,6 +146,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 ON target.CrawlId = source.CrawlId
                 WHEN MATCHED THEN
                     UPDATE SET
+                        UserId = @UserId,
                         SourceUrl = @SourceUrl,
                         SiteHost = @SiteHost,
                         Version = @Version,
@@ -155,13 +162,13 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 WHEN NOT MATCHED THEN
                     INSERT
                     (
-                        CrawlId, SourceUrl, SiteHost, Version, Status, RequestedLinkLimit,
+                        CrawlId, UserId, SourceUrl, SiteHost, Version, Status, RequestedLinkLimit,
                         ProcessedPages, TotalFilesSaved, DefaultLanguage, AvailableLanguagesJson,
                         CreatedAtUtc, UpdatedAtUtc, ErrorMessage
                     )
                     VALUES
                     (
-                        @CrawlId, @SourceUrl, @SiteHost, @Version, @Status, @RequestedLinkLimit,
+                        @CrawlId, @UserId, @SourceUrl, @SiteHost, @Version, @Status, @RequestedLinkLimit,
                         @ProcessedPages, @TotalFilesSaved, @DefaultLanguage, @AvailableLanguagesJson,
                         @CreatedAtUtc, @UpdatedAtUtc, @ErrorMessage
                     );
@@ -170,6 +177,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             await using (var upsertCrawlCommand = new SqlCommand(upsertCrawlSql, connection, (SqlTransaction)transaction))
             {
                 upsertCrawlCommand.Parameters.AddWithValue("@CrawlId", crawl.CrawlId);
+                upsertCrawlCommand.Parameters.AddWithValue("@UserId", (object?)crawl.UserId ?? DBNull.Value);
                 upsertCrawlCommand.Parameters.AddWithValue("@SourceUrl", crawl.SourceUrl);
                 upsertCrawlCommand.Parameters.AddWithValue("@SiteHost", crawl.SiteHost);
                 upsertCrawlCommand.Parameters.AddWithValue("@Version", crawl.Version);
@@ -249,6 +257,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
         string siteHost,
         string version,
         string requestedUrlKey,
+        Guid? forUserId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_connectionString) ||
@@ -273,6 +282,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
               AND p.Version = @Version
               AND p.RequestedUrlKey = @RequestedUrlKey
               AND p.PageStatus = N'completed'
+              AND ((@ForUserId IS NULL AND r.UserId IS NULL) OR (r.UserId = @ForUserId))
             ORDER BY r.CreatedAtUtc DESC, p.CreatedAtUtc DESC;
             """;
 
@@ -280,6 +290,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
         command.Parameters.AddWithValue("@SiteHost", siteHost);
         command.Parameters.AddWithValue("@Version", version);
         command.Parameters.AddWithValue("@RequestedUrlKey", requestedUrlKey);
+        command.Parameters.AddWithValue("@ForUserId", (object?)forUserId ?? DBNull.Value);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -296,6 +307,50 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
         };
     }
 
+    public async Task<IReadOnlyList<MirrorHistoryItem>> GetMirrorHistoryForUserAsync(
+        Guid userId,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) || userId == Guid.Empty)
+        {
+            return Array.Empty<MirrorHistoryItem>();
+        }
+
+        var limit = Math.Clamp(take, 1, 200);
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        const string q = """
+            SELECT TOP (@Take)
+                CrawlId, SourceUrl, SiteHost, Version, Status, ProcessedPages, TotalFilesSaved, CreatedAtUtc
+            FROM dbo.CrawlRuns
+            WHERE UserId = @UserId
+            ORDER BY CreatedAtUtc DESC;
+            """;
+        await using var cmd = new SqlCommand(q, connection);
+        cmd.Parameters.AddWithValue("@UserId", userId);
+        cmd.Parameters.AddWithValue("@Take", limit);
+        var list = new List<MirrorHistoryItem>();
+        await using var r = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await r.ReadAsync(cancellationToken))
+        {
+            list.Add(new MirrorHistoryItem
+            {
+                CrawlId = r.GetString(r.GetOrdinal("CrawlId")),
+                SourceUrl = r.GetString(r.GetOrdinal("SourceUrl")),
+                SiteHost = r.GetString(r.GetOrdinal("SiteHost")),
+                Version = r.GetString(r.GetOrdinal("Version")),
+                Status = r.GetString(r.GetOrdinal("Status")),
+                ProcessedPages = r.GetInt32(r.GetOrdinal("ProcessedPages")),
+                TotalFilesSaved = r.GetInt32(r.GetOrdinal("TotalFilesSaved")),
+                CreatedAtUtc = r.GetFieldValue<DateTimeOffset>(r.GetOrdinal("CreatedAtUtc"))
+            });
+        }
+
+        return list;
+    }
+
     public async Task<CrawlStatusResult?> GetCrawlAsync(string crawlId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_connectionString))
@@ -308,6 +363,18 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
 
         const string crawlSql = """
             SELECT
+                CrawlId, UserId, SourceUrl, SiteHost, Version, Status, RequestedLinkLimit,
+                ProcessedPages, TotalFilesSaved, DefaultLanguage, AvailableLanguagesJson,
+                CreatedAtUtc, UpdatedAtUtc, ErrorMessage
+            FROM dbo.CrawlRuns
+            WHERE CrawlId = @CrawlId;
+            """;
+
+        var hasUserId = await ColumnExistsAsync(connection, "CrawlRuns", "UserId", cancellationToken);
+        var crawlSelect = hasUserId
+            ? crawlSql
+            : """
+            SELECT
                 CrawlId, SourceUrl, SiteHost, Version, Status, RequestedLinkLimit,
                 ProcessedPages, TotalFilesSaved, DefaultLanguage, AvailableLanguagesJson,
                 CreatedAtUtc, UpdatedAtUtc, ErrorMessage
@@ -316,7 +383,7 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             """;
 
         CrawlRecord? crawl = null;
-        await using (var crawlCommand = new SqlCommand(crawlSql, connection))
+        await using (var crawlCommand = new SqlCommand(crawlSelect, connection))
         {
             crawlCommand.Parameters.AddWithValue("@CrawlId", crawlId);
             await using var reader = await crawlCommand.ExecuteReaderAsync(cancellationToken);
@@ -324,9 +391,12 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             {
                 var availableLanguagesJson = reader.GetString(reader.GetOrdinal("AvailableLanguagesJson"));
                 var availableLanguages = JsonSerializer.Deserialize<List<string>>(availableLanguagesJson, JsonOptions) ?? [];
+                var ordUid = hasUserId ? reader.GetOrdinal("UserId") : -1;
+                var uid = hasUserId && !reader.IsDBNull(ordUid) ? reader.GetGuid(ordUid) : (Guid?)null;
                 crawl = new CrawlRecord
                 {
                     CrawlId = reader.GetString(reader.GetOrdinal("CrawlId")),
+                    UserId = uid,
                     SourceUrl = reader.GetString(reader.GetOrdinal("SourceUrl")),
                     SiteHost = reader.GetString(reader.GetOrdinal("SiteHost")),
                     Version = reader.GetString(reader.GetOrdinal("Version")),

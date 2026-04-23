@@ -35,6 +35,13 @@ export async function POST(request: NextRequest) {
 
   const backendBaseUrl = process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
   const backendUrl = new URL("/api/mirror", backendBaseUrl).toString();
+  const auth = request.headers.get("authorization");
+  if (!auth || !auth.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { message: "Sign in is required. Send Authorization: Bearer <token> from the app after login." },
+      { status: 401 }
+    );
+  }
   const payload = {
     url: trimmedUrl,
     version,
@@ -51,7 +58,8 @@ export async function POST(request: NextRequest) {
   const backendResponse = await fetch(backendUrl, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      Authorization: auth
     },
     body: JSON.stringify(payload),
     cache: "no-store"

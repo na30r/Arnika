@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
@@ -7,16 +9,41 @@ namespace SiteMirror.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class MirrorController(ISiteMirrorService mirrorService) : ControllerBase
+public sealed class MirrorController(
+    ISiteMirrorService mirrorService,
+    IUserRepository userRepository) : ControllerBase
 {
     [HttpPost]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [ProducesResponseType(typeof(MirrorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
     public async Task<ActionResult<MirrorResult>> StartMirror([FromBody] MirrorRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await mirrorService.MirrorAsync(request, cancellationToken);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            {
+                return Unauthorized(new { message = "Sign in is required to mirror; include a valid Bearer token." });
+            }
+
+            var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user is null)
+            {
+                return Unauthorized(new { message = "User not found." });
+            }
+
+            if (user.SubscriptionEndDateUtc.HasValue && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
+            {
+                return StatusCode(402, new
+                {
+                    message = "Subscription has expired. Renew to run mirrors.",
+                    subscriptionEndDateUtc = user.SubscriptionEndDateUtc
+                });
+            }
+
+            var result = await mirrorService.MirrorAsync(request, userId, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)

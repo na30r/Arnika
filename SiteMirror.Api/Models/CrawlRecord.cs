@@ -4,6 +4,8 @@ public sealed class CrawlRecord
 {
     public required string CrawlId { get; init; }
 
+    public Guid? UserId { get; init; }
+
     public required string SourceUrl { get; init; }
 
     public required string SiteHost { get; init; }

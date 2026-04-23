@@ -1,6 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useParams } from "next/navigation";
+import { authHeaders, getToken } from "../../lib/auth";
+import { type Locale, t } from "../../lib/i18n";
 
 type MirrorResponse = {
   crawlId?: string;
@@ -9,36 +12,28 @@ type MirrorResponse = {
   version?: string;
   defaultLanguage?: string;
   availableLanguages?: string[];
-  batch?: {
-    crawlId?: string;
-    sourceUrl?: string;
-    siteHost?: string;
-    version?: string;
-    requestedLinkLimit?: number;
-    processedPages?: number;
-    totalFilesSaved?: number;
-    defaultLanguage?: string;
-    availableLanguages?: string[];
-    pages?: {
-      url?: string;
-      finalUrl?: string;
-      frontendPreviewPath?: string;
-      entryFileRelativePath?: string;
-      filesSaved?: number;
-    }[];
-  };
+  processedPages?: number;
+  requestedLinkLimit?: number;
+  pages?: {
+    url?: string;
+    finalUrl?: string;
+    frontendPreviewPath?: string;
+    entryFileRelativePath?: string;
+    filesSaved?: number;
+    pageStatus?: string;
+  }[];
   finalUrl?: string;
-  outputFolder?: string;
-  entryFilePath?: string;
-  entryFileRelativePath?: string;
   frontendPreviewPath?: string;
   filesSaved?: number;
   waitMs?: number;
+  skippedPages?: number;
 };
 
 const defaultTarget = "https://nextjs.org/docs";
 
 export default function HomePage() {
+  const params = useParams();
+  const locale = (params?.locale as Locale) || "en";
   const [url, setUrl] = useState(defaultTarget);
   const [version, setVersion] = useState("latest");
   const [linkDrillCount, setLinkDrillCount] = useState(0);
@@ -70,6 +65,10 @@ export default function HomePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!getToken()) {
+      setError(t("error.signIn", locale));
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -85,7 +84,8 @@ export default function HomePage() {
       const response = await fetch("/api/mirror", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...authHeaders()
         },
         body: JSON.stringify({
           url,
@@ -101,8 +101,11 @@ export default function HomePage() {
         })
       });
 
-      const payload = (await response.json()) as MirrorResponse & { message?: string };
+      const payload = (await response.json()) as MirrorResponse & { message?: string; hint?: string };
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(t("error.signIn", locale));
+        }
         throw new Error(payload.message ?? "Mirror request failed.");
       }
 
@@ -127,13 +130,11 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="card controls">
-        <h1>Documentation Mirror</h1>
-        <p className="muted">
-          Crawl one documentation page and optionally queue first-level links (non-recursive), then preview pages locally.
-        </p>
+        <h1>{t("home.title", locale)}</h1>
+        <p className="muted">{t("home.subtitle", locale)}</p>
 
         <form onSubmit={handleSubmit} className="form">
-          <label htmlFor="url-input">Documentation page URL</label>
+          <label htmlFor="url-input">{t("form.url", locale)}</label>
           <div className="row">
             <input
               id="url-input"
@@ -144,7 +145,7 @@ export default function HomePage() {
               required
             />
           </div>
-          <label htmlFor="version-input">Version</label>
+          <label htmlFor="version-input">{t("form.version", locale)}</label>
           <div className="row">
             <input
               id="version-input"
@@ -155,10 +156,10 @@ export default function HomePage() {
               required
             />
             <button type="submit" disabled={isLoading}>
-              {isLoading ? "Mirroring..." : "Mirror page"}
+              {isLoading ? t("form.mirroring", locale) : t("form.mirror", locale)}
             </button>
           </div>
-          <label htmlFor="link-drill-input">Link drill count (non-recursive queue)</label>
+          <label htmlFor="link-drill-input">{t("form.linkDrill", locale)}</label>
           <div className="row">
             <input
               id="link-drill-input"
@@ -168,10 +169,8 @@ export default function HomePage() {
               onChange={(event) => setLinkDrillCount(Number.isNaN(event.target.valueAsNumber) ? 0 : Math.max(0, Math.floor(event.target.valueAsNumber)))}
             />
           </div>
-          <p className="muted small-note">
-            Only first-level links from the start page are queued. Queued pages are crawled one by one without recursive drilling.
-          </p>
-          <label htmlFor="languages-input">Languages (comma-separated)</label>
+          <p className="muted small-note">{t("form.linkDrillHint", locale)}</p>
+          <label htmlFor="languages-input">{t("form.languages", locale)}</label>
           <div className="row">
             <input
               id="languages-input"
@@ -181,7 +180,7 @@ export default function HomePage() {
               autoComplete="off"
             />
           </div>
-          <label htmlFor="do-not-translate-input">Do not translate texts (one per line)</label>
+          <label htmlFor="do-not-translate-input">{t("form.doNotTranslate", locale)}</label>
           <textarea
             id="do-not-translate-input"
             value={doNotTranslateText}
@@ -195,11 +194,10 @@ export default function HomePage() {
 
         <div className="meta">
           <div>
-            <strong>Crawl ID:</strong> <code>{result?.crawlId ?? result?.batch?.crawlId ?? "-"}</code>
+            <strong>Crawl ID:</strong> <code>{result?.crawlId ?? "-"}</code>
           </div>
           <div>
-            <strong>Preview path:</strong>{" "}
-            <code>{result?.frontendPreviewPath ?? "(none yet)"}</code>
+            <strong>Preview path:</strong> <code>{result?.frontendPreviewPath ?? "(none yet)"}</code>
           </div>
           <div>
             <strong>Site:</strong> {result?.siteHost ?? "-"}
@@ -217,10 +215,13 @@ export default function HomePage() {
             <strong>Files saved:</strong> {result?.filesSaved ?? 0}
           </div>
           <div>
-            <strong>Processed pages:</strong> {result?.batch?.processedPages ?? 1}
+            <strong>Processed pages:</strong> {result?.processedPages ?? result?.pages?.length ?? 0}
           </div>
           <div>
-            <strong>Requested link drill count:</strong> {result?.batch?.requestedLinkLimit ?? linkDrillCount}
+            <strong>Skipped pages:</strong> {result?.skippedPages ?? 0}
+          </div>
+          <div>
+            <strong>Requested link drill count:</strong> {result?.requestedLinkLimit ?? linkDrillCount}
           </div>
           <div>
             <strong>Final URL:</strong> {result?.finalUrl ?? "-"}
@@ -228,7 +229,7 @@ export default function HomePage() {
         </div>
 
         <div className="form">
-          <label htmlFor="language-select-input">Preview language</label>
+          <label htmlFor="language-select-input">{t("form.previewLanguage", locale)}</label>
           <input
             id="language-select-input"
             value={selectedLanguage}
@@ -236,7 +237,7 @@ export default function HomePage() {
             placeholder="en"
             autoComplete="off"
           />
-          <label htmlFor="manual-preview-input">Open existing mirrored page</label>
+          <label htmlFor="manual-preview-input">{t("form.openExisting", locale)}</label>
           <input
             id="manual-preview-input"
             value={manualPreviewPath}
@@ -246,11 +247,11 @@ export default function HomePage() {
           />
         </div>
 
-        {result?.batch?.pages && result.batch.pages.length > 0 && (
+        {result?.pages && result.pages.length > 0 && (
           <div className="form">
-            <label>Queued pages (first-level, non-recursive)</label>
+            <label>Pages</label>
             <div className="queue-list">
-              {result.batch.pages.map((page, index) => (
+              {result.pages.map((page, index) => (
                 <button
                   key={`${page.finalUrl ?? page.url ?? index}-${index}`}
                   type="button"
@@ -261,7 +262,8 @@ export default function HomePage() {
                     }
                   }}
                 >
-                  <strong>{index + 1}.</strong> {page.finalUrl ?? page.url}
+                  <strong>{index + 1}.</strong> {page.finalUrl ?? page.url}{" "}
+                  {page.pageStatus ? <span className="muted">({page.pageStatus})</span> : null}
                 </button>
               ))}
             </div>
@@ -271,9 +273,9 @@ export default function HomePage() {
 
       <section className="card viewer">
         <div className="viewer-header">
-          <h2>Mirrored page preview</h2>
+          <h2>{t("preview.heading", locale)}</h2>
           <a href={iframeSrc} target="_blank" rel="noreferrer">
-            Open in new tab
+            {t("preview.openTab", locale)}
           </a>
         </div>
         <iframe key={iframeSrc} src={iframeSrc} title="Mirrored page preview" />
