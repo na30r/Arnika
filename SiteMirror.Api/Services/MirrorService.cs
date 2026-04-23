@@ -218,22 +218,12 @@ public sealed class MirrorService : ISiteMirrorService
                 EntryFilePath = firstExecution.EntryFilePath,
                 EntryFileRelativePath = firstPageInfo.EntryFileRelativePath,
                 FrontendPreviewPath = firstPageInfo.FrontendPreviewPath,
+                RequestedLinkLimit = linkDrillCount,
+                ProcessedPages = pageInfos.Count,
+                Pages = pageInfos,
                 FilesSaved = totalFilesSaved,
                 UsedChromiumExecutablePath = chromiumExecutablePath,
-                WaitMs = waitMs,
-                Batch = new MirrorBatchResult
-                {
-                    CrawlId = crawlId,
-                    SourceUrl = startUri.ToString(),
-                    SiteHost = siteHost,
-                    Version = normalizedVersion,
-                    RequestedLinkLimit = linkDrillCount,
-                    ProcessedPages = pageInfos.Count,
-                    TotalFilesSaved = totalFilesSaved,
-                    DefaultLanguage = localizationResult.DefaultLanguage,
-                    AvailableLanguages = localizationResult.AvailableLanguages,
-                    Pages = pageInfos
-                }
+                WaitMs = waitMs
             };
         }
         catch (Exception ex)

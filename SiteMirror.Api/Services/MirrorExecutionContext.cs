@@ -4,7 +4,7 @@ namespace SiteMirror.Api.Services;
 
 internal sealed class MirrorExecutionContext
 {
-    public required BrowserContext BrowserContext { get; init; }
+    public required IBrowserContext BrowserContext { get; init; }
 
     public required string SiteOutputPath { get; init; }
 
