@@ -28,6 +28,9 @@ public sealed class MirrorResult
 
     public required int ProcessedPages { get; init; }
 
+    /// <summary>Number of entry URLs skipped because they were already mirrored for this version.</summary>
+    public int SkippedPages { get; init; }
+
     public required IReadOnlyList<CrawlPageInfo> Pages { get; init; }
 
     public int FilesSaved { get; init; }

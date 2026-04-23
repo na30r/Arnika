@@ -89,6 +89,11 @@ public sealed class MirrorService : ISiteMirrorService
             },
             []);
 
+        var crawledPages = new List<PageExecutionResult>();
+        var nextQueueIndex = 1; // first drill page (entry URL is queue 0)
+        var runningFilesTotal = 0;
+        var skippedPages = 0;
+
         try
         {
             _logger.LogInformation(
@@ -116,36 +121,128 @@ public sealed class MirrorService : ISiteMirrorService
                 IgnoreHTTPSErrors = true
             });
 
-            var crawledPages = new List<PageExecutionResult>();
-            var firstPage = await MirrorPageCoreAsync(
-                requestedUri: startUri,
-                rootUri: startUri,
-                siteOutputPath: siteOutputPath,
-                siteHost: siteHost,
-                version: normalizedVersion,
-                waitMs: waitMs,
-                request: request,
-                browserContext: browserContext,
-                collectLinks: true,
-                cancellationToken: cancellationToken);
+            async Task PersistPageRowAsync(int queue, PageExecutionResult page)
+            {
+                var processedCount = string.Equals(page.PageStatus, "failed", StringComparison.Ordinal)
+                    ? Math.Max(0, queue)
+                    : queue + 1;
+                await PersistCrawlSafeAsync(
+                    new CrawlRecord
+                    {
+                        CrawlId = crawlId,
+                        SourceUrl = startUri.ToString(),
+                        SiteHost = siteHost,
+                        Version = normalizedVersion,
+                        Status = "running",
+                        RequestedLinkLimit = linkDrillCount,
+                        ProcessedPages = processedCount,
+                        TotalFilesSaved = runningFilesTotal,
+                        DefaultLanguage = "en",
+                        AvailableLanguages = requestedLanguages,
+                        CreatedAtUtc = crawlStart,
+                        UpdatedAtUtc = DateTimeOffset.UtcNow,
+                        ErrorMessage = null
+                    },
+                    [BuildPageRecord(crawlId, queue, page, siteHost, normalizedVersion)]);
+            }
+
+            async Task<PageExecutionResult> EntryPageOrSkipAsync()
+            {
+                var key = CrawlKeyHelper.NormalizeUriKey(startUri);
+                var prior = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, key, cancellationToken);
+                if (linkDrillCount > 0 && prior is null)
+                {
+                    return await RunFirstPageWithFailureBoundaryAsync();
+                }
+
+                if (prior is not null)
+                {
+                    var skipped = TryBuildSkippedPageResult(
+                        prior, startUri.ToString(), key, siteOutputPath, siteHost, normalizedVersion);
+                    if (skipped is not null)
+                    {
+                        if (linkDrillCount > 0 &&
+                            !string.IsNullOrWhiteSpace(skipped.EntryFilePath) &&
+                            File.Exists(skipped.EntryFilePath) &&
+                            Uri.TryCreate(skipped.FinalUrl, UriKind.Absolute, out var docUri))
+                        {
+                            var html = await File.ReadAllTextAsync(skipped.EntryFilePath, cancellationToken);
+                            return skipped with
+                            {
+                                DiscoveredLinks = ExtractCandidateLinks(docUri, html, startUri)
+                            };
+                        }
+
+                        return skipped;
+                    }
+                }
+
+                return await RunFirstPageWithFailureBoundaryAsync();
+            }
+
+            var firstPage = await EntryPageOrSkipAsync();
+            if (firstPage.SkippedFromStore)
+            {
+                skippedPages++;
+            }
+
+            async Task<PageExecutionResult> RunFirstPageWithFailureBoundaryAsync()
+            {
+                try
+                {
+                    return await MirrorPageCoreAsync(
+                        startUri, startUri, siteOutputPath, siteHost, normalizedVersion, waitMs, request, browserContext,
+                        collectLinks: true, cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    var key = CrawlKeyHelper.NormalizeUriKey(startUri);
+                    var failed = BuildFailedPageStub(startUri.ToString(), ex, key);
+                    await PersistPageRowAsync(0, failed);
+                    throw;
+                }
+            }
+
             crawledPages.Add(firstPage);
+            runningFilesTotal += firstPage.SkippedFromStore ? 0 : firstPage.FilesSaved;
+
+            await PersistPageRowAsync(0, firstPage);
 
             var queuedLinks = BuildNonRecursiveQueue(startUri, firstPage.DiscoveredLinks, linkDrillCount);
             foreach (var queuedUri in queuedLinks)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var pageResult = await MirrorPageCoreAsync(
-                    requestedUri: queuedUri,
-                    rootUri: startUri,
-                    siteOutputPath: siteOutputPath,
-                    siteHost: siteHost,
-                    version: normalizedVersion,
-                    waitMs: waitMs,
-                    request: request,
-                    browserContext: browserContext,
-                    collectLinks: false,
-                    cancellationToken: cancellationToken);
+                var qKey = CrawlKeyHelper.NormalizeUriKey(queuedUri);
+                var priorQueued = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, qKey, cancellationToken);
+                var skippedQueued = priorQueued is not null
+                    ? TryBuildSkippedPageResult(priorQueued, queuedUri.ToString(), qKey, siteOutputPath, siteHost, normalizedVersion)
+                    : null;
+                PageExecutionResult pageResult;
+                if (skippedQueued is not null)
+                {
+                    pageResult = skippedQueued;
+                    skippedPages++;
+                }
+                else
+                {
+                    try
+                    {
+                        pageResult = await MirrorPageCoreAsync(
+                            queuedUri, startUri, siteOutputPath, siteHost, normalizedVersion, waitMs, request, browserContext,
+                            collectLinks: false, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        var failed = BuildFailedPageStub(queuedUri.ToString(), ex, qKey);
+                        await PersistPageRowAsync(nextQueueIndex, failed);
+                        throw;
+                    }
+                }
+
                 crawledPages.Add(pageResult);
+                runningFilesTotal += pageResult.SkippedFromStore ? 0 : pageResult.FilesSaved;
+                await PersistPageRowAsync(nextQueueIndex, pageResult);
+                nextQueueIndex++;
             }
 
             _logger.LogInformation("Stage generate-localizations: generating localized copies for languages {Languages}",
@@ -164,23 +261,11 @@ public sealed class MirrorService : ISiteMirrorService
                     FinalUrl = page.FinalUrl,
                     FrontendPreviewPath = BuildFrontendPreviewPath(siteHost, normalizedVersion, localizationResult.DefaultLanguage, page.EntryFileRelativePath),
                     EntryFileRelativePath = page.EntryFileRelativePath,
-                    FilesSaved = page.FilesSaved
-                })
-                .ToList();
-            var totalFilesSaved = pageInfos.Sum(page => page.FilesSaved);
-            var pageRecords = pageInfos
-                .Select((page, index) => new CrawlPageRecord
-                {
-                    CrawlId = crawlId,
-                    QueueOrder = index,
-                    RequestedUrl = page.Url,
-                    FinalUrl = page.FinalUrl,
-                    FrontendPreviewPath = page.FrontendPreviewPath,
-                    EntryFileRelativePath = page.EntryFileRelativePath,
                     FilesSaved = page.FilesSaved,
-                    CreatedAtUtc = DateTimeOffset.UtcNow
+                    PageStatus = page.PageStatus
                 })
                 .ToList();
+            var totalFilesSaved = pageInfos.Where(p => p.PageStatus != "skipped").Sum(p => p.FilesSaved);
 
             await PersistCrawlSafeAsync(
                 new CrawlRecord
@@ -199,7 +284,7 @@ public sealed class MirrorService : ISiteMirrorService
                     UpdatedAtUtc = DateTimeOffset.UtcNow,
                     ErrorMessage = null
                 },
-                pageRecords);
+                []);
 
             var firstPageInfo = pageInfos[0];
             var firstExecution = crawledPages[0];
@@ -218,14 +303,24 @@ public sealed class MirrorService : ISiteMirrorService
                 FrontendPreviewPath = firstPageInfo.FrontendPreviewPath,
                 RequestedLinkLimit = linkDrillCount,
                 ProcessedPages = pageInfos.Count,
+                SkippedPages = skippedPages,
                 Pages = pageInfos,
                 FilesSaved = totalFilesSaved,
                 UsedChromiumExecutablePath = chromiumExecutablePath,
                 WaitMs = waitMs
             };
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            var errTotal = 0;
+            for (var i = 0; i < crawledPages.Count; i++)
+            {
+                if (!crawledPages[i].SkippedFromStore)
+                {
+                    errTotal += crawledPages[i].FilesSaved;
+                }
+            }
+
             await PersistCrawlSafeAsync(
                 new CrawlRecord
                 {
@@ -235,8 +330,8 @@ public sealed class MirrorService : ISiteMirrorService
                     Version = normalizedVersion,
                     Status = "failed",
                     RequestedLinkLimit = linkDrillCount,
-                    ProcessedPages = 0,
-                    TotalFilesSaved = 0,
+                    ProcessedPages = crawledPages.Count,
+                    TotalFilesSaved = errTotal,
                     DefaultLanguage = "en",
                     AvailableLanguages = requestedLanguages,
                     CreatedAtUtc = crawlStart,
@@ -416,12 +511,16 @@ public sealed class MirrorService : ISiteMirrorService
         return new PageExecutionResult
         {
             RequestedUrl = requestedUri.ToString(),
+            RequestedUrlKey = CrawlKeyHelper.NormalizeUriKey(requestedUri),
             FinalUrl = finalUri.ToString(),
             EntryFilePath = entryFilePath,
             EntryFileRelativePath = relativeEntry,
             FrontendPreviewPath = BuildFrontendPreviewPath(siteHost, version, "en", relativeEntry),
             FilesSaved = mirror.TotalFilesWritten,
-            DiscoveredLinks = discoveredLinks
+            DiscoveredLinks = discoveredLinks,
+            PageStatus = "completed",
+            PageError = null,
+            SkippedFromStore = false
         };
     }
 
@@ -769,7 +868,89 @@ public sealed class MirrorService : ISiteMirrorService
         await File.WriteAllTextAsync(runtimeTargetPath, runtimeContent, cancellationToken);
     }
 
-    private async Task PersistCrawlSafeAsync(CrawlRecord crawl, IReadOnlyList<CrawlPageRecord> pages)
+    private static CrawlPageRecord BuildPageRecord(
+        string crawlId,
+        int queueOrder,
+        PageExecutionResult page,
+        string siteHost,
+        string version) =>
+        new()
+        {
+            CrawlId = crawlId,
+            SiteHost = siteHost,
+            Version = version,
+            QueueOrder = queueOrder,
+            RequestedUrl = page.RequestedUrl,
+            RequestedUrlKey = string.IsNullOrEmpty(page.RequestedUrlKey) ? page.RequestedUrl : page.RequestedUrlKey,
+            FinalUrl = page.FinalUrl,
+            FrontendPreviewPath = page.FrontendPreviewPath,
+            EntryFileRelativePath = page.EntryFileRelativePath,
+            FilesSaved = page.SkippedFromStore ? 0 : page.FilesSaved,
+            PageStatus = page.PageStatus,
+            ErrorMessage = page.PageError,
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+    private static PageExecutionResult BuildFailedPageStub(
+        string requestedUrl,
+        Exception ex,
+        string urlKey) =>
+        new()
+        {
+            RequestedUrl = requestedUrl,
+            RequestedUrlKey = urlKey,
+            FinalUrl = string.Empty,
+            EntryFilePath = string.Empty,
+            EntryFileRelativePath = string.Empty,
+            FrontendPreviewPath = string.Empty,
+            FilesSaved = 0,
+            DiscoveredLinks = [],
+            PageStatus = "failed",
+            PageError = ex.Message,
+            SkippedFromStore = false
+        };
+
+    private static PageExecutionResult? TryBuildSkippedPageResult(
+        CompletedPageSnapshot prior,
+        string requestedUrl,
+        string requestedUrlKey,
+        string siteOutputPath,
+        string siteHost,
+        string version)
+    {
+        var rel = prior.EntryFileRelativePath.Replace('\\', '/');
+        var fullPath = Path.GetFullPath(Path.Combine(siteOutputPath, rel));
+        if (!File.Exists(fullPath))
+        {
+            return null;
+        }
+
+        var key = !string.IsNullOrWhiteSpace(prior.FinalUrl) && Uri.TryCreate(prior.FinalUrl, UriKind.Absolute, out var fu)
+            ? CrawlKeyHelper.NormalizeUriKey(fu)
+            : requestedUrlKey;
+
+        return new PageExecutionResult
+        {
+            RequestedUrl = requestedUrl,
+            RequestedUrlKey = key,
+            FinalUrl = string.IsNullOrWhiteSpace(prior.FinalUrl) ? requestedUrl : prior.FinalUrl,
+            EntryFilePath = fullPath,
+            EntryFileRelativePath = rel,
+            FrontendPreviewPath = BuildFrontendPreviewPathStatic(siteHost, version, "en", rel),
+            FilesSaved = prior.FilesSaved,
+            DiscoveredLinks = [],
+            PageStatus = "skipped",
+            PageError = null,
+            SkippedFromStore = true
+        };
+    }
+
+    private static string BuildFrontendPreviewPathStatic(string siteHost, string version, string language, string relativeEntry) =>
+        $"/mirror/{siteHost}/{version}/{LocalizationGenerator.LocalizedRootFolderName}/{(string.IsNullOrWhiteSpace(language) ? "en" : language.Trim().ToLowerInvariant())}/{relativeEntry}";
+
+    private async Task PersistCrawlSafeAsync(
+        CrawlRecord crawl,
+        IReadOnlyList<CrawlPageRecord> pages)
     {
         try
         {
@@ -784,9 +965,11 @@ public sealed class MirrorService : ISiteMirrorService
         }
     }
 
-    private sealed class PageExecutionResult
+    private sealed record PageExecutionResult
     {
         public required string RequestedUrl { get; init; }
+
+        public string RequestedUrlKey { get; init; } = string.Empty;
 
         public required string FinalUrl { get; init; }
 
@@ -799,5 +982,11 @@ public sealed class MirrorService : ISiteMirrorService
         public required int FilesSaved { get; init; }
 
         public required IReadOnlyList<Uri> DiscoveredLinks { get; init; }
+
+        public string PageStatus { get; init; } = "completed";
+
+        public string? PageError { get; init; }
+
+        public bool SkippedFromStore { get; init; }
     }
 }
