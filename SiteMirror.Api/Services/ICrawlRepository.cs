@@ -21,7 +21,13 @@ public interface ICrawlRepository
         string siteHost,
         string version,
         string requestedUrlKey,
+        Guid? forUserId,
         CancellationToken cancellationToken = default);
 
     Task<CrawlStatusResult?> GetCrawlAsync(string crawlId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MirrorHistoryItem>> GetMirrorHistoryForUserAsync(
+        Guid userId,
+        int take,
+        CancellationToken cancellationToken = default);
 }

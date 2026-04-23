@@ -38,7 +38,7 @@ public sealed class MirrorService : ISiteMirrorService
         _contentRootPath = hostEnvironment.ContentRootPath;
     }
 
-    public async Task<MirrorResult> MirrorAsync(MirrorRequest request, CancellationToken cancellationToken)
+    public async Task<MirrorResult> MirrorAsync(MirrorRequest request, Guid? actingUserId, CancellationToken cancellationToken = default)
     {
         var normalizedRequestUrl = NormalizeRequestedUrl(request.Url);
         if (!Uri.TryCreate(normalizedRequestUrl, UriKind.Absolute, out var startUri) || !IsHttpOrHttps(startUri))
@@ -74,6 +74,7 @@ public sealed class MirrorService : ISiteMirrorService
             new CrawlRecord
             {
                 CrawlId = crawlId,
+                UserId = actingUserId,
                 SourceUrl = startUri.ToString(),
                 SiteHost = siteHost,
                 Version = normalizedVersion,
@@ -130,6 +131,7 @@ public sealed class MirrorService : ISiteMirrorService
                     new CrawlRecord
                     {
                         CrawlId = crawlId,
+                        UserId = actingUserId,
                         SourceUrl = startUri.ToString(),
                         SiteHost = siteHost,
                         Version = normalizedVersion,
@@ -149,7 +151,7 @@ public sealed class MirrorService : ISiteMirrorService
             async Task<PageExecutionResult> EntryPageOrSkipAsync()
             {
                 var key = CrawlKeyHelper.NormalizeUriKey(startUri);
-                var prior = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, key, cancellationToken);
+                var prior = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, key, actingUserId, cancellationToken);
                 if (linkDrillCount > 0 && prior is null)
                 {
                     return await RunFirstPageWithFailureBoundaryAsync();
@@ -213,7 +215,7 @@ public sealed class MirrorService : ISiteMirrorService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var qKey = CrawlKeyHelper.NormalizeUriKey(queuedUri);
-                var priorQueued = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, qKey, cancellationToken);
+                var priorQueued = await _crawlRepository.TryGetCompletedPageAsync(siteHost, normalizedVersion, qKey, actingUserId, cancellationToken);
                 var skippedQueued = priorQueued is not null
                     ? TryBuildSkippedPageResult(priorQueued, queuedUri.ToString(), qKey, siteOutputPath, siteHost, normalizedVersion)
                     : null;
@@ -271,6 +273,7 @@ public sealed class MirrorService : ISiteMirrorService
                 new CrawlRecord
                 {
                     CrawlId = crawlId,
+                    UserId = actingUserId,
                     SourceUrl = startUri.ToString(),
                     SiteHost = siteHost,
                     Version = normalizedVersion,
@@ -325,6 +328,7 @@ public sealed class MirrorService : ISiteMirrorService
                 new CrawlRecord
                 {
                     CrawlId = crawlId,
+                    UserId = actingUserId,
                     SourceUrl = startUri.ToString(),
                     SiteHost = siteHost,
                     Version = normalizedVersion,
