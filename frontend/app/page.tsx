@@ -23,6 +23,7 @@ export default function HomePage() {
   const [url, setUrl] = useState(defaultTarget);
   const [version, setVersion] = useState("latest");
   const [languagesText, setLanguagesText] = useState("en");
+  const [doNotTranslateText, setDoNotTranslateText] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,10 @@ export default function HomePage() {
         .split(",")
         .map((item) => item.trim().toLowerCase())
         .filter(Boolean);
+      const parsedDoNotTranslateTexts = doNotTranslateText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
       const response = await fetch("/api/mirror", {
         method: "POST",
         headers: {
@@ -66,6 +71,7 @@ export default function HomePage() {
           url,
           version,
           languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
+          doNotTranslateTexts: parsedDoNotTranslateTexts,
           extraWaitMs: 4000,
           autoScroll: true,
           scrollStepPx: 1200,
@@ -141,6 +147,14 @@ export default function HomePage() {
               autoComplete="off"
             />
           </div>
+          <label htmlFor="do-not-translate-input">Do not translate texts (one per line)</label>
+          <textarea
+            id="do-not-translate-input"
+            value={doNotTranslateText}
+            onChange={(event) => setDoNotTranslateText(event.target.value)}
+            placeholder={"API\nHTTP\nNext.js"}
+            rows={5}
+          />
         </form>
 
         {error && <p className="error">{error}</p>}

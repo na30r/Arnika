@@ -162,6 +162,7 @@ public sealed class MirrorService : ISiteMirrorService
         var localizationResult = await _localizationGenerator.GenerateLocalizedCopiesAsync(
             siteOutputPath,
             requestedLanguages,
+            request.DoNotTranslateTexts,
             cancellationToken);
         _logger.LogInformation("Stage generate-localizations: complete");
 

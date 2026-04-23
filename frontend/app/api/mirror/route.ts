@@ -4,6 +4,7 @@ type MirrorRequestBody = {
   url?: string;
   version?: string;
   languages?: string[];
+  doNotTranslateTexts?: string[];
   extraWaitMs?: number;
   autoScroll?: boolean;
   scrollStepPx?: number;
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
     url: trimmedUrl,
     version,
     languages: body.languages,
+    doNotTranslateTexts: body.doNotTranslateTexts,
     extraWaitMs: body.extraWaitMs ?? 4000,
     autoScroll: body.autoScroll ?? true,
     scrollStepPx: body.scrollStepPx ?? 1200,

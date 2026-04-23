@@ -8,6 +8,8 @@ public sealed class MirrorRequest
 
     public string[]? Languages { get; init; }
 
+    public string[]? DoNotTranslateTexts { get; init; }
+
     public int ExtraWaitMs { get; init; } = 4_000;
 
     public bool AutoScroll { get; init; } = true;

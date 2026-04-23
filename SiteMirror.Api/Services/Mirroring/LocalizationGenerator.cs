@@ -11,6 +11,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
 {
     public const string LocalizedRootFolderName = "_localized";
     public const string CatalogRootFolderName = "_i18n";
+    public const string DoNotTranslateFileName = "do-not-translate.json";
 
     private static readonly HashSet<string> NonTranslatableContainers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -30,6 +31,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     public async Task<LocalizationGenerationResult> GenerateLocalizedCopiesAsync(
         string mirrorRoot,
         IReadOnlyList<string> languages,
+        IReadOnlyList<string>? doNotTranslateTexts,
         CancellationToken cancellationToken)
     {
         var normalizedLanguages = NormalizeLanguages(languages);
@@ -65,14 +67,17 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
 
         await SaveCatalogAsync(Path.Combine(i18nFolder, "source.json"), "en", sourceEntries, cancellationToken);
         var englishEntries = await LoadOrCreateLanguageEntriesAsync("en", i18nFolder, sourceEntries, cancellationToken);
-
+        var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
+        var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
         foreach (var language in normalizedLanguages)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var languageEntries = string.Equals(language, "en", StringComparison.OrdinalIgnoreCase)
-                ? englishEntries
-                : await LoadOrCreateLanguageEntriesAsync(language, i18nFolder, sourceEntries, cancellationToken);
+            var languageEntries = await LoadOrCreateLanguageEntriesAsync(
+                language,
+                i18nFolder,
+                sourceEntries,
+                cancellationToken);
 
             var languageOutputRoot = Path.Combine(mirrorRoot, LocalizedRootFolderName, language);
             if (Directory.Exists(languageOutputRoot))
@@ -85,8 +90,8 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
                 language,
                 languageOutputRoot,
                 sourceHtmlFiles,
-                sourceEntries,
                 languageEntries,
+                doNotTranslateSet,
                 cancellationToken);
         }
 
@@ -132,8 +137,8 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         string language,
         string languageOutputRoot,
         IReadOnlyList<string> sourceHtmlFiles,
-        IReadOnlyDictionary<string, string> sourceEntries,
         IReadOnlyDictionary<string, string> languageEntries,
+        HashSet<string> doNotTranslateSet,
         CancellationToken cancellationToken)
     {
         var parser = new HtmlParser();
@@ -151,7 +156,13 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
 
             ProcessTranslatableTokens(document, relativeHtmlPath, (key, sourceValue, setValue) =>
             {
-                var localizedValue = ResolveLocalizedValue(key, sourceValue, sourceEntries, languageEntries);
+                var sourceValueKey = NormalizeForKey(sourceValue);
+                if (doNotTranslateSet.Contains(sourceValueKey))
+                {
+                    return;
+                }
+
+                var localizedValue = ResolveLocalizedValue(key, sourceValue, languageEntries);
                 if (!string.Equals(localizedValue, sourceValue, StringComparison.Ordinal))
                 {
                     setValue(localizedValue);
@@ -162,6 +173,14 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
             {
                 document.DocumentElement.SetAttribute("lang", language);
                 document.DocumentElement.SetAttribute("data-site-mirror-lang", language);
+                if (IsRtlLanguage(language))
+                {
+                    ApplyRtlLayout(document);
+                }
+                else
+                {
+                    document.DocumentElement.SetAttribute("dir", "ltr");
+                }
             }
 
             var updatedHtml = document.DocumentElement?.OuterHtml ?? html;
@@ -172,7 +191,6 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     private static string ResolveLocalizedValue(
         string key,
         string sourceValue,
-        IReadOnlyDictionary<string, string> sourceEntries,
         IReadOnlyDictionary<string, string> languageEntries)
     {
         if (languageEntries.TryGetValue(key, out var translated) && !string.IsNullOrWhiteSpace(translated))
@@ -180,12 +198,157 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
             return translated;
         }
 
-        if (sourceEntries.TryGetValue(key, out var sourceCatalogValue))
+        return sourceValue;
+    }
+
+    private static async Task<IReadOnlyList<string>> ResolveDoNotTranslateTextsAsync(
+        string i18nFolder,
+        IReadOnlyList<string>? requestedDoNotTranslateTexts,
+        CancellationToken cancellationToken)
+    {
+        var normalizedRequested = requestedDoNotTranslateTexts?
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Select(text => text.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var configPath = Path.Combine(i18nFolder, DoNotTranslateFileName);
+        if (normalizedRequested is { Count: > 0 })
         {
-            return sourceCatalogValue;
+            await SaveDoNotTranslateTextsAsync(configPath, normalizedRequested, cancellationToken);
+            return normalizedRequested;
         }
 
-        return sourceValue;
+        if (!File.Exists(configPath))
+        {
+            return [];
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(configPath, Encoding.UTF8, cancellationToken);
+            var config = JsonSerializer.Deserialize<DoNotTranslateCatalog>(raw);
+            return config?.Texts?
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Select(text => text.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static Task SaveDoNotTranslateTextsAsync(
+        string configPath,
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken)
+    {
+        var payload = new DoNotTranslateCatalog
+        {
+            Texts = texts
+                .OrderBy(text => text, StringComparer.Ordinal)
+                .ToList()
+        };
+
+        var json = JsonSerializer.Serialize(payload, JsonOptions);
+        return File.WriteAllTextAsync(configPath, json, Encoding.UTF8, cancellationToken);
+    }
+
+    private static HashSet<string> BuildDoNotTranslateSet(IReadOnlyList<string>? doNotTranslateTexts)
+    {
+        var normalized = new HashSet<string>(StringComparer.Ordinal);
+        if (doNotTranslateTexts is null)
+        {
+            return normalized;
+        }
+
+        foreach (var text in doNotTranslateTexts)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                continue;
+            }
+
+            var normalizedValue = NormalizeForKey(text);
+            if (!string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                normalized.Add(normalizedValue);
+            }
+        }
+
+        return normalized;
+    }
+
+    private static bool IsRtlLanguage(string language) =>
+        language.StartsWith("fa", StringComparison.OrdinalIgnoreCase) ||
+        language.StartsWith("ar", StringComparison.OrdinalIgnoreCase) ||
+        language.StartsWith("he", StringComparison.OrdinalIgnoreCase) ||
+        language.StartsWith("ur", StringComparison.OrdinalIgnoreCase);
+
+    private static void ApplyRtlLayout(IDocument document)
+    {
+        if (document.DocumentElement is null)
+        {
+            return;
+        }
+
+        document.DocumentElement.SetAttribute("dir", "rtl");
+        var body = document.Body;
+        if (body is not null)
+        {
+            body.SetAttribute("dir", "rtl");
+        }
+
+        var head = document.Head;
+        if (head is null)
+        {
+            return;
+        }
+
+        var existingStyle = head.QuerySelector("style[data-site-mirror-rtl='1']");
+        if (existingStyle is not null)
+        {
+            return;
+        }
+
+        var style = document.CreateElement("style");
+        style.SetAttribute("data-site-mirror-rtl", "1");
+        style.TextContent = """
+            html[dir='rtl'], html[dir='rtl'] body {
+                direction: rtl !important;
+                text-align: right !important;
+            }
+            html[dir='rtl'] section,
+            html[dir='rtl'] article,
+            html[dir='rtl'] main,
+            html[dir='rtl'] nav,
+            html[dir='rtl'] header,
+            html[dir='rtl'] footer,
+            html[dir='rtl'] aside,
+            html[dir='rtl'] div,
+            html[dir='rtl'] p,
+            html[dir='rtl'] li,
+            html[dir='rtl'] ul,
+            html[dir='rtl'] ol,
+            html[dir='rtl'] table,
+            html[dir='rtl'] form,
+            html[dir='rtl'] input,
+            html[dir='rtl'] textarea,
+            html[dir='rtl'] button,
+            html[dir='rtl'] label,
+            html[dir='rtl'] h1,
+            html[dir='rtl'] h2,
+            html[dir='rtl'] h3,
+            html[dir='rtl'] h4,
+            html[dir='rtl'] h5,
+            html[dir='rtl'] h6 {
+                direction: rtl !important;
+                text-align: right !important;
+            }
+            """;
+        head.AppendChild(style);
     }
 
     private async Task<Dictionary<string, string>> LoadOrCreateLanguageEntriesAsync(
@@ -413,6 +576,11 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         public string Language { get; init; } = "en";
 
         public Dictionary<string, string> Entries { get; init; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed class DoNotTranslateCatalog
+    {
+        public List<string> Texts { get; init; } = [];
     }
 
     internal sealed class LocalizationGenerationResult

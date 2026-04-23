@@ -100,6 +100,7 @@ Example request:
   "url": "https://nextjs.org/docs",
   "version": "v14.2.0",
   "languages": ["en", "fa"],
+  "doNotTranslateTexts": ["API", "HTTP", "Next.js"],
   "extraWaitMs": 4000,
   "autoScroll": true,
   "scrollStepPx": 1200,
@@ -113,11 +114,12 @@ Fields:
 1. `url` (required): target page URL. If scheme is missing, API uses `https://`.
 2. `version` (optional): mirror version folder name (default: `latest`).
 3. `languages` (optional): list of language codes to pre-generate. `en` is always generated and used as default.
-4. `extraWaitMs` (optional): additional wait after page load.
-5. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
-6. `scrollStepPx` (optional): pixels scrolled each step.
-7. `scrollDelayMs` (optional): wait between scroll steps.
-8. `maxScrollRounds` (optional): max scroll iterations.
+4. `doNotTranslateTexts` (optional): exact text values to keep unchanged in every language.
+5. `extraWaitMs` (optional): additional wait after page load.
+6. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
+7. `scrollStepPx` (optional): pixels scrolled each step.
+8. `scrollDelayMs` (optional): wait between scroll steps.
+9. `maxScrollRounds` (optional): max scroll iterations.
 
 Example response fields:
 
@@ -128,6 +130,11 @@ Example response fields:
 - `frontendPreviewPath`: local route for iframe or browser (`/mirror/<site>/<version>/_localized/<lang>/...`).
 - `entryFileRelativePath`: mirrored entry file path under mirror root.
 - `filesSaved`: number of mapped files saved.
+
+Behavior notes:
+
+- Each localized page reads text from its own language catalog (`_i18n/<lang>.json`) with fallback to source only when a key is missing.
+- Persian (`fa`) localized pages are generated with RTL direction (`dir="rtl"`) and section-level RTL text alignment.
 
 ## Current scope
 
