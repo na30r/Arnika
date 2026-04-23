@@ -6,6 +6,8 @@ public sealed class MirrorRequest
 
     public string Version { get; init; } = "latest";
 
+    public int LinkDrillCount { get; init; } = 0;
+
     public string[]? Languages { get; init; }
 
     public string[]? DoNotTranslateTexts { get; init; }

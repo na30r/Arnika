@@ -89,6 +89,21 @@ button:disabled {
   gap: 0.4rem;
 }
 
+.queue-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.queue-item {
+  width: 100%;
+  text-align: left;
+  background: #f7f9ff;
+  color: #1b2335;
+  border: 1px solid #d5dbe5;
+}
+
 .error {
   margin-top: 0.8rem;
   color: #ba1124;

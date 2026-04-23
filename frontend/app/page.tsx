@@ -3,11 +3,30 @@
 import { FormEvent, useState } from "react";
 
 type MirrorResponse = {
+  crawlId?: string;
   sourceUrl?: string;
   siteHost?: string;
   version?: string;
   defaultLanguage?: string;
   availableLanguages?: string[];
+  batch?: {
+    crawlId?: string;
+    sourceUrl?: string;
+    siteHost?: string;
+    version?: string;
+    requestedLinkLimit?: number;
+    processedPages?: number;
+    totalFilesSaved?: number;
+    defaultLanguage?: string;
+    availableLanguages?: string[];
+    pages?: {
+      url?: string;
+      finalUrl?: string;
+      frontendPreviewPath?: string;
+      entryFileRelativePath?: string;
+      filesSaved?: number;
+    }[];
+  };
   finalUrl?: string;
   outputFolder?: string;
   entryFilePath?: string;
@@ -22,6 +41,7 @@ const defaultTarget = "https://nextjs.org/docs";
 export default function HomePage() {
   const [url, setUrl] = useState(defaultTarget);
   const [version, setVersion] = useState("latest");
+  const [linkDrillCount, setLinkDrillCount] = useState(0);
   const [languagesText, setLanguagesText] = useState("en");
   const [doNotTranslateText, setDoNotTranslateText] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
@@ -70,6 +90,7 @@ export default function HomePage() {
         body: JSON.stringify({
           url,
           version,
+          linkDrillCount,
           languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
           doNotTranslateTexts: parsedDoNotTranslateTexts,
           extraWaitMs: 4000,
@@ -106,9 +127,9 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="card controls">
-        <h1>Documentation Mirror (Single Page)</h1>
+        <h1>Documentation Mirror</h1>
         <p className="muted">
-          Crawl one documentation page (including Next.js/Tailwind-rendered assets) and preview it locally from this app.
+          Crawl one documentation page and optionally queue first-level links (non-recursive), then preview pages locally.
         </p>
 
         <form onSubmit={handleSubmit} className="form">
@@ -137,6 +158,19 @@ export default function HomePage() {
               {isLoading ? "Mirroring..." : "Mirror page"}
             </button>
           </div>
+          <label htmlFor="link-drill-input">Link drill count (non-recursive queue)</label>
+          <div className="row">
+            <input
+              id="link-drill-input"
+              type="number"
+              min={0}
+              value={linkDrillCount}
+              onChange={(event) => setLinkDrillCount(Number.isNaN(event.target.valueAsNumber) ? 0 : Math.max(0, Math.floor(event.target.valueAsNumber)))}
+            />
+          </div>
+          <p className="muted small-note">
+            Only first-level links from the start page are queued. Queued pages are crawled one by one without recursive drilling.
+          </p>
           <label htmlFor="languages-input">Languages (comma-separated)</label>
           <div className="row">
             <input
@@ -161,6 +195,9 @@ export default function HomePage() {
 
         <div className="meta">
           <div>
+            <strong>Crawl ID:</strong> <code>{result?.crawlId ?? result?.batch?.crawlId ?? "-"}</code>
+          </div>
+          <div>
             <strong>Preview path:</strong>{" "}
             <code>{result?.frontendPreviewPath ?? "(none yet)"}</code>
           </div>
@@ -178,6 +215,12 @@ export default function HomePage() {
           </div>
           <div>
             <strong>Files saved:</strong> {result?.filesSaved ?? 0}
+          </div>
+          <div>
+            <strong>Processed pages:</strong> {result?.batch?.processedPages ?? 1}
+          </div>
+          <div>
+            <strong>Requested link drill count:</strong> {result?.batch?.requestedLinkLimit ?? linkDrillCount}
           </div>
           <div>
             <strong>Final URL:</strong> {result?.finalUrl ?? "-"}
@@ -202,6 +245,28 @@ export default function HomePage() {
             autoComplete="off"
           />
         </div>
+
+        {result?.batch?.pages && result.batch.pages.length > 0 && (
+          <div className="form">
+            <label>Queued pages (first-level, non-recursive)</label>
+            <div className="queue-list">
+              {result.batch.pages.map((page, index) => (
+                <button
+                  key={`${page.finalUrl ?? page.url ?? index}-${index}`}
+                  type="button"
+                  className="queue-item"
+                  onClick={() => {
+                    if (page.frontendPreviewPath) {
+                      setManualPreviewPath(page.frontendPreviewPath);
+                    }
+                  }}
+                >
+                  <strong>{index + 1}.</strong> {page.finalUrl ?? page.url}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card viewer">

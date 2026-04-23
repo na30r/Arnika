@@ -99,6 +99,7 @@ Example request:
 {
   "url": "https://nextjs.org/docs",
   "version": "v14.2.0",
+  "linkDrillCount": 5,
   "languages": ["en", "fa"],
   "doNotTranslateTexts": ["API", "HTTP", "Next.js"],
   "extraWaitMs": 4000,
@@ -114,12 +115,13 @@ Fields:
 1. `url` (required): target page URL. If scheme is missing, API uses `https://`.
 2. `version` (optional): mirror version folder name (default: `latest`).
 3. `languages` (optional): list of language codes to pre-generate. `en` is always generated and used as default.
-4. `doNotTranslateTexts` (optional): exact text values to keep unchanged in every language.
-5. `extraWaitMs` (optional): additional wait after page load.
-6. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
-7. `scrollStepPx` (optional): pixels scrolled each step.
-8. `scrollDelayMs` (optional): wait between scroll steps.
-9. `maxScrollRounds` (optional): max scroll iterations.
+4. `linkDrillCount` (optional): number of first-level links from the start page to enqueue and crawl. Queue is non-recursive (default: `0`).
+5. `doNotTranslateTexts` (optional): exact text values to keep unchanged in every language.
+6. `extraWaitMs` (optional): additional wait after page load.
+7. `autoScroll` (optional): scrolls page to trigger lazy-loaded docs content/resources.
+8. `scrollStepPx` (optional): pixels scrolled each step.
+9. `scrollDelayMs` (optional): wait between scroll steps.
+10. `maxScrollRounds` (optional): max scroll iterations.
 
 Example response fields:
 
@@ -130,6 +132,34 @@ Example response fields:
 - `frontendPreviewPath`: local route for iframe or browser (`/mirror/<site>/<version>/_localized/<lang>/...`).
 - `entryFileRelativePath`: mirrored entry file path under mirror root.
 - `filesSaved`: number of mapped files saved.
+- `crawlId`: persisted crawl identifier for querying crawl/page history.
+- `batch`: includes queue details (`requestedLinkLimit`, `processedPages`, `pages` list).
+
+## API: `GET /api/mirror/crawls/{crawlId}`
+
+Fetch a persisted crawl run and its pages from SQL Server.
+
+Response includes:
+
+- crawl metadata (`status`, `sourceUrl`, `siteHost`, `version`, timestamps)
+- processed pages list (`requestedUrl`, `finalUrl`, `frontendPreviewPath`, queue order)
+
+## SQL Server persistence
+
+The API persists crawl history to SQL Server when `Database.ConnectionString` is configured:
+
+```json
+"Database": {
+  "ConnectionString": "Server=...;Database=SiteMirror;User Id=...;Password=...;TrustServerCertificate=True"
+}
+```
+
+Schema is auto-created at startup:
+
+- `dbo.CrawlRuns`
+- `dbo.CrawlPages`
+
+Stored fields include real requested/final URLs, version, link drill count, status, languages, file counts, and timestamps.
 
 Behavior notes:
 
@@ -138,6 +168,6 @@ Behavior notes:
 
 ## Current scope
 
-- Optimized for **single-page** documentation mirroring.
+- Supports single-page mirroring and **first-level queued link drilling** (`linkDrillCount`) without recursive crawl expansion.
 - Authentication/cookies are not required for the main flow.
 - Dynamic backend data and gated pages can still differ from source.
