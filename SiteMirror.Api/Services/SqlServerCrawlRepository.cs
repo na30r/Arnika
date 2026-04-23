@@ -59,16 +59,56 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 CREATE TABLE dbo.CrawlPages
                 (
                     CrawlId NVARCHAR(64) NOT NULL,
+                    SiteHost NVARCHAR(255) NOT NULL,
+                    Version NVARCHAR(128) NOT NULL,
                     QueueOrder INT NOT NULL,
                     RequestedUrl NVARCHAR(2048) NOT NULL,
+                    RequestedUrlKey NVARCHAR(2048) NOT NULL,
                     FinalUrl NVARCHAR(2048) NOT NULL,
                     FrontendPreviewPath NVARCHAR(2048) NOT NULL,
                     EntryFileRelativePath NVARCHAR(2048) NOT NULL,
                     FilesSaved INT NOT NULL,
+                    PageStatus NVARCHAR(32) NOT NULL,
+                    ErrorMessage NVARCHAR(MAX) NULL,
                     CreatedAtUtc DATETIMEOFFSET NOT NULL,
                     CONSTRAINT PK_CrawlPages PRIMARY KEY (CrawlId, QueueOrder),
                     CONSTRAINT FK_CrawlPages_CrawlRuns FOREIGN KEY (CrawlId) REFERENCES dbo.CrawlRuns(CrawlId) ON DELETE CASCADE
                 );
+            END
+            ELSE
+            BEGIN
+                IF COL_LENGTH('dbo.CrawlPages', 'SiteHost') IS NULL
+                    ALTER TABLE dbo.CrawlPages ADD SiteHost NVARCHAR(255) NULL;
+                IF COL_LENGTH('dbo.CrawlPages', 'Version') IS NULL
+                    ALTER TABLE dbo.CrawlPages ADD Version NVARCHAR(128) NULL;
+                IF COL_LENGTH('dbo.CrawlPages', 'RequestedUrlKey') IS NULL
+                    ALTER TABLE dbo.CrawlPages ADD RequestedUrlKey NVARCHAR(2048) NULL;
+                IF COL_LENGTH('dbo.CrawlPages', 'PageStatus') IS NULL
+                    ALTER TABLE dbo.CrawlPages ADD PageStatus NVARCHAR(32) NULL;
+                IF COL_LENGTH('dbo.CrawlPages', 'ErrorMessage') IS NULL
+                    ALTER TABLE dbo.CrawlPages ADD ErrorMessage NVARCHAR(MAX) NULL;
+            END;
+
+            UPDATE cp SET
+                SiteHost = COALESCE(cp.SiteHost, r.SiteHost),
+                Version = COALESCE(cp.Version, r.Version),
+                RequestedUrlKey = COALESCE(NULLIF(RTRIM(cp.RequestedUrlKey), ''), NULLIF(RTRIM(cp.RequestedUrl), '')),
+                PageStatus = COALESCE(NULLIF(RTRIM(cp.PageStatus), ''), N'completed')
+            FROM dbo.CrawlPages cp
+            INNER JOIN dbo.CrawlRuns r ON r.CrawlId = cp.CrawlId
+            WHERE cp.SiteHost IS NULL OR cp.Version IS NULL
+               OR NULLIF(RTRIM(cp.RequestedUrlKey), '') IS NULL
+               OR NULLIF(RTRIM(cp.PageStatus), '') IS NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CrawlPages_SiteVersionUrlKey' AND object_id = OBJECT_ID('dbo.CrawlPages'))
+            BEGIN
+                CREATE NONCLUSTERED INDEX IX_CrawlPages_SiteVersionUrlKey
+                ON dbo.CrawlPages (SiteHost, Version, RequestedUrlKey)
+                INCLUDE (FinalUrl, EntryFileRelativePath, FilesSaved, PageStatus)
+                WHERE PageStatus = N'completed'
+                  AND NULLIF(SiteHost, N'') IS NOT NULL
+                  AND NULLIF(Version, N'') IS NOT NULL
+                  AND NULLIF(RequestedUrlKey, N'') IS NOT NULL;
             END;
             """;
 
@@ -145,38 +185,55 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 await upsertCrawlCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            const string deletePagesSql = "DELETE FROM dbo.CrawlPages WHERE CrawlId = @CrawlId;";
-            await using (var deletePagesCommand = new SqlCommand(deletePagesSql, connection, (SqlTransaction)transaction))
-            {
-                deletePagesCommand.Parameters.AddWithValue("@CrawlId", crawl.CrawlId);
-                await deletePagesCommand.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            const string insertPageSql = """
-                INSERT INTO dbo.CrawlPages
-                (
-                    CrawlId, QueueOrder, RequestedUrl, FinalUrl, FrontendPreviewPath,
-                    EntryFileRelativePath, FilesSaved, CreatedAtUtc
-                )
-                VALUES
-                (
-                    @CrawlId, @QueueOrder, @RequestedUrl, @FinalUrl, @FrontendPreviewPath,
-                    @EntryFileRelativePath, @FilesSaved, @CreatedAtUtc
-                );
+            const string mergePageSql = """
+                MERGE dbo.CrawlPages AS target
+                USING (SELECT @CrawlId AS CrawlId, @QueueOrder AS QueueOrder) AS source
+                ON target.CrawlId = source.CrawlId AND target.QueueOrder = source.QueueOrder
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        SiteHost = @SiteHost,
+                        Version = @Version,
+                        RequestedUrl = @RequestedUrl,
+                        RequestedUrlKey = @RequestedUrlKey,
+                        FinalUrl = @FinalUrl,
+                        FrontendPreviewPath = @FrontendPreviewPath,
+                        EntryFileRelativePath = @EntryFileRelativePath,
+                        FilesSaved = @FilesSaved,
+                        PageStatus = @PageStatus,
+                        ErrorMessage = @ErrorMessage,
+                        CreatedAtUtc = @CreatedAtUtc
+                WHEN NOT MATCHED THEN
+                    INSERT
+                    (
+                        CrawlId, SiteHost, Version, QueueOrder, RequestedUrl, RequestedUrlKey,
+                        FinalUrl, FrontendPreviewPath, EntryFileRelativePath, FilesSaved,
+                        PageStatus, ErrorMessage, CreatedAtUtc
+                    )
+                    VALUES
+                    (
+                        @CrawlId, @SiteHost, @Version, @QueueOrder, @RequestedUrl, @RequestedUrlKey,
+                        @FinalUrl, @FrontendPreviewPath, @EntryFileRelativePath, @FilesSaved,
+                        @PageStatus, @ErrorMessage, @CreatedAtUtc
+                    );
                 """;
 
             foreach (var page in pages)
             {
-                await using var insertPageCommand = new SqlCommand(insertPageSql, connection, (SqlTransaction)transaction);
-                insertPageCommand.Parameters.AddWithValue("@CrawlId", page.CrawlId);
-                insertPageCommand.Parameters.AddWithValue("@QueueOrder", page.QueueOrder);
-                insertPageCommand.Parameters.AddWithValue("@RequestedUrl", page.RequestedUrl);
-                insertPageCommand.Parameters.AddWithValue("@FinalUrl", page.FinalUrl);
-                insertPageCommand.Parameters.AddWithValue("@FrontendPreviewPath", page.FrontendPreviewPath);
-                insertPageCommand.Parameters.AddWithValue("@EntryFileRelativePath", page.EntryFileRelativePath);
-                insertPageCommand.Parameters.AddWithValue("@FilesSaved", page.FilesSaved);
-                insertPageCommand.Parameters.AddWithValue("@CreatedAtUtc", page.CreatedAtUtc);
-                await insertPageCommand.ExecuteNonQueryAsync(cancellationToken);
+                await using var mergePageCommand = new SqlCommand(mergePageSql, connection, (SqlTransaction)transaction);
+                mergePageCommand.Parameters.AddWithValue("@CrawlId", page.CrawlId);
+                mergePageCommand.Parameters.AddWithValue("@SiteHost", page.SiteHost);
+                mergePageCommand.Parameters.AddWithValue("@Version", page.Version);
+                mergePageCommand.Parameters.AddWithValue("@QueueOrder", page.QueueOrder);
+                mergePageCommand.Parameters.AddWithValue("@RequestedUrl", page.RequestedUrl);
+                mergePageCommand.Parameters.AddWithValue("@RequestedUrlKey", page.RequestedUrlKey);
+                mergePageCommand.Parameters.AddWithValue("@FinalUrl", page.FinalUrl);
+                mergePageCommand.Parameters.AddWithValue("@FrontendPreviewPath", page.FrontendPreviewPath);
+                mergePageCommand.Parameters.AddWithValue("@EntryFileRelativePath", page.EntryFileRelativePath);
+                mergePageCommand.Parameters.AddWithValue("@FilesSaved", page.FilesSaved);
+                mergePageCommand.Parameters.AddWithValue("@PageStatus", page.PageStatus);
+                mergePageCommand.Parameters.AddWithValue("@ErrorMessage", (object?)page.ErrorMessage ?? DBNull.Value);
+                mergePageCommand.Parameters.AddWithValue("@CreatedAtUtc", page.CreatedAtUtc);
+                await mergePageCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
             await transaction.CommitAsync(cancellationToken);
@@ -186,6 +243,57 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    public async Task<CompletedPageSnapshot?> TryGetCompletedPageAsync(
+        string siteHost,
+        string version,
+        string requestedUrlKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) ||
+            string.IsNullOrWhiteSpace(siteHost) ||
+            string.IsNullOrWhiteSpace(version) ||
+            string.IsNullOrWhiteSpace(requestedUrlKey))
+        {
+            return null;
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT TOP (1)
+                p.RequestedUrl, p.FinalUrl, p.EntryFileRelativePath, p.FilesSaved
+            FROM dbo.CrawlPages p
+            INNER JOIN dbo.CrawlRuns r ON r.CrawlId = p.CrawlId
+            WHERE p.SiteHost = @SiteHost
+              AND p.Version = @Version
+              AND p.RequestedUrlKey = @RequestedUrlKey
+              AND p.PageStatus = N'completed'
+            ORDER BY r.CreatedAtUtc DESC, p.CreatedAtUtc DESC;
+            """;
+
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@SiteHost", siteHost);
+        command.Parameters.AddWithValue("@Version", version);
+        command.Parameters.AddWithValue("@RequestedUrlKey", requestedUrlKey);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new CompletedPageSnapshot
+        {
+            RequestedUrl = reader.GetString(reader.GetOrdinal("RequestedUrl")),
+            FinalUrl = reader.GetString(reader.GetOrdinal("FinalUrl")),
+            EntryFileRelativePath = reader.GetString(reader.GetOrdinal("EntryFileRelativePath")),
+            FilesSaved = reader.GetInt32(reader.GetOrdinal("FilesSaved"))
+        };
     }
 
     public async Task<CrawlStatusResult?> GetCrawlAsync(string crawlId, CancellationToken cancellationToken = default)
@@ -242,10 +350,20 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             return null;
         }
 
-        const string pagesSql = """
-            SELECT
-                CrawlId, QueueOrder, RequestedUrl, FinalUrl, FrontendPreviewPath,
-                EntryFileRelativePath, FilesSaved, CreatedAtUtc
+        // Dynamic columns for databases created before new CrawlPages columns.
+        var hasSiteHost = await ColumnExistsAsync(connection, "CrawlPages", "SiteHost", cancellationToken);
+        var hasUrlKey = await ColumnExistsAsync(connection, "CrawlPages", "RequestedUrlKey", cancellationToken);
+        var hasPageStatus = await ColumnExistsAsync(connection, "CrawlPages", "PageStatus", cancellationToken);
+        var hasErrorMsg = await ColumnExistsAsync(connection, "CrawlPages", "ErrorMessage", cancellationToken);
+
+        var listCols = "CrawlId, QueueOrder, RequestedUrl, FinalUrl, FrontendPreviewPath, EntryFileRelativePath, FilesSaved, CreatedAtUtc"
+            + (hasSiteHost ? ", SiteHost" : "")
+            + (hasUrlKey ? ", RequestedUrlKey" : "")
+            + (hasPageStatus ? ", PageStatus" : "")
+            + (hasErrorMsg ? ", ErrorMessage" : "");
+
+        var pagesSql = $"""
+            SELECT {listCols}
             FROM dbo.CrawlPages
             WHERE CrawlId = @CrawlId
             ORDER BY QueueOrder ASC;
@@ -256,17 +374,34 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
         {
             pagesCommand.Parameters.AddWithValue("@CrawlId", crawlId);
             await using var reader = await pagesCommand.ExecuteReaderAsync(cancellationToken);
+            var ordSite = hasSiteHost ? reader.GetOrdinal("SiteHost") : -1;
+            var ordKey = hasUrlKey ? reader.GetOrdinal("RequestedUrlKey") : -1;
+            var ordSt = hasPageStatus ? reader.GetOrdinal("PageStatus") : -1;
+            var ordErr = hasErrorMsg ? reader.GetOrdinal("ErrorMessage") : -1;
             while (await reader.ReadAsync(cancellationToken))
             {
+                var key = hasUrlKey && ordKey >= 0 && !reader.IsDBNull(ordKey)
+                    ? reader.GetString(ordKey)
+                    : reader.GetString(reader.GetOrdinal("RequestedUrl"));
+                var pStatus = hasPageStatus && ordSt >= 0 && !reader.IsDBNull(ordSt)
+                    ? reader.GetString(ordSt)
+                    : "completed";
+                var siteH = hasSiteHost && ordSite >= 0 && !reader.IsDBNull(ordSite) ? reader.GetString(ordSite) : crawl.SiteHost;
+                var err = hasErrorMsg && ordErr >= 0 && !reader.IsDBNull(ordErr) ? reader.GetString(ordErr) : null;
                 pages.Add(new CrawlPageRecord
                 {
                     CrawlId = reader.GetString(reader.GetOrdinal("CrawlId")),
+                    SiteHost = siteH,
+                    Version = crawl.Version,
                     QueueOrder = reader.GetInt32(reader.GetOrdinal("QueueOrder")),
                     RequestedUrl = reader.GetString(reader.GetOrdinal("RequestedUrl")),
+                    RequestedUrlKey = key,
                     FinalUrl = reader.GetString(reader.GetOrdinal("FinalUrl")),
                     FrontendPreviewPath = reader.GetString(reader.GetOrdinal("FrontendPreviewPath")),
                     EntryFileRelativePath = reader.GetString(reader.GetOrdinal("EntryFileRelativePath")),
                     FilesSaved = reader.GetInt32(reader.GetOrdinal("FilesSaved")),
+                    PageStatus = pStatus,
+                    ErrorMessage = err,
                     CreatedAtUtc = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("CreatedAtUtc"))
                 });
             }
@@ -277,5 +412,16 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             Crawl = crawl,
             Pages = pages
         };
+    }
+
+    private static async Task<bool> ColumnExistsAsync(
+        SqlConnection connection, string table, string column, CancellationToken cancellationToken)
+    {
+        const string q = "SELECT 1 FROM sys.columns c INNER JOIN sys.tables t ON t.object_id = c.object_id WHERE t.name = @T AND c.name = @C;";
+        await using var cmd = new SqlCommand(q, connection);
+        cmd.Parameters.AddWithValue("@T", table);
+        cmd.Parameters.AddWithValue("@C", column);
+        var o = await cmd.ExecuteScalarAsync(cancellationToken);
+        return o is not null;
     }
 }

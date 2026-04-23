@@ -11,4 +11,7 @@ public sealed class CrawlPageInfo
     public required string EntryFileRelativePath { get; init; }
 
     public int FilesSaved { get; init; }
+
+    /// <summary>completed | failed | skipped</summary>
+    public string PageStatus { get; init; } = "completed";
 }
