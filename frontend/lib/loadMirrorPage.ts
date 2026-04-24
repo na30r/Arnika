@@ -48,12 +48,13 @@ function rewriteSrcset(value: string, pathSegments: string[], pageFile: string):
 }
 
 export type LoadMirrorResult =
-  | { bodyHtml: string; rawPath: string; title: string }
+  | { headHtml: string; bodyHtml: string; rawPath: string; title: string }
   | { error: string; status: 404 | 400 | 500 };
 
 /**
- * Read mirrored HTML from public/mirror, resolve asset paths to /mirror/..., return body
+ * Read mirrored HTML from public/mirror, resolve asset paths to /mirror/..., return head + body
  * to embed under the app shell (no iframe, no document-wide <base>).
+ * Head is required so stylesheets and inline styles apply (body-only loses CSS).
  */
 export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMirrorResult> {
   if (pathSegments.length === 0) {
@@ -104,9 +105,7 @@ export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMi
   };
 
   $("script[src]").each((_, el) => setAttr(el as El, "src"));
-  $('link[rel="stylesheet"][href], link[rel="preload"][href], link[rel="modulepreload"][href]').each((_, el) =>
-    setAttr(el as El, "href")
-  );
+  $("link[href]").each((_, el) => setAttr(el as El, "href"));
   $("img[src], source[src], video[src], audio[src], track[src], embed[src], iframe[src]").each((_, el) =>
     setAttr(el as El, "src")
   );
@@ -121,8 +120,11 @@ export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMi
   });
 
   const title = $("title").first().text() || "Mirrored page";
+  $("head title").remove();
+  const head = $("head").first();
+  const headHtml = head.length > 0 ? head.html() ?? "" : "";
   const body = $("body").first();
   const bodyHtml = body.length > 0 ? body.html() ?? "" : $.html();
   const rawPath = `/mirror/${pathSegments.map(encodeURIComponent).join("/")}`;
-  return { bodyHtml, rawPath, title };
+  return { headHtml, bodyHtml, rawPath, title };
 }

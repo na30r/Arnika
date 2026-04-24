@@ -303,6 +303,18 @@ iframe {
   border-radius: 10px;
   padding: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.mirror-shtml-head {
+  flex-shrink: 0;
+  /* head fragment is for <link rel=stylesheet> and <style>; do not add padding */
+}
+
+.mirror-shtml-body {
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 820px) {

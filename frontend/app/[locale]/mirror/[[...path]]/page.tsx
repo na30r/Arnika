@@ -71,7 +71,12 @@ export default async function MirrorViewerPage({ params }: Props) {
           above if the page does not work fully here.
         </p>
       </div>
-      <div className="mirror-shtml-root" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.bodyHtml }} />
+      <div className="mirror-shtml-root" suppressHydrationWarning>
+        {result.headHtml ? (
+          <div className="mirror-shtml-head" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.headHtml }} />
+        ) : null}
+        <div className="mirror-shtml-body" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.bodyHtml }} />
+      </div>
     </main>
   );
 }
