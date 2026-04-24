@@ -6,9 +6,8 @@ import { hmacToken, timingSafeEqualStrings } from "./lib/sessionHmac";
 
 const locales = ["en", "fa"] as const;
 const defaultLocale = "en";
-type AppLocale = (typeof locales)[number];
 
-function isLocale(s: string): s is AppLocale {
+function isLocale(s: string): s is (typeof locales)[number] {
   return (locales as readonly string[]).includes(s);
 }
 
@@ -33,13 +32,6 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
   }
 }
 
-function loginUrl(request: NextRequest, locale: string) {
-  const u = new URL(`/${locale}/auth/login/`, request.url);
-  const returnTo = request.nextUrl.pathname + request.nextUrl.search;
-  u.searchParams.set("returnUrl", returnTo);
-  return u;
-}
-
 function isAuthPage(pathname: string) {
   return /\/auth\/(login|register)\/?$/.test(pathname);
 }
@@ -49,20 +41,16 @@ function firstLocaleFromPathname(pathname: string): string | null {
   return a && isLocale(a) ? a : null;
 }
 
+/**
+ * Locale prefixing only. No global auth redirect: all pages and `/mirror/...` static
+ * files are public; sign-in is optional (navbar + API still enforce for protected calls).
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/_next") || pathname.startsWith("/api")) {
     return NextResponse.next();
   }
-  // Other static assets (e.g. favicon at root) — not mirrored crawl files under `/mirror/`
   if (pathname.includes(".") && !pathname.startsWith("/mirror/") && pathname !== "/mirror") {
-    return NextResponse.next();
-  }
-
-  if (pathname === "/mirror" || pathname.startsWith("/mirror/")) {
-    if (!(await isAuthenticated(request))) {
-      return NextResponse.redirect(loginUrl(request, defaultLocale));
-    }
     return NextResponse.next();
   }
 
@@ -76,21 +64,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}/`, request.url));
   }
 
-  const locale = firstLocaleFromPathname(pathname) ?? defaultLocale;
-  if (isAuthPage(pathname)) {
-    if (await isAuthenticated(request)) {
-      const returnTo = request.nextUrl.searchParams.get("returnUrl");
-      if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-        return NextResponse.redirect(new URL(returnTo, request.url));
-      }
-      return NextResponse.redirect(new URL(`/${locale}/`, request.url));
+  if (isAuthPage(pathname) && (await isAuthenticated(request))) {
+    const locale = firstLocaleFromPathname(pathname) ?? defaultLocale;
+    const returnTo = request.nextUrl.searchParams.get("returnUrl");
+    if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+      return NextResponse.redirect(new URL(returnTo, request.url));
     }
-    return NextResponse.next();
+    return NextResponse.redirect(new URL(`/${locale}/`, request.url));
   }
 
-  if (!(await isAuthenticated(request))) {
-    return NextResponse.redirect(loginUrl(request, locale));
-  }
   return NextResponse.next();
 }
 
