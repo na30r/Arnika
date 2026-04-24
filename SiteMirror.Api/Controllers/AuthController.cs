@@ -71,6 +71,11 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
+        if (TryDevBypassLogin(request, out var dev))
+        {
+            return Ok(dev);
+        }
+
         await _users.EnsureUserSchemaAsync(cancellationToken);
         var user = await _users.GetByUserNameAsync(request.UserName, cancellationToken);
         if (user is null)
@@ -103,6 +108,18 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
         }
 
+        if (DevAuthHelper.IsDevUserId(_authSettings, id))
+        {
+            var a = _authSettings.Value;
+            return Ok(new UserProfileResponse
+            {
+                UserId = id,
+                UserName = a.DevBypassUserName,
+                PhoneNumber = null,
+                SubscriptionEndDateUtc = DateTimeOffset.UtcNow.AddYears(10)
+            });
+        }
+
         var user = await _users.GetByIdAsync(id, cancellationToken);
         if (user is null)
         {
@@ -129,6 +146,11 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
         }
 
+        if (DevAuthHelper.IsDevUserId(_authSettings, id))
+        {
+            return Ok(Array.Empty<MirrorHistoryItem>());
+        }
+
         var list = await _crawls.GetMirrorHistoryForUserAsync(id, take, cancellationToken);
         return Ok(list);
     }
@@ -142,4 +164,40 @@ public sealed class AuthController : ControllerBase
             PhoneNumber = user.PhoneNumber,
             SubscriptionEndDateUtc = user.SubscriptionEndDateUtc
         };
+
+    private bool TryDevBypassLogin(LoginRequest request, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out AuthResponse? response)
+    {
+        response = null;
+        var a = _authSettings.Value;
+        if (!a.DevBypassEnabled)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return false;
+        }
+
+        if (!string.Equals(request.UserName.Trim(), a.DevBypassUserName, StringComparison.Ordinal)
+            || !string.Equals(request.Password, a.DevBypassPassword, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!Guid.TryParse(a.DevBypassUserId, out var id))
+        {
+            return false;
+        }
+
+        response = new AuthResponse
+        {
+            Token = _jwt.CreateToken(id, a.DevBypassUserName),
+            UserId = id,
+            UserName = a.DevBypassUserName,
+            PhoneNumber = null,
+            SubscriptionEndDateUtc = DateTimeOffset.UtcNow.AddYears(10)
+        };
+        return true;
+    }
 }

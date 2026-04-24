@@ -3,8 +3,9 @@ export const SESSION_COOKIE = "sitemirror_session";
 
 export const PUBLIC_SIG_COOKIE = "sitemirror_token_sig";
 
-/** When unset, use the same defaults as SiteMirror.Api `AuthSettings` for local dev. */
-export const jwtSecret = () => process.env.JWT_SECRET ?? "ChangeThisInProduction_UseLongRandomString_AtLeast32Chars!!";
+/** When unset, use the same default as `SiteMirror.Api` appsettings.json `Auth:JwtSecret`. */
+export const jwtSecret = () =>
+  process.env.JWT_SECRET ?? "ChangeThisInProduction_UseALongRandomSecretStringAtLeast32";
 export const jwtIssuer = () => process.env.JWT_ISSUER ?? "SiteMirror.Api";
 export const jwtAudience = () => process.env.JWT_AUDIENCE ?? "SiteMirror.Clients";
 
