@@ -3,6 +3,16 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   trailingSlash: true,
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/mirror/:path*",
+          destination: "/mirror-static/:path*"
+        }
+      ]
+    };
+  },
   async redirects() {
     return [
       { source: "/en/login", destination: "/en/auth/login/", permanent: true },

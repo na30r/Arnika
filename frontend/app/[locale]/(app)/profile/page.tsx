@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { authHeaders, getToken, getStoredUser, type UserPayload } from "../../../../lib/auth";
+import { useSession } from "../../../../components/SessionContext";
+import { authHeaders, getToken, type UserPayload } from "../../../../lib/auth";
 import { localePath } from "../../../../lib/appPath";
 import { type Locale, t } from "../../../../lib/i18n";
 
@@ -21,14 +22,11 @@ type HistoryRow = {
 export default function ProfilePage() {
   const params = useParams();
   const locale = (params?.locale as Locale) || "en";
-  const [user, setUser] = useState<UserPayload | null>(null);
+  const { user } = useSession();
   const [remote, setRemote] = useState<UserPayload | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, []);
+  const [asOf] = useState(() => Date.now());
 
   useEffect(() => {
     if (!getToken()) {
@@ -78,7 +76,7 @@ export default function ProfilePage() {
   }
 
   const end = display.subscriptionEndDateUtc ? new Date(display.subscriptionEndDateUtc) : null;
-  const active = !end || end.getTime() > Date.now();
+  const active = !end || end.getTime() > asOf;
 
   return (
     <main className="page narrow">

@@ -54,7 +54,7 @@ export default function LoginPage() {
         phoneNumber: data.phoneNumber ?? null,
         subscriptionEndDateUtc: data.subscriptionEndDateUtc ?? null
       };
-      saveSession(data.token, user);
+      await saveSession(data.token, user);
       window.location.assign(localePath(locale, ""));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error.");

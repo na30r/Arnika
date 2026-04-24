@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authHeaderForBackend, getAuthFromRequest } from "@/lib/authFromRequest";
 
 const backend = () => process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (!auth) {
+  const authz = await getAuthFromRequest(request);
+  if (!authz) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const q = request.nextUrl.search;
   const res = await fetch(`${new URL("/api/auth/mirror-history", backend()).toString()}${q}`, {
-    headers: { Authorization: auth },
+    headers: { ...authHeaderForBackend(authz.token) },
     cache: "no-store"
   });
   const data = await res.json().catch(() => ({}));
