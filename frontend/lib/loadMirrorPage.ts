@@ -4,7 +4,22 @@ import { load } from "cheerio";
 
 const ORIGIN = "https://__mirror.app";
 
-function resolveAttr(value: string, pathSegments: string[], pageFile: string): string {
+/** e.g. nextjs.org/16.2.5/... -> prefix "nextjs.org%2F16.2.5" for /_next/... -> /mirror/host/ver/_next/... */
+function getSitePrefixPath(pathSegments: string[]): string {
+  if (pathSegments.length >= 2) {
+    return [pathSegments[0]!, pathSegments[1]!].map(encodeURIComponent).join("/");
+  }
+  if (pathSegments.length === 1) {
+    return encodeURIComponent(pathSegments[0]!);
+  }
+  return "";
+}
+
+/**
+ * Map root-absolute paths from the mirrored page (/_next/..., /_localized/...) to
+ * /mirror/{host}/{version}/... under public/mirror.
+ */
+function resolveAttr(value: string, pathSegments: string[]): string {
   const t = value.trim();
   if (!t) {
     return t;
@@ -18,11 +33,22 @@ function resolveAttr(value: string, pathSegments: string[], pageFile: string): s
   if (t.startsWith("//")) {
     return t;
   }
+
   if (t.startsWith("/")) {
     if (t === "/mirror" || t.startsWith("/mirror/")) {
       return t;
     }
-    return "/mirror" + t;
+    const sitePrefix = getSitePrefixPath(pathSegments);
+    if (!sitePrefix) {
+      return t;
+    }
+    const hashIndex = t.indexOf("#");
+    const beforeHash = hashIndex >= 0 ? t.slice(0, hashIndex) : t;
+    const hash = hashIndex >= 0 ? t.slice(hashIndex) : "";
+    const qIndex = beforeHash.indexOf("?");
+    const pathAndQuery = qIndex >= 0 ? beforeHash.slice(0, qIndex) : beforeHash;
+    const query = qIndex >= 0 ? beforeHash.slice(qIndex) : "";
+    return `/mirror/${sitePrefix}${pathAndQuery}${query}${hash}`;
   }
 
   const dirPath = "/mirror/" + pathSegments.slice(0, -1).map(encodeURIComponent).join("/") + "/";
@@ -33,29 +59,30 @@ function resolveAttr(value: string, pathSegments: string[], pageFile: string): s
   return t;
 }
 
-function rewriteSrcset(value: string, pathSegments: string[], pageFile: string): string {
+function rewriteSrcset(value: string, pathSegments: string[]): string {
   return value
     .split(",")
     .map((part) => {
       const s = part.trim();
       const i = s.search(/\s/);
       if (i < 0) {
-        return resolveAttr(s, pathSegments, pageFile);
+        return resolveAttr(s, pathSegments);
       }
-      return resolveAttr(s.slice(0, i), pathSegments, pageFile) + s.slice(i);
+      return resolveAttr(s.slice(0, i), pathSegments) + s.slice(i);
     })
     .join(", ");
+}
+
+function rewriteInlineCssUrls(css: string, pathSegments: string[]): string {
+  return css.replace(/url\(\s*(['"]?)(\/[^'")]+)\1\s*\)/gi, (_m, _q, path) => {
+    return `url(${_q as string}${resolveAttr(path as string, pathSegments)}${(_q as string) || ""})`;
+  });
 }
 
 export type LoadMirrorResult =
   | { headHtml: string; bodyHtml: string; rawPath: string; title: string }
   | { error: string; status: 404 | 400 | 500 };
 
-/**
- * Read mirrored HTML from public/mirror, resolve asset paths to /mirror/..., return head + body
- * to embed under the app shell (no iframe, no document-wide <base>).
- * Head is required so stylesheets and inline styles apply (body-only loses CSS).
- */
 export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMirrorResult> {
   if (pathSegments.length === 0) {
     return { error: "No path", status: 400 };
@@ -91,7 +118,6 @@ export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMi
   }
 
   const $ = load(file);
-  const pageFile = fileName;
   $("base").remove();
 
   type El = { attribs?: Record<string, string> };
@@ -100,7 +126,7 @@ export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMi
     const v = el.attribs?.[name];
     if (v) {
       el.attribs ??= {};
-      el.attribs[name] = resolveAttr(v, pathSegments, pageFile);
+      el.attribs[name] = resolveAttr(v, pathSegments);
     }
   };
 
@@ -112,15 +138,30 @@ export async function loadMirrorPageHtml(pathSegments: string[]): Promise<LoadMi
   $("form[action]").each((_, el) => setAttr(el as El, "action"));
   $("a[href]").each((_, el) => setAttr(el as El, "href"));
 
+  $("style").each((_, el) => {
+    const h = $(el).html();
+    if (h) {
+      $(el).html(rewriteInlineCssUrls(h, pathSegments));
+    }
+  });
+
+  $("[style]").each((_, el) => {
+    const a = (el as El).attribs;
+    if (a?.style) {
+      a.style = rewriteInlineCssUrls(a.style, pathSegments);
+    }
+  });
+
   $('img[srcset], source[srcset]').each((_, el) => {
     const a = (el as El).attribs;
     if (a?.srcset) {
-      a.srcset = rewriteSrcset(a.srcset, pathSegments, pageFile);
+      a.srcset = rewriteSrcset(a.srcset, pathSegments);
     }
   });
 
   const title = $("title").first().text() || "Mirrored page";
   $("head title").remove();
+  $("head script").remove();
   const head = $("head").first();
   const headHtml = head.length > 0 ? head.html() ?? "" : "";
   const body = $("body").first();

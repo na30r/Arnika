@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MirrorHeadInjector } from "../../../../components/MirrorHeadInjector";
 import { loadMirrorPageHtml } from "../../../../lib/loadMirrorPage";
 import { locales, type Locale } from "../../../../lib/i18n";
 
@@ -8,10 +9,8 @@ type Props = {
 };
 
 /**
- * Renders mirrored HTML inside the app shell (navbar) without an iframe: the file is
- * read from public/mirror, asset URLs are rewritten to /mirror/..., and the body is injected.
- * Note: inline & external scripts in the fragment do not re-execute; use "Open full page" for
- * a fully dynamic mirror.
+ * Mirrored HTML under app shell: styles/scripts in <head> are injected into document.head
+ * via MirrorHeadInjector so stylesheets load; body is rendered below the toolbar.
  */
 export default async function MirrorViewerPage({ params }: Props) {
   const { locale: raw, path } = await params;
@@ -61,22 +60,18 @@ export default async function MirrorViewerPage({ params }: Props) {
 
   return (
     <main className="page mirror-app-viewer">
+      {result.headHtml ? <MirrorHeadInjector headHtml={result.headHtml} /> : null}
       <div className="mirror-shell-toolbar card">
         <h2 className="mirror-shell-title">{result.title}</h2>
         <a className="btn-ghost" href={result.rawPath} target="_blank" rel="noreferrer">
           Open full page in new tab
         </a>
         <p className="muted small-note mirror-shell-note">
-          In-app view loads styles and most assets; some mirrors rely on full-page JavaScript. Use the link
-          above if the page does not work fully here.
+          Styles are loaded from the mirroring folder. If layout still looks wrong, the site may need its
+          JavaScript; use the link above.
         </p>
       </div>
-      <div className="mirror-shtml-root" suppressHydrationWarning>
-        {result.headHtml ? (
-          <div className="mirror-shtml-head" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.headHtml }} />
-        ) : null}
-        <div className="mirror-shtml-body" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.bodyHtml }} />
-      </div>
+      <div className="mirror-shtml-root" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.bodyHtml }} />
     </main>
   );
 }
