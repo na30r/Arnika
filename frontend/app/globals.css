@@ -265,6 +265,22 @@ iframe {
   background: #fff;
 }
 
+/* Full-width layout for /[locale]/mirror/... (shell around static /mirror/*) */
+.mirror-app-viewer {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 1rem 2rem;
+}
+
+.mirror-embed-card {
+  max-width: 100%;
+}
+
+.mirror-embed-frame {
+  min-height: 85vh;
+}
+
 @media (max-width: 820px) {
   .row {
     flex-direction: column;
