@@ -102,9 +102,10 @@ export default function HomePage() {
       });
 
       const text = await response.text();
-      let payload: (MirrorResponse & { message?: string; hint?: string }) | null = null;
+      type ApiPayload = MirrorResponse & { message?: string; hint?: string };
+      let payload: ApiPayload | null = null;
       try {
-        payload = text ? (JSON.parse(text) as typeof payload) : null;
+        payload = text ? (JSON.parse(text) as ApiPayload) : null;
       } catch {
         throw new Error(`Mirror API error (${response.status}). ${text.slice(0, 200)}`);
       }

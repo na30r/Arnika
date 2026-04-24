@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { loadMirrorPageHtml } from "../../../../lib/loadMirrorPage";
 import { locales, type Locale } from "../../../../lib/i18n";
 
 type Props = {
@@ -6,41 +8,70 @@ type Props = {
 };
 
 /**
- * Wraps static files under /public/mirror in the app layout (navbar, etc.).
- * Visiting /mirror/... is redirected by middleware to /[locale]/mirror/...
+ * Renders mirrored HTML inside the app shell (navbar) without an iframe: the file is
+ * read from public/mirror, asset URLs are rewritten to /mirror/..., and the body is injected.
+ * Note: inline & external scripts in the fragment do not re-execute; use "Open full page" for
+ * a fully dynamic mirror.
  */
 export default async function MirrorViewerPage({ params }: Props) {
   const { locale: raw, path } = await params;
   if (!locales.includes(raw as Locale)) {
     notFound();
   }
-  const locale = (raw as Locale) || defaultLocale;
+  const locale = raw as Locale;
 
   if (!path || path.length === 0) {
     return (
       <main className="page narrow">
         <section className="card controls">
           <h1>Mirrored content</h1>
-          <p className="muted">No file path in the URL. Start a mirror from the home page or open a path like /{locale}/mirror/nextjs.org/16.2.5/_localized/en/docs.html</p>
+          <p className="muted">
+            Add a path after <code>/{locale}/mirror/</code>, e.g.{" "}
+            <code>nextjs.org/16.2.5/_localized/en/docs.html</code>
+          </p>
         </section>
       </main>
     );
   }
 
-  const inner = path.map(encodeURIComponent).join("/");
-  const src = `/mirror/${inner}`;
+  const result = await loadMirrorPageHtml(path);
+
+  if ("error" in result) {
+    if (result.status === 404) {
+      notFound();
+    }
+    return (
+      <main className="page narrow">
+        <section className="card controls">
+          <h1>Cannot show this file</h1>
+          <p className="error">{result.error}</p>
+          <p className="muted">
+            Raw URL:{" "}
+            <a href={"/mirror/" + path.map(encodeURIComponent).join("/")} target="_blank" rel="noreferrer">
+              /mirror/…
+            </a>
+          </p>
+          <p>
+            <Link href={`/${locale}/`}>Home</Link>
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="page mirror-app-viewer">
-      <section className="card viewer mirror-embed-card">
-        <div className="viewer-header">
-          <h2>Mirrored page</h2>
-          <a href={src} target="_blank" rel="noreferrer">
-            Open raw file in new tab
-          </a>
-        </div>
-        <iframe className="mirror-embed-frame" src={src} title="Mirrored documentation" />
-      </section>
+      <div className="mirror-shell-toolbar card">
+        <h2 className="mirror-shell-title">{result.title}</h2>
+        <a className="btn-ghost" href={result.rawPath} target="_blank" rel="noreferrer">
+          Open full page in new tab
+        </a>
+        <p className="muted small-note mirror-shell-note">
+          In-app view loads styles and most assets; some mirrors rely on full-page JavaScript. Use the link
+          above if the page does not work fully here.
+        </p>
+      </div>
+      <div className="mirror-shtml-root" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: result.bodyHtml }} />
     </main>
   );
 }

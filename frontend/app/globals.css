@@ -281,6 +281,30 @@ iframe {
   min-height: 85vh;
 }
 
+.mirror-shell-toolbar {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.mirror-shell-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.mirror-shell-note {
+  margin: 0.5rem 0 0;
+  max-width: 52rem;
+}
+
+.mirror-shtml-root {
+  min-height: 60vh;
+  background: #fff;
+  border: 1px solid #d5dbe5;
+  border-radius: 10px;
+  padding: 0;
+  overflow: auto;
+}
+
 @media (max-width: 820px) {
   .row {
     flex-direction: column;
