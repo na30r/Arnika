@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
 using SiteMirror.Api.Services;
@@ -11,7 +12,8 @@ namespace SiteMirror.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class MirrorController(
     ISiteMirrorService mirrorService,
-    IUserRepository userRepository) : ControllerBase
+    IUserRepository userRepository,
+    IOptions<AuthSettings> authSettings) : ControllerBase
 {
     [HttpPost]
     [Authorize(AuthenticationSchemes = "Bearer")]
@@ -29,12 +31,14 @@ public sealed class MirrorController(
             }
 
             var user = await userRepository.GetByIdAsync(userId, cancellationToken);
-            if (user is null)
+            if (user is null && !DevAuthHelper.IsDevUserId(authSettings, userId))
             {
                 return Unauthorized(new { message = "User not found." });
             }
 
-            if (user.SubscriptionEndDateUtc.HasValue && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
+            if (user is not null
+                && user.SubscriptionEndDateUtc.HasValue
+                && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
             {
                 return StatusCode(402, new
                 {

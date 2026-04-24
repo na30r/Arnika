@@ -29,6 +29,8 @@ type MirrorResponse = {
   skippedPages?: number;
 };
 
+type MirrorJson = MirrorResponse & { message?: string; hint?: string };
+
 const defaultTarget = "https://nextjs.org/docs";
 
 export default function HomePage() {
@@ -102,9 +104,9 @@ export default function HomePage() {
       });
 
       const text = await response.text();
-      let payload: (MirrorResponse & { message?: string; hint?: string }) | null = null;
+      let payload: MirrorJson | null = null;
       try {
-        payload = text ? (JSON.parse(text) as typeof payload) : null;
+        payload = text ? (JSON.parse(text) as MirrorJson) : null;
       } catch {
         throw new Error(`Mirror API error (${response.status}). ${text.slice(0, 200)}`);
       }

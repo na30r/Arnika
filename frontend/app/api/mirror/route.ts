@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authHeaderForBackend, getAuthFromRequest } from "@/lib/authFromRequest";
 
 type MirrorRequestBody = {
   url?: string;
@@ -35,8 +36,8 @@ export async function POST(request: NextRequest) {
 
   const backendBaseUrl = process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
   const backendUrl = new URL("/api/mirror", backendBaseUrl).toString();
-  const auth = request.headers.get("authorization");
-  if (!auth || !auth.startsWith("Bearer ")) {
+  const authz = await getAuthFromRequest(request);
+  if (!authz) {
     return NextResponse.json(
       { message: "Sign in is required. Send Authorization: Bearer <token> from the app after login." },
       { status: 401 }
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: auth
+      ...authHeaderForBackend(authz.token)
     },
     body: JSON.stringify(payload),
     cache: "no-store"

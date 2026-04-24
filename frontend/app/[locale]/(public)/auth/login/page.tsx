@@ -54,7 +54,7 @@ export default function LoginPage() {
         phoneNumber: data.phoneNumber ?? null,
         subscriptionEndDateUtc: data.subscriptionEndDateUtc ?? null
       };
-      saveSession(data.token, user);
+      await saveSession(data.token, user);
       window.location.assign(localePath(locale, ""));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error.");
@@ -72,6 +72,12 @@ export default function LoginPage() {
       </p>
       <section className="card controls">
         <h1>{t("auth.loginTitle", locale)}</h1>
+        {process.env.NODE_ENV === "development" && (
+          <p className="muted small-note">
+            Local dev API: use username <code>dev</code> and password <code>dev</code> when dev bypass is enabled
+            (see <code>SiteMirror.Api/appsettings.Development.json</code>).
+          </p>
+        )}
         <form className="form" onSubmit={onSubmit}>
           <label htmlFor="u">{t("auth.username", locale)}</label>
           <input id="u" value={userName} onChange={(e) => setUserName(e.target.value)} required autoComplete="username" />

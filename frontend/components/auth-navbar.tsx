@@ -2,27 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { localePath } from "../lib/appPath";
-import { type Locale, t, locales } from "../lib/i18n";
-import { clearSession, getStoredUser } from "../lib/auth";
-import { useEffect, useState } from "react";
+import { useSession } from "@/components/SessionContext";
+import { localePath } from "@/lib/appPath";
+import { type Locale, t, locales } from "@/lib/i18n";
+import { clearSession } from "@/lib/auth";
 
 type Props = {
   locale: Locale;
 };
 
-export function Navbar({ locale }: Props) {
+export function AuthNavbar({ locale }: Props) {
   const pathname = usePathname();
-  const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, [pathname]);
+  const { user, setUser } = useSession();
 
   function switchLocale(next: Locale) {
     const segments = pathname.split("/").filter(Boolean);
     if (segments.length === 0) {
-      window.location.href = `/${next}`;
+      window.location.href = `/${next}/`;
       return;
     }
     if (locales.includes(segments[0] as Locale)) {
@@ -30,11 +26,12 @@ export function Navbar({ locale }: Props) {
     } else {
       segments.unshift(next);
     }
-    window.location.href = `/${segments.join("/")}`;
+    const path = segments.join("/");
+    window.location.href = path ? `/${path}/` : `/${next}/`;
   }
 
-  function signOut() {
-    clearSession();
+  async function signOut() {
+    await clearSession();
     setUser(null);
     window.location.href = localePath(locale, "");
   }
@@ -68,7 +65,7 @@ export function Navbar({ locale }: Props) {
           {user ? (
             <>
               <span className="nav-user">{user.userName}</span>
-              <button type="button" className="btn-ghost" onClick={signOut}>
+              <button type="button" className="btn-ghost" onClick={() => void signOut()}>
                 {t("nav.signOut", locale)}
               </button>
             </>
