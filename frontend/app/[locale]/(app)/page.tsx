@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useParams } from "next/navigation";
-import { authHeaders, getToken } from "../../../lib/auth";
+import { authHeaders } from "../../../lib/auth";
 import { type Locale, t } from "../../../lib/i18n";
 
 type MirrorResponse = {
@@ -65,10 +65,6 @@ export default function HomePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!getToken()) {
-      setError(t("error.signIn", locale));
-      return;
-    }
     setIsLoading(true);
     setError(null);
 
@@ -109,9 +105,6 @@ export default function HomePage() {
         throw new Error(`Mirror API error (${response.status}). ${text.slice(0, 200)}`);
       }
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(t("error.signIn", locale));
-        }
         throw new Error(payload?.message ?? `Mirror request failed (${response.status}).`);
       }
       if (!payload) {

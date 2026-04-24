@@ -13,8 +13,8 @@ const strings: Dict = {
   "nav.lang": { en: "Language", fa: "زبان" },
   "home.title": { en: "Documentation mirror", fa: "آینه اسناد" },
   "home.subtitle": {
-    en: "Crawl a documentation page and optional first-level links, then preview locally.",
-    fa: "یک صفحه مستندات و در صورت نیاز لینک‌های سطح اول را بگیرد و به‌صورت محلی نمایش دهید."
+    en: "Crawl and preview docs without signing in. Sign in is optional and saves your personal history.",
+    fa: "می‌توانید بدون ورود آینه بگیرید و پیش‌نمایش ببینید؛ ورود اختیاری است و تاریخچه شخصی شما را ذخیره می‌کند."
   },
   "form.url": { en: "Documentation page URL", fa: "آدرس URL صفحه مستندات" },
   "form.version": { en: "Version", fa: "نسخه" },
@@ -46,9 +46,10 @@ const strings: Dict = {
   "profile.noSubscription": { en: "Not set", fa: "تعریف نشده" },
   "profile.active": { en: "Active", fa: "فعال" },
   "profile.expired": { en: "Expired", fa: "منقضی" },
-  "profile.history": { en: "Mirror history", fa: "تاریخچه آینه" },
-  "profile.empty": { en: "No saved crawls yet.", fa: "هنوز رکوردی نیست." },
-  "error.signIn": { en: "Sign in required to mirror. Use Sign in in the bar above.", fa: "برای آینه باید وارد شوید." }
+  "profile.history": { en: "Your saved mirror history", fa: "تاریخچه ذخیره‌شده شما" },
+  "profile.empty": { en: "No saved crawls yet. Run a mirror while signed in to save history.", fa: "هنوز تاریخچه‌ای ذخیره نشده است. هنگام ورود آینه بگیرید تا ذخیره شود." },
+  "profile.guestHint": { en: "Browsing and mirroring are available without an account.", fa: "مرور و آینه گرفتن بدون حساب هم در دسترس است." },
+  "error.signIn": { en: "Sign in to view your profile and saved history.", fa: "برای دیدن پروفایل و تاریخچه ذخیره‌شده وارد شوید." }
 };
 
 export function t(key: string, locale: Locale): string {

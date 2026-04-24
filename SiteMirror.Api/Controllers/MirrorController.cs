@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
@@ -14,7 +13,6 @@ public sealed class MirrorController(
     IUserRepository userRepository) : ControllerBase
 {
     [HttpPost]
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [ProducesResponseType(typeof(MirrorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -23,24 +21,37 @@ public sealed class MirrorController(
     {
         try
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            Guid? userId = null;
+            var hasAuthHeader = !string.IsNullOrWhiteSpace(Request.Headers.Authorization);
+            if (hasAuthHeader)
             {
-                return Unauthorized(new { message = "Sign in is required to mirror; include a valid Bearer token." });
-            }
-
-            var user = await userRepository.GetByIdAsync(userId, cancellationToken);
-            if (user is null)
-            {
-                return Unauthorized(new { message = "User not found." });
-            }
-
-            if (user.SubscriptionEndDateUtc.HasValue && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
-            {
-                return StatusCode(402, new
+                if (User.Identity?.IsAuthenticated != true)
                 {
-                    message = "Subscription has expired. Renew to run mirrors.",
-                    subscriptionEndDateUtc = user.SubscriptionEndDateUtc
-                });
+                    return Unauthorized(new { message = "Invalid or expired Bearer token." });
+                }
+
+                var userClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userClaim) || !Guid.TryParse(userClaim, out var parsedUserId))
+                {
+                    return Unauthorized(new { message = "Invalid token payload." });
+                }
+
+                var user = await userRepository.GetByIdAsync(parsedUserId, cancellationToken);
+                if (user is null)
+                {
+                    return Unauthorized(new { message = "User not found." });
+                }
+
+                if (user.SubscriptionEndDateUtc.HasValue && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
+                {
+                    return StatusCode(402, new
+                    {
+                        message = "Subscription has expired. Renew to run mirrors.",
+                        subscriptionEndDateUtc = user.SubscriptionEndDateUtc
+                    });
+                }
+
+                userId = parsedUserId;
             }
 
             var result = await mirrorService.MirrorAsync(request, userId, cancellationToken);

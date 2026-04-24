@@ -21,14 +21,10 @@ type HistoryRow = {
 export default function ProfilePage() {
   const params = useParams();
   const locale = (params?.locale as Locale) || "en";
-  const [user, setUser] = useState<UserPayload | null>(null);
+  const [user] = useState<UserPayload | null>(() => getStoredUser());
   const [remote, setRemote] = useState<UserPayload | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, []);
 
   useEffect(() => {
     if (!getToken()) {
@@ -69,6 +65,7 @@ export default function ProfilePage() {
       <main className="page narrow">
         <section className="card controls">
           <p className="muted">{t("error.signIn", locale)}</p>
+          <p className="muted small-note">{t("profile.guestHint", locale)}</p>
           <p>
             <Link href={localePath(locale, "auth/login")}>{t("nav.signIn", locale)}</Link>
           </p>
@@ -78,7 +75,6 @@ export default function ProfilePage() {
   }
 
   const end = display.subscriptionEndDateUtc ? new Date(display.subscriptionEndDateUtc) : null;
-  const active = !end || end.getTime() > Date.now();
 
   return (
     <main className="page narrow">
@@ -92,8 +88,7 @@ export default function ProfilePage() {
           <dd>{display.phoneNumber || "—"}</dd>
           <dt>{t("profile.subscription", locale)}</dt>
           <dd>
-            {end ? end.toLocaleString() : t("profile.noSubscription", locale)}{" "}
-            {end ? (active ? `(${t("profile.active", locale)})` : `(${t("profile.expired", locale)})`) : null}
+            {end ? end.toLocaleString() : t("profile.noSubscription", locale)}
           </dd>
         </dl>
         <p className="muted small-note">Password is not shown for security.</p>
