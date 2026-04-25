@@ -565,6 +565,13 @@ public sealed class MirrorService : ISiteMirrorService
         {
             Fragment = string.Empty
         };
+        var normalizedPath = builder.Path;
+        if (normalizedPath.Length > 1 && normalizedPath.EndsWith('/', StringComparison.Ordinal))
+        {
+            normalizedPath = normalizedPath.TrimEnd('/');
+        }
+
+        builder.Path = normalizedPath;
         return builder.Uri.ToString();
     }
 
