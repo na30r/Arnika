@@ -4,8 +4,20 @@ import type { NextRequest } from "next/server";
 const locales = ["en", "fa"];
 const defaultLocale = "en";
 
+function isMirrorHtmlPath(pathname: string): boolean {
+  return /^\/mirror\/.+\.html\/?$/i.test(pathname);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (isMirrorHtmlPath(pathname)) {
+    const normalizedMirrorPath = pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+    const rewritten = request.nextUrl.clone();
+    rewritten.pathname = `/api/mirror-page${normalizedMirrorPath}`;
+    rewritten.search = "";
+    return NextResponse.rewrite(rewritten);
+  }
+
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||

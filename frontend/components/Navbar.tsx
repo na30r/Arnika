@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { localePath } from "../lib/appPath";
 import { type Locale, t, locales } from "../lib/i18n";
 import { clearSession, getStoredUser } from "../lib/auth";
-import { useEffect, useState } from "react";
 
 type Props = {
   locale: Locale;
@@ -13,11 +12,7 @@ type Props = {
 
 export function Navbar({ locale }: Props) {
   const pathname = usePathname();
-  const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, [pathname]);
+  const user = getStoredUser();
 
   function switchLocale(next: Locale) {
     const segments = pathname.split("/").filter(Boolean);
@@ -35,7 +30,6 @@ export function Navbar({ locale }: Props) {
 
   function signOut() {
     clearSession();
-    setUser(null);
     window.location.href = localePath(locale, "");
   }
 

@@ -36,6 +36,16 @@
   }
   const { host, basePrefix, contentPrefix } = mirrorContext;
   const normalizedHost = host.toLowerCase();
+  const localeFromPath = (() => {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const localizedIdx = parts.indexOf("_localized");
+    if (localizedIdx >= 0 && parts[localizedIdx + 1]) {
+      return parts[localizedIdx + 1].toLowerCase();
+    }
+    return "en";
+  })();
+  const authStorageTokenKey = "sitemirror_jwt";
+  const authStorageUserKey = "sitemirror_user";
 
   function getRemoteFallbackUrl(value) {
     if (!value || typeof value !== "string") {
@@ -102,6 +112,140 @@
       !value.startsWith("//") &&
       !value.startsWith("/mirror/") &&
       !value.startsWith("/_site-mirror");
+  }
+
+  function getStoredUser() {
+    try {
+      const raw = window.localStorage.getItem(authStorageUserKey);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function getToken() {
+    return window.localStorage.getItem(authStorageTokenKey);
+  }
+
+  function localePath(route) {
+    const clean = String(route || "").replace(/^\/+|\/+$/g, "");
+    return clean ? `/${localeFromPath}/${clean}/` : `/${localeFromPath}/`;
+  }
+
+  function injectAuthNavbar() {
+    if (document.querySelector("[data-site-mirror-auth-nav='1']")) {
+      return;
+    }
+
+    const nav = document.createElement("div");
+    nav.setAttribute("data-site-mirror-auth-nav", "1");
+    nav.style.position = "sticky";
+    nav.style.top = "0";
+    nav.style.zIndex = "2147483640";
+    nav.style.background = "#ffffff";
+    nav.style.borderBottom = "1px solid #e5e7eb";
+    nav.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+    nav.style.padding = "10px 14px";
+    nav.style.fontFamily = "Inter, Arial, sans-serif";
+    nav.style.fontSize = "14px";
+
+    const inner = document.createElement("div");
+    inner.style.maxWidth = "1280px";
+    inner.style.margin = "0 auto";
+    inner.style.display = "flex";
+    inner.style.gap = "10px";
+    inner.style.flexWrap = "wrap";
+    inner.style.alignItems = "center";
+    inner.style.justifyContent = "space-between";
+
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.alignItems = "center";
+    left.style.gap = "10px";
+
+    const brand = document.createElement("a");
+    brand.href = localePath("");
+    brand.textContent = "Web Mirror";
+    brand.style.fontWeight = "700";
+    brand.style.color = "#1f2937";
+    brand.style.textDecoration = "none";
+    left.appendChild(brand);
+
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.alignItems = "center";
+    right.style.gap = "8px";
+    right.style.flexWrap = "wrap";
+
+    const linkHome = document.createElement("a");
+    linkHome.href = localePath("");
+    linkHome.textContent = "Home";
+    linkHome.style.color = "#2563eb";
+    linkHome.style.textDecoration = "none";
+    right.appendChild(linkHome);
+
+    const linkProfile = document.createElement("a");
+    linkProfile.href = localePath("profile");
+    linkProfile.textContent = "View history";
+    linkProfile.style.color = "#2563eb";
+    linkProfile.style.textDecoration = "none";
+    right.appendChild(linkProfile);
+
+    const user = getStoredUser();
+    const token = getToken();
+    if (user && token) {
+      const userText = document.createElement("span");
+      userText.textContent = user.userName ? `Signed in: ${user.userName}` : "Signed in";
+      userText.style.color = "#4b5563";
+      right.appendChild(userText);
+
+      const signOut = document.createElement("button");
+      signOut.type = "button";
+      signOut.textContent = "Sign out";
+      signOut.style.border = "1px solid #d1d5db";
+      signOut.style.background = "#ffffff";
+      signOut.style.borderRadius = "6px";
+      signOut.style.padding = "4px 10px";
+      signOut.style.cursor = "pointer";
+      signOut.addEventListener("click", () => {
+        window.localStorage.removeItem(authStorageTokenKey);
+        window.localStorage.removeItem(authStorageUserKey);
+        window.location.href = localePath("");
+      });
+      right.appendChild(signOut);
+    } else {
+      const signIn = document.createElement("a");
+      signIn.href = localePath("auth/login");
+      signIn.textContent = "Sign in";
+      signIn.style.border = "1px solid #d1d5db";
+      signIn.style.background = "#ffffff";
+      signIn.style.borderRadius = "6px";
+      signIn.style.padding = "4px 10px";
+      signIn.style.color = "#111827";
+      signIn.style.textDecoration = "none";
+      right.appendChild(signIn);
+
+      const signUp = document.createElement("a");
+      signUp.href = localePath("auth/register");
+      signUp.textContent = "Sign up";
+      signUp.style.border = "1px solid #2563eb";
+      signUp.style.background = "#2563eb";
+      signUp.style.borderRadius = "6px";
+      signUp.style.padding = "4px 10px";
+      signUp.style.color = "#ffffff";
+      signUp.style.textDecoration = "none";
+      right.appendChild(signUp);
+    }
+
+    inner.appendChild(left);
+    inner.appendChild(right);
+    nav.appendChild(inner);
+    if (document.body) {
+      document.body.insertBefore(nav, document.body.firstChild);
+    }
   }
 
   function rewritePath(value) {
@@ -426,4 +570,10 @@
 
     return originalInsertBefore.call(this, newNode, referenceNode);
   };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectAuthNavbar, { once: true });
+  } else {
+    injectAuthNavbar();
+  }
 })();
