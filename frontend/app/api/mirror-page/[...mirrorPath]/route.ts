@@ -6,6 +6,26 @@ export const runtime = "nodejs";
 
 const runtimeSnippet = '<script data-site-mirror-runtime="1" src="/mirror/_mirror-runtime.js"></script>';
 
+function resolveMirrorHtmlPath(requestedPath: string): string[] {
+  const trimmed = requestedPath.trim().replace(/\/+$/g, "");
+  if (!trimmed) {
+    return [];
+  }
+
+  const candidates = new Set<string>();
+  candidates.add(trimmed);
+
+  if (trimmed.toLowerCase().endsWith(".html")) {
+    const withoutHtml = trimmed.slice(0, -".html".length);
+    candidates.add(`${withoutHtml}/index.html`);
+  } else {
+    candidates.add(`${trimmed}.html`);
+    candidates.add(`${trimmed}/index.html`);
+  }
+
+  return Array.from(candidates);
+}
+
 function injectRuntimeScript(html: string): string {
   if (html.includes('data-site-mirror-runtime="1"')) {
     return html;
@@ -40,18 +60,25 @@ export async function GET(
     return NextResponse.json({ message: "Invalid mirror page path." }, { status: 400 });
   }
 
-  const relativePath = requestedPath.slice(1);
-  const filePath = path.join(process.cwd(), "public", relativePath);
   const normalizedRoot = path.resolve(process.cwd(), "public");
-  const normalizedFile = path.resolve(filePath);
-  if (!normalizedFile.startsWith(`${normalizedRoot}${path.sep}`)) {
-    return NextResponse.json({ message: "Invalid path." }, { status: 400 });
+  let html: string | null = null;
+  for (const candidate of resolveMirrorHtmlPath(requestedPath)) {
+    const relativePath = candidate.slice(1);
+    const filePath = path.join(process.cwd(), "public", relativePath);
+    const normalizedFile = path.resolve(filePath);
+    if (!normalizedFile.startsWith(`${normalizedRoot}${path.sep}`)) {
+      return NextResponse.json({ message: "Invalid path." }, { status: 400 });
+    }
+
+    try {
+      html = await fs.readFile(normalizedFile, "utf8");
+      break;
+    } catch {
+      // Try next candidate path form.
+    }
   }
 
-  let html: string;
-  try {
-    html = await fs.readFile(normalizedFile, "utf8");
-  } catch {
+  if (html === null) {
     return NextResponse.json({ message: "Mirror page not found." }, { status: 404 });
   }
 
