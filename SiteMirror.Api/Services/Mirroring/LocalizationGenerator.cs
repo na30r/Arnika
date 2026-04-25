@@ -66,14 +66,14 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         Directory.CreateDirectory(i18nFolder);
 
         await SaveCatalogAsync(Path.Combine(i18nFolder, "source.json"), "en", sourceEntries, cancellationToken);
-        var englishEntries = await LoadOrCreateLanguageEntriesAsync("en", i18nFolder, sourceEntries, cancellationToken);
+        _ = await LoadOrCreateLanguageCatalogAsync("en", i18nFolder, sourceEntries, cancellationToken);
         var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
         var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
         foreach (var language in normalizedLanguages)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var languageEntries = await LoadOrCreateLanguageEntriesAsync(
+            var languageCatalog = await LoadOrCreateLanguageCatalogAsync(
                 language,
                 i18nFolder,
                 sourceEntries,
@@ -90,7 +90,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
                 language,
                 languageOutputRoot,
                 sourceHtmlFiles,
-                languageEntries,
+                languageCatalog,
                 doNotTranslateSet,
                 cancellationToken);
         }
@@ -137,7 +137,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         string language,
         string languageOutputRoot,
         IReadOnlyList<string> sourceHtmlFiles,
-        IReadOnlyDictionary<string, string> languageEntries,
+        LanguageCatalog languageCatalog,
         HashSet<string> doNotTranslateSet,
         CancellationToken cancellationToken)
     {
@@ -162,7 +162,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
                     return;
                 }
 
-                var localizedValue = ResolveLocalizedValue(key, sourceValue, languageEntries);
+                var localizedValue = ResolveLocalizedValue(key, sourceValue, languageCatalog);
                 if (!string.Equals(localizedValue, sourceValue, StringComparison.Ordinal))
                 {
                     setValue(localizedValue);
@@ -191,11 +191,20 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     private static string ResolveLocalizedValue(
         string key,
         string sourceValue,
-        IReadOnlyDictionary<string, string> languageEntries)
+        LanguageCatalog languageCatalog)
     {
-        if (languageEntries.TryGetValue(key, out var translated) && !string.IsNullOrWhiteSpace(translated))
+        if (languageCatalog.ByKey.TryGetValue(key, out var translatedByKey) &&
+            !string.IsNullOrWhiteSpace(translatedByKey))
         {
-            return translated;
+            return translatedByKey;
+        }
+
+        var normalizedSourceValue = NormalizeForKey(sourceValue);
+        if (!string.IsNullOrWhiteSpace(normalizedSourceValue) &&
+            languageCatalog.BySourceText.TryGetValue(normalizedSourceValue, out var translatedBySource) &&
+            !string.IsNullOrWhiteSpace(translatedBySource))
+        {
+            return translatedBySource;
         }
 
         return sourceValue;
@@ -351,28 +360,22 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         head.AppendChild(style);
     }
 
-    private async Task<Dictionary<string, string>> LoadOrCreateLanguageEntriesAsync(
+    private async Task<LanguageCatalog> LoadOrCreateLanguageCatalogAsync(
         string language,
         string i18nFolder,
         IReadOnlyDictionary<string, string> sourceEntries,
         CancellationToken cancellationToken)
     {
         var filePath = Path.Combine(i18nFolder, $"{language}.json");
-        var loadedEntries = new Dictionary<string, string>(StringComparer.Ordinal);
+        var loadedByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+        var loadedBySource = new Dictionary<string, string>(StringComparer.Ordinal);
 
         if (File.Exists(filePath))
         {
             try
             {
                 var raw = await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
-                var loadedCatalog = JsonSerializer.Deserialize<TranslationCatalog>(raw);
-                if (loadedCatalog?.Entries is not null)
-                {
-                    foreach (var (key, value) in loadedCatalog.Entries)
-                    {
-                        loadedEntries[key] = value;
-                    }
-                }
+                ParseLanguageCatalog(raw, loadedByKey, loadedBySource);
             }
             catch (Exception ex)
             {
@@ -382,14 +385,112 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
 
         foreach (var (key, sourceValue) in sourceEntries)
         {
-            if (!loadedEntries.ContainsKey(key))
+            if (loadedByKey.ContainsKey(key))
             {
-                loadedEntries[key] = sourceValue;
+                continue;
+            }
+
+            var normalizedSourceValue = NormalizeForKey(sourceValue);
+            if (!string.IsNullOrWhiteSpace(normalizedSourceValue) &&
+                loadedBySource.TryGetValue(normalizedSourceValue, out var translatedBySource) &&
+                !string.IsNullOrWhiteSpace(translatedBySource))
+            {
+                loadedByKey[key] = translatedBySource;
+                continue;
+            }
+
+            loadedByKey[key] = sourceValue;
+        }
+
+        await SaveCatalogAsync(filePath, language, loadedByKey, cancellationToken);
+        return new LanguageCatalog
+        {
+            ByKey = loadedByKey,
+            BySourceText = loadedBySource
+        };
+    }
+
+    private static void ParseLanguageCatalog(
+        string raw,
+        Dictionary<string, string> byKey,
+        Dictionary<string, string> bySourceText)
+    {
+        using var doc = JsonDocument.Parse(raw);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        if (doc.RootElement.TryGetProperty("entries", out var entriesNode) &&
+            entriesNode.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in entriesNode.EnumerateObject())
+            {
+                if (property.Value.ValueKind == JsonValueKind.String)
+                {
+                    var value = property.Value.GetString() ?? string.Empty;
+                    if (property.Name.StartsWith("k_", StringComparison.Ordinal))
+                    {
+                        byKey[property.Name] = value;
+                        continue;
+                    }
+
+                    var normalizedSource = NormalizeForKey(property.Name);
+                    if (!string.IsNullOrWhiteSpace(normalizedSource))
+                    {
+                        bySourceText[normalizedSource] = value;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Backward compatibility: allow plain object map files where keys are either
+            // generated token keys (k_xxx) or raw source texts.
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var value = property.Value.GetString() ?? string.Empty;
+                if (property.Name.StartsWith("k_", StringComparison.Ordinal))
+                {
+                    byKey[property.Name] = value;
+                    continue;
+                }
+
+                if (string.Equals(property.Name, "language", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var normalizedSource = NormalizeForKey(property.Name);
+                if (!string.IsNullOrWhiteSpace(normalizedSource))
+                {
+                    bySourceText[normalizedSource] = value;
+                }
             }
         }
 
-        await SaveCatalogAsync(filePath, language, loadedEntries, cancellationToken);
-        return loadedEntries;
+        if (doc.RootElement.TryGetProperty("translations", out var translationsNode) &&
+            translationsNode.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in translationsNode.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var normalizedSource = NormalizeForKey(property.Name);
+                if (!string.IsNullOrWhiteSpace(normalizedSource))
+                {
+                    bySourceText[normalizedSource] = property.Value.GetString() ?? string.Empty;
+                }
+            }
+        }
     }
 
     private static Task SaveCatalogAsync(
@@ -581,6 +682,13 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     private sealed class DoNotTranslateCatalog
     {
         public List<string> Texts { get; init; } = [];
+    }
+
+    private sealed class LanguageCatalog
+    {
+        public required Dictionary<string, string> ByKey { get; init; }
+
+        public required Dictionary<string, string> BySourceText { get; init; }
     }
 
     internal sealed class LocalizationGenerationResult
