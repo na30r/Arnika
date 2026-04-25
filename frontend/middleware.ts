@@ -13,8 +13,8 @@ export function middleware(request: NextRequest) {
   if (isMirrorHtmlPath(pathname)) {
     const normalizedMirrorPath = pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
     const rewritten = request.nextUrl.clone();
-    rewritten.pathname = "/api/mirror-page";
-    rewritten.searchParams.set("path", normalizedMirrorPath);
+    rewritten.pathname = `/api/mirror-page${normalizedMirrorPath}`;
+    rewritten.search = "";
     return NextResponse.rewrite(rewritten);
   }
 

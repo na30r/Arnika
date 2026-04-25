@@ -26,38 +26,17 @@ function injectRuntimeScript(html: string): string {
   return `${runtimeSnippet}${html}`;
 }
 
-export async function GET(request: NextRequest) {
-  const rawPath = request.nextUrl.searchParams.get("path");
-  const requestedPath = (() => {
-    if (!rawPath) {
-      return "";
-    }
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ mirrorPath: string[] }> }
+) {
+  const { mirrorPath } = await params;
+  if (!Array.isArray(mirrorPath) || mirrorPath.length < 2 || mirrorPath[0] !== "mirror") {
+    return NextResponse.json({ message: "Invalid mirror page path." }, { status: 400 });
+  }
 
-    let normalized = rawPath.trim();
-    try {
-      normalized = decodeURIComponent(normalized);
-    } catch {
-      // Keep raw value when decode fails.
-    }
-
-    const queryIndex = normalized.indexOf("?");
-    const hashIndex = normalized.indexOf("#");
-    let endIndex = normalized.length;
-    if (queryIndex >= 0) {
-      endIndex = Math.min(endIndex, queryIndex);
-    }
-    if (hashIndex >= 0) {
-      endIndex = Math.min(endIndex, hashIndex);
-    }
-    normalized = normalized.slice(0, endIndex);
-    if (normalized.endsWith("/")) {
-      normalized = normalized.slice(0, -1);
-    }
-
-    return normalized;
-  })();
-
-  if (!requestedPath || !requestedPath.startsWith("/mirror/") || !requestedPath.toLowerCase().endsWith(".html")) {
+  const requestedPath = `/${mirrorPath.join("/")}`;
+  if (!requestedPath.toLowerCase().endsWith(".html")) {
     return NextResponse.json({ message: "Invalid mirror page path." }, { status: 400 });
   }
 
