@@ -106,16 +106,33 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                OR NULLIF(RTRIM(cp.RequestedUrlKey), '') IS NULL
                OR NULLIF(RTRIM(cp.PageStatus), '') IS NULL;
 
-            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CrawlPages_SiteVersionUrlKey' AND object_id = OBJECT_ID('dbo.CrawlPages'))
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'InjectionAssets')
             BEGIN
-                CREATE NONCLUSTERED INDEX IX_CrawlPages_SiteVersionUrlKey
-                ON dbo.CrawlPages (SiteHost, Version, RequestedUrlKey)
-                INCLUDE (FinalUrl, EntryFileRelativePath, FilesSaved, PageStatus)
-                WHERE PageStatus = N'completed'
-                  AND NULLIF(SiteHost, N'') IS NOT NULL
-                  AND NULLIF(Version, N'') IS NOT NULL
-                  AND NULLIF(RequestedUrlKey, N'') IS NOT NULL;
-            END;
+                CREATE TABLE dbo.InjectionAssets
+                (
+                    AssetId NVARCHAR(64) NOT NULL PRIMARY KEY,
+                    SiteHost NVARCHAR(255) NOT NULL,
+                    Version NVARCHAR(128) NOT NULL,
+                    AssetType NVARCHAR(16) NOT NULL,
+                    Name NVARCHAR(255) NOT NULL,
+                    Description NVARCHAR(MAX) NOT NULL,
+                    RelativeFilePath NVARCHAR(2048) NOT NULL,
+                    CreatedAtUtc DATETIMEOFFSET NOT NULL
+                );
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'InjectionAssetTargets')
+            BEGIN
+                CREATE TABLE dbo.InjectionAssetTargets
+                (
+                    AssetId NVARCHAR(64) NOT NULL,
+                    TargetPagePath NVARCHAR(2048) NOT NULL,
+                    CONSTRAINT FK_InjectionAssetTargets_InjectionAssets
+                        FOREIGN KEY (AssetId) REFERENCES dbo.InjectionAssets(AssetId) ON DELETE CASCADE
+                );
+            END
+
+    
             """;
 
         await using var command = new SqlCommand(sql, connection);

@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SiteMirror.Api.Models;
 using SiteMirror.Api.Services;
@@ -9,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<MirrorSettings>(builder.Configuration.GetSection(MirrorSettings.SectionName));
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(DatabaseSettings.SectionName));
 builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection(AuthSettings.SectionName));
+var dbConnectionString = builder.Configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>()?.ConnectionString
+                         ?? string.Empty;
+builder.Services.AddDbContext<CrawlReadDbContext>(options => options.UseSqlServer(dbConnectionString));
 
 var authSettings = builder.Configuration.GetSection(AuthSettings.SectionName).Get<AuthSettings>() ?? new AuthSettings();
 var keyBytes = Encoding.UTF8.GetBytes(

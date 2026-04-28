@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
@@ -11,7 +12,8 @@ namespace SiteMirror.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class MirrorController(
     ISiteMirrorService mirrorService,
-    IUserRepository userRepository) : ControllerBase
+    IUserRepository userRepository,
+    CrawlReadDbContext crawlReadDbContext) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType(typeof(MirrorResult), StatusCodes.Status200OK)]
@@ -225,6 +227,166 @@ public sealed class MirrorController(
         }
     }
 
+    [HttpGet("sites")]
+    [ProducesResponseType(typeof(IReadOnlyList<CrawledSitesResult>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<CrawledSitesResult>>> GetCrawledSites(CancellationToken cancellationToken)
+    {
+        var runs = await crawlReadDbContext.CrawlRuns
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        var pages = await crawlReadDbContext.CrawlPages
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var grouped = runs
+            .GroupBy(run => new { run.SiteHost, run.Version })
+            .Select(group =>
+            {
+                var groupPages = pages
+                    .Where(page => string.Equals(page.SiteHost, group.Key.SiteHost, StringComparison.OrdinalIgnoreCase) &&
+                                   string.Equals(page.Version, group.Key.Version, StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(page => page.EntryFileRelativePath)
+                    .Select(pageGroup => pageGroup
+                        .OrderByDescending(p => p.CreatedAtUtc)
+                        .First())
+                    .OrderBy(p => p.EntryFileRelativePath, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => new CrawledSitePageItem
+                    {
+                        EntryFileRelativePath = p.EntryFileRelativePath,
+                        FrontendPreviewPath = p.FrontendPreviewPath
+                    })
+                    .ToList();
+
+                var crawlRuns = group
+                    .Select(run => new CrawledSiteRunItem
+                    {
+                        CrawlId = run.CrawlId,
+                        Status = run.Status,
+                        CreatedAtUtc = run.CreatedAtUtc,
+                        ProcessedPages = run.ProcessedPages,
+                        TotalFilesSaved = run.TotalFilesSaved
+                    })
+                    .ToList();
+
+                return new CrawledSitesResult
+                {
+                    SiteHost = group.Key.SiteHost,
+                    Version = group.Key.Version,
+                    CrawlRuns = crawlRuns,
+                    Pages = groupPages
+                };
+            })
+            .OrderBy(item => item.SiteHost, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.Version, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
+    [HttpPost("injections")]
+    [ProducesResponseType(typeof(CreateInjectionAssetResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CreateInjectionAssetResult>> CreateInjectionAsset(
+        [FromBody] CreateInjectionAssetRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.CreateInjectionAssetAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("update-block-translations")]
+    [ProducesResponseType(typeof(UpdateBlockTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UpdateBlockTranslationsResult>> UpdateBlockTranslations(
+        [FromBody] UpdateBlockTranslationsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.UpdateBlockTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("update-block-translations/upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(UpdateBlockTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UpdateBlockTranslationsResult>> UploadBlockTranslations(
+        [FromForm] UploadBlockTranslationsForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is null || form.File.Length == 0)
+        {
+            return BadRequest(new { message = "Translation file is required." });
+        }
+
+        try
+        {
+            Dictionary<string, string> entries;
+            await using (var stream = form.File.OpenReadStream())
+            {
+                entries = await ParseBlockTranslationEntriesAsync(stream, cancellationToken);
+            }
+
+            var request = new UpdateBlockTranslationsRequest
+            {
+                SiteHost = form.SiteHost,
+                Version = form.Version,
+                Language = form.Language,
+                PagePath = form.PagePath,
+                Entries = entries
+            };
+
+            var result = await mirrorService.UpdateBlockTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid block translation JSON. Expected {\"blocks\":[{\"id\":\"b_x\",\"translated\":\"...\"}]} or a flat {\"b_x\":\"...\"} object."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private static async Task<Dictionary<string, string>> ParseTranslationEntriesAsync(
         Stream stream,
         CancellationToken cancellationToken)
@@ -270,5 +432,118 @@ public sealed class MirrorController(
         }
 
         return entries;
+    }
+
+    private static async Task<Dictionary<string, string>> ParseBlockTranslationEntriesAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new JsonException("Root JSON must be an object.");
+        }
+
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        if ((doc.RootElement.TryGetProperty("blocks", out var blocks) ||
+             doc.RootElement.TryGetProperty("Blocks", out blocks)) &&
+            blocks.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in blocks.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (!(item.TryGetProperty("id", out var idNode) || item.TryGetProperty("Id", out idNode)) ||
+                    idNode.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var id = idNode.GetString()?.Trim();
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    continue;
+                }
+
+                var translated = (item.TryGetProperty("translated", out var translatedNode) ||
+                                  item.TryGetProperty("Translated", out translatedNode)) &&
+                                 translatedNode.ValueKind == JsonValueKind.String
+                    ? translatedNode.GetString() ?? string.Empty
+                    : string.Empty;
+                result[id] = translated;
+            }
+
+            return result;
+        }
+
+        if ((doc.RootElement.TryGetProperty("groups", out var groups) ||
+             doc.RootElement.TryGetProperty("Groups", out groups)) &&
+            groups.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var group in groups.EnumerateArray())
+            {
+                if (group.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (!(group.TryGetProperty("blocks", out var groupBlocks) ||
+                      group.TryGetProperty("Blocks", out groupBlocks)) ||
+                    groupBlocks.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var item in groupBlocks.EnumerateArray())
+                {
+                    if (item.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    if (!(item.TryGetProperty("id", out var idNode) || item.TryGetProperty("Id", out idNode)) ||
+                        idNode.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    var id = idNode.GetString()?.Trim();
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        continue;
+                    }
+
+                    var translated = (item.TryGetProperty("translated", out var translatedNode) ||
+                                      item.TryGetProperty("Translated", out translatedNode)) &&
+                                     translatedNode.ValueKind == JsonValueKind.String
+                        ? translatedNode.GetString() ?? string.Empty
+                        : string.Empty;
+                    result[id] = translated;
+                }
+            }
+
+            return result;
+        }
+
+        foreach (var property in doc.RootElement.EnumerateObject())
+        {
+            if (property.Value.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var key = property.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            result[key] = property.Value.GetString() ?? string.Empty;
+        }
+
+        return result;
     }
 }

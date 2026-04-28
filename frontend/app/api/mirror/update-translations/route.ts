@@ -4,9 +4,8 @@ type UpdateTranslationsBody = {
   siteHost?: string;
   version?: string;
   language?: string;
+  pagePath?: string;
   entries?: Record<string, string>;
-  doNotTranslateTexts?: string[];
-  targetPages?: string[];
 };
 
 export async function POST(request: NextRequest) {
@@ -20,12 +19,13 @@ export async function POST(request: NextRequest) {
   const siteHost = body.siteHost?.trim();
   const version = body.version?.trim();
   const language = body.language?.trim();
-  if (!siteHost || !version || !language) {
-    return NextResponse.json({ message: "siteHost, version, and language are required." }, { status: 400 });
+  const pagePath = body.pagePath?.trim();
+  if (!siteHost || !version || !language || !pagePath) {
+    return NextResponse.json({ message: "siteHost, version, language, and pagePath are required." }, { status: 400 });
   }
 
   const backendBaseUrl = process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
-  const backendUrl = new URL("/api/mirror/update-translations", backendBaseUrl).toString();
+  const backendUrl = new URL("/api/mirror/update-block-translations", backendBaseUrl).toString();
 
   const auth = request.headers.get("authorization");
   const hasBearer = !!auth && auth.startsWith("Bearer ");
@@ -39,9 +39,8 @@ export async function POST(request: NextRequest) {
       siteHost,
       version,
       language,
-      entries: body.entries ?? {},
-      doNotTranslateTexts: body.doNotTranslateTexts,
-      targetPages: body.targetPages
+      pagePath,
+      entries: body.entries ?? {}
     }),
     cache: "no-store"
   });

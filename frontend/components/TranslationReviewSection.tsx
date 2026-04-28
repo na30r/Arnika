@@ -3,9 +3,45 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { authHeaders } from "../lib/auth";
 
-type CatalogFile = {
-  Language?: string;
-  Entries?: Record<string, string>;
+type BlockFile = {
+  page?: string;
+  Page?: string;
+  groups?: Array<{
+    id: string;
+    headingType: string;
+    heading: string;
+    blocks: Array<{
+      id: string;
+      type: string;
+      original: string;
+      translated: string;
+    }>;
+  }>;
+  Groups?: Array<{
+    Id?: string;
+    HeadingType?: string;
+    Heading?: string;
+    Blocks?: Array<{
+      Id?: string;
+      Type?: string;
+      Original?: string;
+      Translated?: string;
+      GroupId?: string;
+    }>;
+  }>;
+  blocks?: Array<{
+    id: string;
+    type: string;
+    original: string;
+    translated: string;
+  }>;
+  Blocks?: Array<{
+    Id?: string;
+    Type?: string;
+    Original?: string;
+    Translated?: string;
+    GroupId?: string;
+  }>;
 };
 
 type Row = {
@@ -45,10 +81,6 @@ function normalizePagePath(input: string): string {
   return cleaned.replace(/\.json$/i, "").replace(/\.html$/i, "");
 }
 
-function toTargetHtml(pagePath: string): string {
-  return `${normalizePagePath(pagePath)}.html`;
-}
-
 export function TranslationReviewSection() {
   const [siteHost, setSiteHost] = useState("nextjs.org");
   const [version, setVersion] = useState("16.2.4");
@@ -82,37 +114,47 @@ export function TranslationReviewSection() {
     try {
       const normalizedPage = normalizePagePath(pagePath);
       const base = `/mirror/${siteHost.trim()}/${version.trim()}/_i18n`;
-      const pageCandidates = [
-        `${base}/pages/${normalizedPage}.json`,
-        `${base}/pages/en/${normalizedPage}.json`
-      ];
+      const pageCandidates = [`${base}/blocks/${normalizedPage}.json`];
 
-      let pageCatalog: CatalogFile | null = null;
+      let pageCatalog: BlockFile | null = null;
       for (const candidate of pageCandidates) {
         const res = await fetch(candidate, { cache: "no-store" });
         if (res.ok) {
-          pageCatalog = (await res.json()) as CatalogFile;
+          pageCatalog = (await res.json()) as BlockFile;
           break;
         }
       }
-      if (!pageCatalog?.Entries) {
-        throw new Error("Page catalog not found. Check site/version/page path.");
+      const nestedBlocksLower = (pageCatalog?.groups ?? []).flatMap((group) => group.blocks ?? []);
+      const nestedBlocksUpper = (pageCatalog?.Groups ?? []).flatMap((group) => group.Blocks ?? []);
+      const topLevelLower = pageCatalog?.blocks ?? [];
+      const topLevelUpper = pageCatalog?.Blocks ?? [];
+      const sourceBlocks =
+        nestedBlocksLower.length > 0
+          ? nestedBlocksLower
+          : nestedBlocksUpper.length > 0
+            ? nestedBlocksUpper
+            : topLevelLower.length > 0
+              ? topLevelLower
+              : topLevelUpper;
+      if (sourceBlocks.length === 0) {
+        throw new Error("Block page not found. Check site/version/page path.");
       }
 
-      const faRes = await fetch(`${base}/fa.json`, { cache: "no-store" });
-      if (!faRes.ok) {
-        throw new Error("fa.json not found.");
-      }
-      const faCatalog = (await faRes.json()) as CatalogFile;
-      const faEntries = faCatalog.Entries ?? {};
+      const loadedRows = sourceBlocks.map((block) => {
+        const id = "id" in block ? block.id : (block as { Id?: string }).Id ?? "";
+        const original =
+          "original" in block ? block.original : (block as { Original?: string }).Original ?? "";
+        const translated =
+          "translated" in block ? block.translated : (block as { Translated?: string }).Translated ?? "";
 
-      const loadedRows = Object.entries(pageCatalog.Entries).map(([key, en]) => ({
-        key,
-        en,
-        fa: faEntries[key] ?? en
-      }));
+        return {
+          key: id,
+          en: original,
+          fa: translated.trim().length ? translated : original
+        };
+      });
       setRows(loadedRows);
-      setMessage(`Loaded ${loadedRows.length} entries from ${normalizedPage}.json`);
+      setMessage(`Loaded ${loadedRows.length} blocks from ${normalizedPage}.json`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to load translation page.");
       setRows([]);
@@ -151,8 +193,8 @@ export function TranslationReviewSection() {
           siteHost: siteHost.trim(),
           version: version.trim(),
           language: "fa",
-          entries,
-          targetPages: [toTargetHtml(pagePath)]
+          pagePath: normalizePagePath(pagePath),
+          entries
         })
       });
 
@@ -161,7 +203,9 @@ export function TranslationReviewSection() {
       if (!response.ok) {
         throw new Error(payload.message || `Update failed (${response.status}).`);
       }
-      setMessage(`Saved ${Object.keys(entries).length} changes and rebuilt ${payload.rebuiltPageCount ?? 0} page(s).`);
+      setMessage(
+        `Saved ${Object.keys(entries).length} block translations and rebuilt ${payload.rebuiltPageCount ?? 0} page(s).`
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to submit changes.");
     } finally {
@@ -182,7 +226,7 @@ export function TranslationReviewSection() {
       form.set("siteHost", siteHost.trim());
       form.set("version", version.trim());
       form.set("language", "fa");
-      form.append("targetPages", toTargetHtml(pagePath));
+      form.set("pagePath", normalizePagePath(pagePath));
       form.set("file", file, file.name);
 
       const response = await fetch("/api/mirror/update-translations/upload", {
@@ -194,13 +238,15 @@ export function TranslationReviewSection() {
       });
 
       const text = await response.text();
-      const payload = text ? (JSON.parse(text) as { message?: string; rebuiltPageCount?: number; updatedEntryCount?: number }) : {};
+      const payload = text
+        ? (JSON.parse(text) as { message?: string; updatedEntryCount?: number; rebuiltPageCount?: number })
+        : {};
       if (!response.ok) {
         throw new Error(payload.message || `Upload failed (${response.status}).`);
       }
 
       setMessage(
-        `Uploaded ${payload.updatedEntryCount ?? 0} entries and rebuilt ${payload.rebuiltPageCount ?? 0} page(s).`
+        `Uploaded ${payload.updatedEntryCount ?? 0} block translations and rebuilt ${payload.rebuiltPageCount ?? 0} page(s).`
       );
       await loadPage();
     } catch (caught) {
@@ -214,7 +260,7 @@ export function TranslationReviewSection() {
   return (
     <section className="card controls">
       <h2>Translation Review (EN vs FA)</h2>
-      <p className="muted">Load one page, compare texts, click FA cell to edit, then submit all changes.</p>
+      <p className="muted">Load one page from block JSON, compare EN/FA, click FA cell to edit, then submit all changes.</p>
 
       <div className="form translation-grid">
         <label htmlFor="tr-site">Site Host</label>
@@ -227,7 +273,7 @@ export function TranslationReviewSection() {
 
       <div className="row">
         <button type="button" onClick={loadPage} disabled={loading}>
-          {loading ? "Loading..." : "Load Page Entries"}
+          {loading ? "Loading..." : "Load Page Blocks"}
         </button>
         <button type="button" onClick={submitChanges} disabled={saving || rows.length === 0}>
           {saving ? "Saving..." : `Submit All Changes (${changedCount})`}

@@ -13,6 +13,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     public const string CatalogRootFolderName = "_i18n";
     public const string DoNotTranslateFileName = "do-not-translate.json";
 public const string PerPageTemplatesFolderName = "pages";
+    public const string PerPageBlocksFolderName = "blocks";
 
     private static readonly HashSet<string> NonTranslatableContainers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -68,6 +69,7 @@ public const string PerPageTemplatesFolderName = "pages";
 
         await SaveCatalogAsync(Path.Combine(i18nFolder, "source.json"), "en", sourceEntries, cancellationToken);
         await SavePerPageTemplatesAsync(mirrorRoot, i18nFolder, sourceHtmlFiles, cancellationToken);
+        await SavePerPageBlocksAsync(mirrorRoot, i18nFolder, sourceHtmlFiles, cancellationToken);
         _ = await LoadOrCreateLanguageCatalogAsync("en", i18nFolder, sourceEntries, cancellationToken);
         var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
         var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
@@ -146,6 +148,76 @@ public const string PerPageTemplatesFolderName = "pages";
             Directory.CreateDirectory(Path.GetDirectoryName(templatePath)!);
             await SaveCatalogAsync(templatePath, "source", entries, cancellationToken);
         }
+    }
+
+    private async Task SavePerPageBlocksAsync(
+        string mirrorRoot,
+        string i18nFolder,
+        IReadOnlyList<string> sourceHtmlFiles,
+        CancellationToken cancellationToken)
+    {
+        var perPageBlocksRoot = Path.Combine(i18nFolder, PerPageBlocksFolderName);
+        if (Directory.Exists(perPageBlocksRoot))
+        {
+            Directory.Delete(perPageBlocksRoot, recursive: true);
+        }
+        Directory.CreateDirectory(perPageBlocksRoot);
+        var rootIndex = new List<RootBlockEntry>();
+        var usedRootFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var parser = new HtmlParser();
+        foreach (var relativeHtmlPath in sourceHtmlFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var htmlPath = Path.Combine(mirrorRoot, relativeHtmlPath);
+            var html = await File.ReadAllTextAsync(htmlPath, Encoding.UTF8, cancellationToken);
+            var document = await parser.ParseDocumentAsync(html, cancellationToken);
+
+            var normalizedPage = "/" + relativeHtmlPath
+                .Replace('\\', '/')
+                .TrimStart('/')
+                .Replace(".html", string.Empty, StringComparison.OrdinalIgnoreCase);
+            var grouped = ExtractSemanticBlocksWithGroups(document, normalizedPage);
+            var payload = new BlockPageDocument
+            {
+                Page = normalizedPage,
+                Blocks = grouped.Blocks,
+                Groups = grouped.Groups
+            };
+
+            var jsonRelativePath = relativeHtmlPath
+                .Replace('\\', '/')
+                .TrimStart('/')
+                .Replace(".html", ".json", StringComparison.OrdinalIgnoreCase);
+            var blockPath = Path.Combine(perPageBlocksRoot, jsonRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(blockPath)!);
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
+            await File.WriteAllTextAsync(blockPath, json, Encoding.UTF8, cancellationToken);
+
+            // Also create a root-level alias file so translators can access
+            // page JSON quickly without traversing nested folders.
+            var rootAliasFileName = BuildRootAliasFileName(jsonRelativePath, usedRootFileNames);
+            var rootAliasPath = Path.Combine(perPageBlocksRoot, rootAliasFileName);
+            await File.WriteAllTextAsync(rootAliasPath, json, Encoding.UTF8, cancellationToken);
+
+            rootIndex.Add(new RootBlockEntry
+            {
+                Page = normalizedPage,
+                NestedPath = jsonRelativePath,
+                RootFile = rootAliasFileName
+            });
+        }
+
+        var indexPath = Path.Combine(perPageBlocksRoot, "_root-index.json");
+        var indexPayload = new RootBlockIndex
+        {
+            Pages = rootIndex
+                .OrderBy(item => item.Page, StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        };
+        var indexJson = JsonSerializer.Serialize(indexPayload, JsonOptions);
+        await File.WriteAllTextAsync(indexPath, indexJson, Encoding.UTF8, cancellationToken);
     }
 
     public async Task<IReadOnlyList<string>> RegenerateLocalizedPagesAsync(
@@ -309,7 +381,16 @@ public const string PerPageTemplatesFolderName = "pages";
         if (languageCatalog.ByKey.TryGetValue(key, out var translatedByKey) &&
             !string.IsNullOrWhiteSpace(translatedByKey))
         {
-            return translatedByKey;
+            // If key-based value is already a real translation, prefer it.
+            // If it is still identical to source text, allow source-text mapping
+            // to override (used by block-based translation updates).
+            if (!string.Equals(
+                    NormalizeForKey(translatedByKey),
+                    NormalizeForKey(sourceValue),
+                    StringComparison.Ordinal))
+            {
+                return translatedByKey;
+            }
         }
 
         var normalizedSourceValue = NormalizeForKey(sourceValue);
@@ -318,6 +399,11 @@ public const string PerPageTemplatesFolderName = "pages";
             !string.IsNullOrWhiteSpace(translatedBySource))
         {
             return translatedBySource;
+        }
+
+        if (!string.IsNullOrWhiteSpace(translatedByKey))
+        {
+            return translatedByKey;
         }
 
         return sourceValue;
@@ -654,10 +740,62 @@ public const string PerPageTemplatesFolderName = "pages";
 
     private static string BuildTranslationKey(string relativeHtmlPath, int ordinal, string sourceValue)
     {
-        var normalizedPath = relativeHtmlPath.Replace('\\', '/').ToLowerInvariant();
+        // Global/shared key strategy:
+        // keys are generated from normalized source text only so repeated
+        // strings (navbar/footer/common labels) share the same key across pages.
+        // This allows one translation entry to update all pages together.
         var normalizedValue = NormalizeForKey(sourceValue);
-        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{normalizedPath}|{ordinal}|{normalizedValue}"));
+        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(normalizedValue));
         return $"k_{Convert.ToHexString(bytes).ToLowerInvariant()[..12]}";
+    }
+
+    private static string BuildRootAliasFileName(string nestedJsonPath, HashSet<string> usedNames)
+    {
+        var normalized = nestedJsonPath.Replace('\\', '/').TrimStart('/');
+        var alias = normalized.Replace('/', '_');
+        if (usedNames.Add(alias))
+        {
+            return alias;
+        }
+
+        var hash = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(normalized)))
+            .ToLowerInvariant()[..8];
+        var stem = Path.GetFileNameWithoutExtension(alias);
+        var ext = Path.GetExtension(alias);
+        var withHash = $"{stem}--{hash}{ext}";
+        if (usedNames.Add(withHash))
+        {
+            return withHash;
+        }
+
+        var suffix = 2;
+        while (true)
+        {
+            var candidate = $"{stem}--{hash}-{suffix}{ext}";
+            if (usedNames.Add(candidate))
+            {
+                return candidate;
+            }
+            suffix++;
+        }
+    }
+
+    private static string BuildBlockId(string pagePath, int ordinal, string blockType, string sourceValue)
+    {
+        var normalizedPath = pagePath.Trim().Replace('\\', '/').ToLowerInvariant();
+        var normalizedValue = NormalizeForKey(sourceValue);
+        var normalizedType = blockType.Trim().ToLowerInvariant();
+        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{normalizedPath}|{ordinal}|{normalizedType}|{normalizedValue}"));
+        return $"b_{Convert.ToHexString(bytes).ToLowerInvariant()[..12]}";
+    }
+
+    private static string BuildGroupId(string pagePath, int ordinal, string headingTag, string headingText)
+    {
+        var normalizedPath = pagePath.Trim().Replace('\\', '/').ToLowerInvariant();
+        var normalizedHeadingTag = headingTag.Trim().ToLowerInvariant();
+        var normalizedHeadingText = NormalizeForKey(headingText);
+        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes($"{normalizedPath}|{ordinal}|{normalizedHeadingTag}|{normalizedHeadingText}"));
+        return $"g_{Convert.ToHexString(bytes).ToLowerInvariant()[..12]}";
     }
 
     private static string NormalizeForKey(string value)
@@ -744,6 +882,103 @@ public const string PerPageTemplatesFolderName = "pages";
         }
 
         return false;
+    }
+
+    private static GroupedBlocksResult ExtractSemanticBlocksWithGroups(IDocument document, string pagePath)
+    {
+        var blocks = new List<BlockDocumentItem>();
+        var groups = new List<BlockGroupDocumentItem>();
+        var blockOrdinal = 0;
+        var groupOrdinal = 0;
+        string? activeGroupId = null;
+        BlockGroupDocumentItem? activeGroup = null;
+
+        foreach (var element in document.All)
+        {
+            if (NonTranslatableContainers.Contains(element.LocalName) || IsWithinNonTranslatableContainer(element))
+            {
+                continue;
+            }
+
+            var blockType = ResolveSemanticBlockType(element.LocalName);
+            if (blockType is null)
+            {
+                continue;
+            }
+
+            var original = NormalizeForKey(element.TextContent ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(original))
+            {
+                continue;
+            }
+
+            var tagName = element.LocalName.ToLowerInvariant();
+            if (tagName is "h1" or "h2" or "h3")
+            {
+                groupOrdinal++;
+                activeGroupId = BuildGroupId(pagePath, groupOrdinal, tagName, original);
+                activeGroup = new BlockGroupDocumentItem
+                {
+                    Id = activeGroupId,
+                    HeadingType = tagName,
+                    Heading = original
+                };
+                groups.Add(activeGroup);
+            }
+            else if (activeGroup is null)
+            {
+                // Content before first h1/h2/h3 goes in a deterministic intro group.
+                groupOrdinal++;
+                activeGroupId = BuildGroupId(pagePath, groupOrdinal, "intro", "intro");
+                activeGroup = new BlockGroupDocumentItem
+                {
+                    Id = activeGroupId,
+                    HeadingType = "intro",
+                    Heading = string.Empty
+                };
+                groups.Add(activeGroup);
+            }
+
+            blockOrdinal++;
+            var block = new BlockDocumentItem
+            {
+                Id = BuildBlockId(pagePath, blockOrdinal, blockType, original),
+                Type = blockType,
+                Original = original,
+                Translated = string.Empty,
+                GroupId = activeGroupId
+            };
+            blocks.Add(block);
+            activeGroup.Blocks.Add(block);
+        }
+
+        return new GroupedBlocksResult
+        {
+            Blocks = blocks,
+            Groups = groups
+        };
+    }
+
+    private static string? ResolveSemanticBlockType(string? localName)
+    {
+        if (string.IsNullOrWhiteSpace(localName))
+        {
+            return null;
+        }
+
+        if (localName.StartsWith("h", StringComparison.OrdinalIgnoreCase) &&
+            localName.Length == 2 &&
+            char.IsDigit(localName[1]))
+        {
+            return "heading";
+        }
+
+        return localName.ToLowerInvariant() switch
+        {
+            "p" => "paragraph",
+            "li" => "list_item",
+            _ => null
+        };
     }
 
     private static string GetFirstPathSegment(string relativePath)
@@ -855,6 +1090,60 @@ public const string PerPageTemplatesFolderName = "pages";
     private sealed class DoNotTranslateCatalog
     {
         public List<string> Texts { get; init; } = [];
+    }
+
+    private sealed class BlockPageDocument
+    {
+        public string Page { get; init; } = "/";
+
+        public List<BlockDocumentItem> Blocks { get; init; } = [];
+
+        public List<BlockGroupDocumentItem> Groups { get; init; } = [];
+    }
+
+    private sealed class BlockDocumentItem
+    {
+        public string Id { get; init; } = string.Empty;
+
+        public string Type { get; init; } = "paragraph";
+
+        public string Original { get; init; } = string.Empty;
+
+        public string Translated { get; init; } = string.Empty;
+
+        public string? GroupId { get; init; }
+    }
+
+    private sealed class BlockGroupDocumentItem
+    {
+        public string Id { get; init; } = string.Empty;
+
+        public string HeadingType { get; init; } = "intro";
+
+        public string Heading { get; init; } = string.Empty;
+
+        public List<BlockDocumentItem> Blocks { get; init; } = [];
+    }
+
+    private sealed class GroupedBlocksResult
+    {
+        public List<BlockDocumentItem> Blocks { get; init; } = [];
+
+        public List<BlockGroupDocumentItem> Groups { get; init; } = [];
+    }
+
+    private sealed class RootBlockIndex
+    {
+        public List<RootBlockEntry> Pages { get; init; } = [];
+    }
+
+    private sealed class RootBlockEntry
+    {
+        public string Page { get; init; } = "/";
+
+        public string NestedPath { get; init; } = string.Empty;
+
+        public string RootFile { get; init; } = string.Empty;
     }
 
     private sealed class LanguageCatalog

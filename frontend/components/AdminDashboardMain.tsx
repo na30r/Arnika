@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { authHeaders } from "../lib/auth";
 import { type Locale, t } from "../lib/i18n";
 import { TranslationReviewSection } from "./TranslationReviewSection";
+import { CrawledSitesSection } from "./CrawledSitesSection";
+import { AssetInjectionSection } from "./AssetInjectionSection";
 
 type MirrorResponse = {
   crawlId?: string;
@@ -45,7 +47,7 @@ export function AdminDashboardMain() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MirrorResponse | null>(null);
   const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/_localized/en/docs.html");
-  const [activeSection, setActiveSection] = useState<"crawl" | "translations">("crawl");
+  const [activeSection, setActiveSection] = useState<"crawl" | "translations" | "crawledSites" | "assetInjection">("crawl");
 
   let iframeSrc = manualPreviewPath.trim();
   if (result?.frontendPreviewPath && result?.siteHost && result?.version) {
@@ -148,6 +150,20 @@ export function AdminDashboardMain() {
           onClick={() => setActiveSection("translations")}
         >
           Translation Review
+        </button>
+        <button
+          type="button"
+          className={`sidebar-item ${activeSection === "crawledSites" ? "active" : ""}`}
+          onClick={() => setActiveSection("crawledSites")}
+        >
+          Crawled Sites
+        </button>
+        <button
+          type="button"
+          className={`sidebar-item ${activeSection === "assetInjection" ? "active" : ""}`}
+          onClick={() => setActiveSection("assetInjection")}
+        >
+          Asset Injection
         </button>
       </aside>
 
@@ -306,8 +322,12 @@ export function AdminDashboardMain() {
         <iframe key={iframeSrc} src={iframeSrc} title="Mirrored page preview" />
       </section>
       </>
-      ) : (
+      ) : activeSection === "translations" ? (
         <TranslationReviewSection />
+      ) : activeSection === "crawledSites" ? (
+        <CrawledSitesSection />
+      ) : (
+        <AssetInjectionSection />
       )}
       </section>
     </main>

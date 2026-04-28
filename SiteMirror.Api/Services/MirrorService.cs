@@ -25,6 +25,7 @@ public sealed class MirrorService : ISiteMirrorService
     private readonly LocalizationGenerator _localizationGenerator;
     private readonly ICrawlRepository _crawlRepository;
     private readonly string _contentRootPath;
+    private readonly string _dbConnectionString;
     private static readonly System.Text.RegularExpressions.Regex LocalePathSegmentRegex = new(
         "^[a-z]{2}(?:-[a-z]{2})?$",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
@@ -35,12 +36,14 @@ public sealed class MirrorService : ISiteMirrorService
 
     public MirrorService(
         IOptions<MirrorSettings> options,
+        IOptions<DatabaseSettings> dbOptions,
         ILogger<MirrorService> logger,
         ILoggerFactory loggerFactory,
         ICrawlRepository crawlRepository,
         IWebHostEnvironment hostEnvironment)
     {
         _settings = options.Value;
+        _dbConnectionString = dbOptions.Value.ConnectionString ?? string.Empty;
         _logger = logger;
         _loggerFactory = loggerFactory;
         _localizationGenerator = new LocalizationGenerator(_loggerFactory.CreateLogger<LocalizationGenerator>());
@@ -565,6 +568,245 @@ public sealed class MirrorService : ISiteMirrorService
             PagesProcessed = processed.Count,
             LinksFixed = linksFixed,
             ProcessedPages = processed
+        };
+    }
+
+    public async Task<UpdateBlockTranslationsResult> UpdateBlockTranslationsAsync(
+        UpdateBlockTranslationsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PagePath))
+        {
+            throw new ArgumentException("PagePath is required.", nameof(request.PagePath));
+        }
+
+        var language = request.Language?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            throw new ArgumentException("Language is required.", nameof(request.Language));
+        }
+
+        var siteHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var version = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, siteHost, version);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var normalizedPagePath = NormalizeBlockPagePath(request.PagePath);
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        var blockPath = Path.Combine(
+            i18nFolder,
+            LocalizationGenerator.PerPageBlocksFolderName,
+            normalizedPagePath.Replace('/', Path.DirectorySeparatorChar) + ".json");
+        if (!File.Exists(blockPath))
+        {
+            throw new FileNotFoundException($"Block page not found: {normalizedPagePath}.json", blockPath);
+        }
+
+        var raw = await File.ReadAllTextAsync(blockPath, Encoding.UTF8, cancellationToken);
+        BlockPagePayload blockDoc;
+        try
+        {
+            blockDoc = JsonSerializer.Deserialize<BlockPagePayload>(raw) ?? new BlockPagePayload();
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException($"Invalid block page JSON at {blockPath}.", ex);
+        }
+
+        var incoming = request.Entries ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        if (incoming.Count > 0)
+        {
+            var incomingById = new Dictionary<string, string>(incoming, StringComparer.Ordinal);
+            for (var i = 0; i < blockDoc.Blocks.Count; i++)
+            {
+                var block = blockDoc.Blocks[i];
+                if (string.IsNullOrWhiteSpace(block.Id))
+                {
+                    continue;
+                }
+
+                if (incomingById.TryGetValue(block.Id, out var translated))
+                {
+                    blockDoc.Blocks[i] = block with { Translated = translated ?? string.Empty };
+                }
+            }
+
+            for (var g = 0; g < blockDoc.Groups.Count; g++)
+            {
+                var group = blockDoc.Groups[g];
+                if (group.Blocks.Count == 0)
+                {
+                    continue;
+                }
+
+                var updatedBlocks = new List<BlockItemPayload>(group.Blocks.Count);
+                foreach (var block in group.Blocks)
+                {
+                    if (string.IsNullOrWhiteSpace(block.Id))
+                    {
+                        updatedBlocks.Add(block);
+                        continue;
+                    }
+
+                    if (incomingById.TryGetValue(block.Id, out var translated))
+                    {
+                        updatedBlocks.Add(block with { Translated = translated ?? string.Empty });
+                    }
+                    else
+                    {
+                        updatedBlocks.Add(block);
+                    }
+                }
+
+                blockDoc.Groups[g] = group with { Blocks = updatedBlocks };
+            }
+        }
+
+        var updatedJson = JsonSerializer.Serialize(blockDoc, CatalogJsonOptions);
+        await File.WriteAllTextAsync(blockPath, updatedJson, Encoding.UTF8, cancellationToken);
+
+        // Merge translated block content into language catalog by source text,
+        // then rebuild only the requested page for the selected language.
+        var languageCatalogPath = Path.Combine(i18nFolder, $"{language}.json");
+        var mergedEntries = await LoadLanguageEntriesAsync(languageCatalogPath, cancellationToken);
+        var flattenedBlocks = FlattenBlockItems(blockDoc);
+        foreach (var block in flattenedBlocks)
+        {
+            var source = block.Original?.Trim() ?? string.Empty;
+            var translated = block.Translated?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(translated))
+            {
+                continue;
+            }
+
+            if (string.Equals(source, translated, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            mergedEntries[source] = translated;
+        }
+
+        var languagePayload = new TranslationCatalogPayload
+        {
+            Language = language,
+            Entries = mergedEntries
+                .OrderBy(item => item.Key, StringComparer.Ordinal)
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)
+        };
+        var languageJson = JsonSerializer.Serialize(languagePayload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(languageCatalogPath, languageJson, Encoding.UTF8, cancellationToken);
+
+        var rebuiltPages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
+            siteOutputPath,
+            language,
+            [$"{normalizedPagePath}.html"],
+            doNotTranslateTexts: null,
+            cancellationToken);
+
+        return new UpdateBlockTranslationsResult
+        {
+            SiteHost = siteHost,
+            Version = version,
+            Language = language,
+            PagePath = normalizedPagePath,
+            BlockFilePath = blockPath,
+            UpdatedEntryCount = incoming.Count,
+            RebuiltPageCount = rebuiltPages.Count,
+            RebuiltPages = rebuiltPages
+        };
+    }
+
+    public async Task<CreateInjectionAssetResult> CreateInjectionAssetAsync(
+        CreateInjectionAssetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ArgumentException("Name is required.", nameof(request.Name));
+        }
+
+        var assetType = request.AssetType?.Trim().ToLowerInvariant();
+        if (assetType is not ("css" or "js"))
+        {
+            throw new ArgumentException("AssetType must be css or js.", nameof(request.AssetType));
+        }
+
+        var siteHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var version = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, siteHost, version);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var safeName = MirrorPathHelper.SanitizePathSegment(request.Name.Trim().ToLowerInvariant());
+        var assetId = $"inj_{DateTimeOffset.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}"[..30];
+        var fileName = $"{safeName}-{assetId}.{assetType}";
+        var relativeFilePath = Path.Combine("_injections", fileName).Replace('\\', '/');
+        var absoluteFilePath = Path.Combine(siteOutputPath, "_injections", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(absoluteFilePath)!);
+        await File.WriteAllTextAsync(absoluteFilePath, request.Content ?? string.Empty, Encoding.UTF8, cancellationToken);
+
+        var targets = ResolveInjectionTargets(siteOutputPath, request.TargetPages, request.ApplyToAllPages);
+        var publicAssetPath = $"/mirror/{siteHost}/{version}/{relativeFilePath}";
+        var parser = new HtmlParser();
+        var injected = new List<string>();
+        foreach (var target in targets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var raw = await File.ReadAllTextAsync(target, Encoding.UTF8, cancellationToken);
+            var document = await parser.ParseDocumentAsync(raw, cancellationToken);
+            var changed = assetType == "css"
+                ? InjectCss(document, publicAssetPath)
+                : InjectJs(document, publicAssetPath);
+            if (!changed)
+            {
+                continue;
+            }
+
+            var html = document.DocumentElement?.OuterHtml ?? raw;
+            await File.WriteAllTextAsync(target, html, Encoding.UTF8, cancellationToken);
+            injected.Add(Path.GetRelativePath(siteOutputPath, target).Replace('\\', '/'));
+        }
+
+        await SaveInjectionMetadataAsync(
+            assetId,
+            siteHost,
+            version,
+            assetType,
+            request.Name.Trim(),
+            request.Description ?? string.Empty,
+            relativeFilePath,
+            injected,
+            cancellationToken);
+
+        return new CreateInjectionAssetResult
+        {
+            SiteHost = siteHost,
+            Version = version,
+            AssetId = assetId,
+            AssetType = assetType,
+            Name = request.Name.Trim(),
+            Description = request.Description ?? string.Empty,
+            RelativeFilePath = relativeFilePath,
+            PagesInjected = injected.Count,
+            InjectedPages = injected
         };
     }
 
@@ -1151,6 +1393,181 @@ public sealed class MirrorService : ISiteMirrorService
         return result;
     }
 
+    private static string NormalizeBlockPagePath(string rawPage)
+    {
+        var normalized = rawPage.Trim().Replace('\\', '/').TrimStart('/');
+        normalized = normalized.Replace(".json", string.Empty, StringComparison.OrdinalIgnoreCase);
+        normalized = normalized.Replace(".html", string.Empty, StringComparison.OrdinalIgnoreCase);
+        return normalized;
+    }
+
+    private static List<string> ResolveInjectionTargets(string siteOutputPath, IReadOnlyList<string>? targetPages, bool applyToAllPages)
+    {
+        if (applyToAllPages)
+        {
+            return Directory.EnumerateFiles(siteOutputPath, "*.html", SearchOption.AllDirectories)
+                .Where(path =>
+                {
+                    var rel = Path.GetRelativePath(siteOutputPath, path).Replace('\\', '/');
+                    return !rel.StartsWith($"{LocalizationGenerator.CatalogRootFolderName}/", StringComparison.OrdinalIgnoreCase);
+                })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var page in targetPages ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(page))
+            {
+                continue;
+            }
+
+            var normalized = page.Trim().Replace('\\', '/').TrimStart('/');
+            if (!normalized.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized += ".html";
+            }
+
+            var sourcePath = Path.Combine(siteOutputPath, normalized.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(sourcePath))
+            {
+                selected.Add(sourcePath);
+            }
+
+            var localizedRoot = Path.Combine(siteOutputPath, LocalizationGenerator.LocalizedRootFolderName);
+            if (!Directory.Exists(localizedRoot))
+            {
+                continue;
+            }
+
+            foreach (var langDir in Directory.EnumerateDirectories(localizedRoot))
+            {
+                var localizedPath = Path.Combine(langDir, normalized.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(localizedPath))
+                {
+                    selected.Add(localizedPath);
+                }
+            }
+        }
+
+        return selected.ToList();
+    }
+
+    private static bool InjectCss(IDocument document, string href)
+    {
+        if (document.Head is null)
+        {
+            return false;
+        }
+
+        if (document.Head.QuerySelector($"link[data-site-mirror-injection][href='{href}']") is not null)
+        {
+            return false;
+        }
+
+        var link = document.CreateElement("link");
+        link.SetAttribute("rel", "stylesheet");
+        link.SetAttribute("href", href);
+        link.SetAttribute("data-site-mirror-injection", "1");
+        document.Head.AppendChild(link);
+        return true;
+    }
+
+    private static bool InjectJs(IDocument document, string src)
+    {
+        if (document.Body is null && document.Head is null)
+        {
+            return false;
+        }
+
+        var root = document.Body ?? document.Head!;
+        if (document.QuerySelector($"script[data-site-mirror-injection][src='{src}']") is not null)
+        {
+            return false;
+        }
+
+        var script = document.CreateElement("script");
+        script.SetAttribute("src", src);
+        script.SetAttribute("defer", string.Empty);
+        script.SetAttribute("data-site-mirror-injection", "1");
+        root.AppendChild(script);
+        return true;
+    }
+
+    private async Task SaveInjectionMetadataAsync(
+        string assetId,
+        string siteHost,
+        string version,
+        string assetType,
+        string name,
+        string description,
+        string relativeFilePath,
+        IReadOnlyList<string> injectedPages,
+        CancellationToken cancellationToken)
+    {
+        // Reuse configured DB connection used by crawl repository.
+        // We intentionally keep this lightweight and schema-first.
+        if (string.IsNullOrWhiteSpace(_dbConnectionString))
+        {
+            return;
+        }
+
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(_dbConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            const string insertAsset = """
+                INSERT INTO dbo.InjectionAssets
+                (AssetId, SiteHost, Version, AssetType, Name, Description, RelativeFilePath, CreatedAtUtc)
+                VALUES
+                (@AssetId, @SiteHost, @Version, @AssetType, @Name, @Description, @RelativeFilePath, @CreatedAtUtc);
+                """;
+            await using (var cmd = new Microsoft.Data.SqlClient.SqlCommand(insertAsset, connection, (Microsoft.Data.SqlClient.SqlTransaction)transaction))
+            {
+                cmd.Parameters.AddWithValue("@AssetId", assetId);
+                cmd.Parameters.AddWithValue("@SiteHost", siteHost);
+                cmd.Parameters.AddWithValue("@Version", version);
+                cmd.Parameters.AddWithValue("@AssetType", assetType);
+                cmd.Parameters.AddWithValue("@Name", name);
+                cmd.Parameters.AddWithValue("@Description", description);
+                cmd.Parameters.AddWithValue("@RelativeFilePath", relativeFilePath);
+                cmd.Parameters.AddWithValue("@CreatedAtUtc", DateTimeOffset.UtcNow);
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            const string insertTarget = """
+                INSERT INTO dbo.InjectionAssetTargets (AssetId, TargetPagePath)
+                VALUES (@AssetId, @TargetPagePath);
+                """;
+            foreach (var page in injectedPages)
+            {
+                await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(insertTarget, connection, (Microsoft.Data.SqlClient.SqlTransaction)transaction);
+                cmd.Parameters.AddWithValue("@AssetId", assetId);
+                cmd.Parameters.AddWithValue("@TargetPagePath", page);
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    private static List<BlockItemPayload> FlattenBlockItems(BlockPagePayload blockPage)
+    {
+        if (blockPage.Groups.Count > 0)
+        {
+            return blockPage.Groups.SelectMany(group => group.Blocks).ToList();
+        }
+
+        return blockPage.Blocks.ToList();
+    }
+
     private static List<string> ResolveLocalizedPages(string localizedRoot, string? pagePath)
     {
         if (!string.IsNullOrWhiteSpace(pagePath))
@@ -1286,5 +1703,36 @@ public sealed class MirrorService : ISiteMirrorService
         public string Language { get; init; } = "en";
 
         public Dictionary<string, string> Entries { get; init; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed class BlockPagePayload
+    {
+        public string Page { get; init; } = "/";
+
+        public List<BlockItemPayload> Blocks { get; init; } = [];
+
+        public List<BlockGroupPayload> Groups { get; init; } = [];
+    }
+
+    private sealed record BlockItemPayload
+    {
+        public string Id { get; init; } = string.Empty;
+
+        public string Type { get; init; } = "paragraph";
+
+        public string Original { get; init; } = string.Empty;
+
+        public string Translated { get; init; } = string.Empty;
+    }
+
+    private sealed record BlockGroupPayload
+    {
+        public string Id { get; init; } = string.Empty;
+
+        public string HeadingType { get; init; } = "intro";
+
+        public string Heading { get; init; } = string.Empty;
+
+        public List<BlockItemPayload> Blocks { get; init; } = [];
     }
 }

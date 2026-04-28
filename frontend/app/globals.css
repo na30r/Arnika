@@ -270,6 +270,39 @@ button:disabled {
   gap: 1rem;
 }
 
+.crawled-groups {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.crawled-group h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.crawled-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.crawled-runs {
+  margin-top: 0.35rem;
+  padding-left: 0.35rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.queue-item.active-row {
+  background: #eaf0ff;
+  border-color: #8da7ff;
+}
+
+.crawled-page-link {
+  display: block;
+  text-decoration: none;
+}
+
 .translation-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

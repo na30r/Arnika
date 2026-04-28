@@ -12,5 +12,9 @@ public interface ISiteMirrorService
 
     Task<UpdateTranslationsResult> UpdateTranslationsAsync(UpdateTranslationsRequest request, CancellationToken cancellationToken = default);
 
+    Task<UpdateBlockTranslationsResult> UpdateBlockTranslationsAsync(UpdateBlockTranslationsRequest request, CancellationToken cancellationToken = default);
+
+    Task<CreateInjectionAssetResult> CreateInjectionAssetAsync(CreateInjectionAssetRequest request, CancellationToken cancellationToken = default);
+
     Task<FixPageLinksResult> FixPageLinksAsync(FixPageLinksRequest request, CancellationToken cancellationToken = default);
 }
