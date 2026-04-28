@@ -114,6 +114,26 @@
       !value.startsWith("/_site-mirror");
   }
 
+  function stripLeadingLocaleSegment(path) {
+    if (!path || typeof path !== "string" || !path.startsWith("/")) {
+      return path;
+    }
+
+    const parts = path.split("/");
+    // parts[0] === "" for absolute path
+    const first = parts[1];
+    if (!first) {
+      return path;
+    }
+
+    if (!/^[a-z]{2}(?:-[a-z]{2})?$/i.test(first)) {
+      return path;
+    }
+
+    const rest = parts.slice(2).join("/");
+    return rest ? `/${rest}` : "/";
+  }
+
   function getStoredUser() {
     try {
       const raw = window.localStorage.getItem(authStorageUserKey);
@@ -303,7 +323,20 @@
     if (value.startsWith("/") &&
       !value.startsWith("//") &&
       !value.startsWith("/mirror/")) {
-      return `${contentPrefix}${value}`;
+      const queryIndex = value.indexOf("?");
+      const hashIndex = value.indexOf("#");
+      let endIndex = value.length;
+      if (queryIndex >= 0) {
+        endIndex = Math.min(endIndex, queryIndex);
+      }
+      if (hashIndex >= 0) {
+        endIndex = Math.min(endIndex, hashIndex);
+      }
+
+      const pathOnly = value.slice(0, endIndex);
+      const suffix = value.slice(endIndex);
+      const normalizedPath = stripLeadingLocaleSegment(pathOnly);
+      return `${contentPrefix}${normalizedPath}${suffix}`;
     }
 
     if (isMirroredAbsoluteUrl(value)) {

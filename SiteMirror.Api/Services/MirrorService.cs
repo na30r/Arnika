@@ -1,10 +1,13 @@
 using System.Collections.Concurrent;
+using System.Text;
+using System.Text.Json;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
 using SiteMirror.Api.Services.Mirroring;
+using AngleSharp.Dom;
 
 namespace SiteMirror.Api.Services;
 
@@ -22,6 +25,13 @@ public sealed class MirrorService : ISiteMirrorService
     private readonly LocalizationGenerator _localizationGenerator;
     private readonly ICrawlRepository _crawlRepository;
     private readonly string _contentRootPath;
+    private static readonly System.Text.RegularExpressions.Regex LocalePathSegmentRegex = new(
+        "^[a-z]{2}(?:-[a-z]{2})?$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly JsonSerializerOptions CatalogJsonOptions = new()
+    {
+        WriteIndented = true
+    };
 
     public MirrorService(
         IOptions<MirrorSettings> options,
@@ -426,6 +436,138 @@ public sealed class MirrorService : ISiteMirrorService
         return await _crawlRepository.GetCrawlAsync(crawlId, cancellationToken);
     }
 
+    public async Task<UpdateTranslationsResult> UpdateTranslationsAsync(
+        UpdateTranslationsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        var language = request.Language?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            throw new ArgumentException("Language is required.", nameof(request.Language));
+        }
+
+        if (language.Any(ch => !char.IsLetterOrDigit(ch) && ch != '-'))
+        {
+            throw new ArgumentException("Language must contain only letters, numbers, and '-'.", nameof(request.Language));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var normalizedVersion = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, normalizedHost, normalizedVersion);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        Directory.CreateDirectory(i18nFolder);
+        var catalogPath = Path.Combine(i18nFolder, $"{language}.json");
+
+        var mergedEntries = await LoadLanguageEntriesAsync(catalogPath, cancellationToken);
+        var incomingEntries = request.Entries ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in incomingEntries)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            mergedEntries[key.Trim()] = value ?? string.Empty;
+        }
+
+        var payload = new TranslationCatalogPayload
+        {
+            Language = language,
+            Entries = mergedEntries
+                .OrderBy(item => item.Key, StringComparer.Ordinal)
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)
+        };
+        var catalogJson = JsonSerializer.Serialize(payload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(catalogPath, catalogJson, Encoding.UTF8, cancellationToken);
+
+        var rebuiltPages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
+            siteOutputPath,
+            language,
+            request.TargetPages,
+            request.DoNotTranslateTexts,
+            cancellationToken);
+
+        return new UpdateTranslationsResult
+        {
+            SiteHost = normalizedHost,
+            Version = normalizedVersion,
+            Language = language,
+            CatalogPath = catalogPath,
+            LocalizedOutputPath = Path.Combine(siteOutputPath, LocalizationGenerator.LocalizedRootFolderName, language),
+            UpdatedEntryCount = incomingEntries.Count,
+            RebuiltPageCount = rebuiltPages.Count,
+            RebuiltPages = rebuiltPages
+        };
+    }
+
+    public async Task<FixPageLinksResult> FixPageLinksAsync(
+        FixPageLinksRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        var language = request.Language?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            throw new ArgumentException("Language is required.", nameof(request.Language));
+        }
+
+        var siteHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var version = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var localizedRoot = Path.Combine(
+            outputRoot,
+            siteHost,
+            version,
+            LocalizationGenerator.LocalizedRootFolderName,
+            language);
+
+        if (!Directory.Exists(localizedRoot))
+        {
+            throw new DirectoryNotFoundException($"Localized folder not found: {localizedRoot}");
+        }
+
+        var files = ResolveLocalizedPages(localizedRoot, request.PagePath);
+        var parser = new HtmlParser();
+        var processed = new List<string>(files.Count);
+        var linksFixed = 0;
+
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var html = await File.ReadAllTextAsync(file, cancellationToken);
+            var document = await parser.ParseDocumentAsync(html, cancellationToken);
+            linksFixed += FixDocumentLinks(document, siteHost, version, language);
+            var updated = document.DocumentElement?.OuterHtml ?? html;
+            await File.WriteAllTextAsync(file, updated, cancellationToken);
+            processed.Add(Path.GetRelativePath(localizedRoot, file).Replace('\\', '/'));
+        }
+
+        return new FixPageLinksResult
+        {
+            SiteHost = siteHost,
+            Version = version,
+            Language = language,
+            PagesProcessed = processed.Count,
+            LinksFixed = linksFixed,
+            ProcessedPages = processed
+        };
+    }
+
     private async Task<PageExecutionResult> MirrorPageCoreAsync(
         Uri requestedUri,
         Uri rootUri,
@@ -566,7 +708,7 @@ public sealed class MirrorService : ISiteMirrorService
             Fragment = string.Empty
         };
         var normalizedPath = builder.Path;
-        if (normalizedPath.Length > 1 && normalizedPath.EndsWith('/', StringComparison.Ordinal))
+        if (normalizedPath.Length > 1 && normalizedPath.EndsWith("/", StringComparison.Ordinal))
         {
             normalizedPath = normalizedPath.TrimEnd('/');
         }
@@ -959,6 +1101,144 @@ public sealed class MirrorService : ISiteMirrorService
     private static string BuildFrontendPreviewPathStatic(string siteHost, string version, string language, string relativeEntry) =>
         $"/mirror/{siteHost}/{version}/{LocalizationGenerator.LocalizedRootFolderName}/{(string.IsNullOrWhiteSpace(language) ? "en" : language.Trim().ToLowerInvariant())}/{relativeEntry}";
 
+    private static async Task<Dictionary<string, string>> LoadLanguageEntriesAsync(string catalogPath, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(catalogPath))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(catalogPath, Encoding.UTF8, cancellationToken);
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+
+            if (doc.RootElement.TryGetProperty("Entries", out var entriesNode) &&
+                entriesNode.ValueKind == JsonValueKind.Object)
+            {
+                return ReadEntries(entriesNode);
+            }
+
+            if (doc.RootElement.TryGetProperty("entries", out var entriesNodeCamel) &&
+                entriesNodeCamel.ValueKind == JsonValueKind.Object)
+            {
+                return ReadEntries(entriesNodeCamel);
+            }
+        }
+        catch
+        {
+            // If parsing fails we rebuild from incoming request entries.
+        }
+
+        return new Dictionary<string, string>(StringComparer.Ordinal);
+    }
+
+    private static Dictionary<string, string> ReadEntries(JsonElement entriesNode)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var property in entriesNode.EnumerateObject())
+        {
+            if (property.Value.ValueKind == JsonValueKind.String)
+            {
+                result[property.Name] = property.Value.GetString() ?? string.Empty;
+            }
+        }
+
+        return result;
+    }
+
+    private static List<string> ResolveLocalizedPages(string localizedRoot, string? pagePath)
+    {
+        if (!string.IsNullOrWhiteSpace(pagePath))
+        {
+            var normalized = pagePath.Trim().Replace('\\', '/').TrimStart('/');
+            if (!normalized.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized += ".html";
+            }
+
+            var fullPath = Path.GetFullPath(Path.Combine(localizedRoot, normalized.Replace('/', Path.DirectorySeparatorChar)));
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException($"Localized page not found: {normalized}", fullPath);
+            }
+
+            return [fullPath];
+        }
+
+        return Directory
+            .EnumerateFiles(localizedRoot, "*.html", SearchOption.AllDirectories)
+            .ToList();
+    }
+
+    private static int FixDocumentLinks(IDocument document, string siteHost, string version, string language)
+    {
+        var fixedCount = 0;
+        foreach (var element in document.QuerySelectorAll("a[href], area[href], form[action]"))
+        {
+            var attr = element.HasAttribute("href") ? "href" : "action";
+            var raw = element.GetAttribute(attr);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var rewritten = RewriteLocalizedNavigationPath(raw!, siteHost, version, language);
+            if (!string.Equals(rewritten, raw, StringComparison.Ordinal))
+            {
+                element.SetAttribute(attr, rewritten);
+                fixedCount++;
+            }
+        }
+
+        return fixedCount;
+    }
+
+    private static string RewriteLocalizedNavigationPath(string value, string siteHost, string version, string language)
+    {
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith("/", StringComparison.Ordinal) ||
+            trimmed.StartsWith("//", StringComparison.Ordinal) ||
+            trimmed.StartsWith("/mirror/", StringComparison.Ordinal) ||
+            trimmed.StartsWith("/_site-mirror", StringComparison.Ordinal))
+        {
+            return value;
+        }
+
+        var pathEnd = trimmed.IndexOfAny(['?', '#']);
+        var pathOnly = pathEnd >= 0 ? trimmed[..pathEnd] : trimmed;
+        var suffix = pathEnd >= 0 ? trimmed[pathEnd..] : string.Empty;
+        var normalizedPath = StripLocalePrefix(pathOnly);
+        return $"/mirror/{siteHost}/{version}/{LocalizationGenerator.LocalizedRootFolderName}/{language}{normalizedPath}{suffix}";
+    }
+
+    private static string StripLocalePrefix(string path)
+    {
+        var normalized = path.Trim();
+        if (!normalized.StartsWith("/", StringComparison.Ordinal))
+        {
+            normalized = "/" + normalized;
+        }
+
+        var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+        {
+            return "/";
+        }
+
+        if (!LocalePathSegmentRegex.IsMatch(segments[0]))
+        {
+            return normalized;
+        }
+
+        var remaining = segments.Skip(1).ToArray();
+        return remaining.Length == 0 ? "/" : "/" + string.Join('/', remaining);
+    }
+
     private async Task PersistCrawlSafeAsync(
         CrawlRecord crawl,
         IReadOnlyList<CrawlPageRecord> pages)
@@ -999,5 +1279,12 @@ public sealed class MirrorService : ISiteMirrorService
         public string? PageError { get; init; }
 
         public bool SkippedFromStore { get; init; }
+    }
+
+    private sealed class TranslationCatalogPayload
+    {
+        public string Language { get; init; } = "en";
+
+        public Dictionary<string, string> Entries { get; init; } = new(StringComparer.Ordinal);
     }
 }

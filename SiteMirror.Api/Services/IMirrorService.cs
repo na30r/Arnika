@@ -9,4 +9,8 @@ public interface ISiteMirrorService
     Task<RewriteLinksResult> RewriteLinksAsync(RewriteLinksRequest request, CancellationToken cancellationToken = default);
 
     Task<CrawlStatusResult?> GetCrawlStatusAsync(string crawlId, CancellationToken cancellationToken = default);
+
+    Task<UpdateTranslationsResult> UpdateTranslationsAsync(UpdateTranslationsRequest request, CancellationToken cancellationToken = default);
+
+    Task<FixPageLinksResult> FixPageLinksAsync(FixPageLinksRequest request, CancellationToken cancellationToken = default);
 }

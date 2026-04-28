@@ -234,6 +234,141 @@ button:disabled {
   border: 1px solid #d5dbe5;
 }
 
+.admin-layout {
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: start;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 4.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-sidebar h3 {
+  margin: 0 0 0.25rem;
+}
+
+.sidebar-item {
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  color: #1b2a4a;
+  border: 1px solid #d5dbe5;
+}
+
+.sidebar-item.active {
+  background: #3f6fff;
+  border-color: #3f6fff;
+  color: #fff;
+}
+
+.admin-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.translation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.translation-filters {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.translation-search-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.translation-filter-label {
+  color: #4b5565;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.translation-status-select {
+  border: 1px solid #d5dbe5;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  background: #fff;
+  min-width: 10rem;
+}
+
+.translation-filter-count {
+  color: #4b5565;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.translation-empty {
+  padding: 1.25rem 0.75rem;
+  color: #4b5565;
+  text-align: center;
+  border-top: 1px solid #eef1f7;
+  background: #fbfcff;
+}
+
+.translation-table {
+  margin-top: 1rem;
+  border: 1px solid #d5dbe5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.translation-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(260px, 1fr) minmax(260px, 1fr);
+  border-top: 1px solid #eef1f7;
+}
+
+.translation-head {
+  background: #f7f9ff;
+  padding: 0.55rem 0.6rem;
+  font-weight: 700;
+  border-right: 1px solid #e8edf7;
+}
+
+.translation-head:last-child {
+  border-right: none;
+}
+
+.translation-key,
+.translation-en,
+.translation-fa {
+  padding: 0.55rem 0.6rem;
+  border-right: 1px solid #eef1f7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.translation-fa {
+  border-right: none;
+}
+
+.translation-editable {
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1px dashed #c7d0e3;
+  color: #1b2a4a;
+  font-weight: 500;
+}
+
+.file-upload {
+  cursor: pointer;
+}
+
 .error {
   margin-top: 0.8rem;
   color: #ba1124;
@@ -266,6 +401,22 @@ iframe {
 }
 
 @media (max-width: 820px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: static;
+  }
+
+  .translation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .translation-row {
+    grid-template-columns: 1fr;
+  }
+
   .row {
     flex-direction: column;
   }

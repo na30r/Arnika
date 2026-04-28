@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Playwright;
 using SiteMirror.Api.Models;
@@ -123,5 +124,151 @@ public sealed class MirrorController(
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpPost("update-translations")]
+    [ProducesResponseType(typeof(UpdateTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UpdateTranslationsResult>> UpdateTranslations(
+        [FromBody] UpdateTranslationsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.UpdateTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("update-translations/upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(UpdateTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UpdateTranslationsResult>> UploadTranslations(
+        [FromForm] UploadTranslationsForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is null || form.File.Length == 0)
+        {
+            return BadRequest(new { message = "Translation file is required." });
+        }
+
+        try
+        {
+            Dictionary<string, string> entries;
+            await using (var stream = form.File.OpenReadStream())
+            {
+                entries = await ParseTranslationEntriesAsync(stream, cancellationToken);
+            }
+
+            var request = new UpdateTranslationsRequest
+            {
+                SiteHost = form.SiteHost,
+                Version = form.Version,
+                Language = form.Language,
+                Entries = entries,
+                DoNotTranslateTexts = form.DoNotTranslateTexts,
+                TargetPages = form.TargetPages
+            };
+
+            var result = await mirrorService.UpdateTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid translation JSON. Expected either {\"entries\": {...}} or a flat {\"k_xxx\": \"...\"} object."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("fix-page-links")]
+    [ProducesResponseType(typeof(FixPageLinksResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<FixPageLinksResult>> FixPageLinks(
+        [FromBody] FixPageLinksRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.FixPageLinksAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    private static async Task<Dictionary<string, string>> ParseTranslationEntriesAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new JsonException("Root JSON must be an object.");
+        }
+
+        JsonElement entriesNode;
+        if (doc.RootElement.TryGetProperty("entries", out var entriesCamel) &&
+            entriesCamel.ValueKind == JsonValueKind.Object)
+        {
+            entriesNode = entriesCamel;
+        }
+        else if (doc.RootElement.TryGetProperty("Entries", out var entriesPascal) &&
+                 entriesPascal.ValueKind == JsonValueKind.Object)
+        {
+            entriesNode = entriesPascal;
+        }
+        else
+        {
+            // Fallback: treat full object as a flat entries map.
+            entriesNode = doc.RootElement;
+        }
+
+        var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var property in entriesNode.EnumerateObject())
+        {
+            if (property.Value.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var key = property.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            entries[key] = property.Value.GetString() ?? string.Empty;
+        }
+
+        return entries;
     }
 }

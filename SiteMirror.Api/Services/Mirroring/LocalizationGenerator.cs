@@ -12,6 +12,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     public const string LocalizedRootFolderName = "_localized";
     public const string CatalogRootFolderName = "_i18n";
     public const string DoNotTranslateFileName = "do-not-translate.json";
+public const string PerPageTemplatesFolderName = "pages";
 
     private static readonly HashSet<string> NonTranslatableContainers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -66,6 +67,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         Directory.CreateDirectory(i18nFolder);
 
         await SaveCatalogAsync(Path.Combine(i18nFolder, "source.json"), "en", sourceEntries, cancellationToken);
+        await SavePerPageTemplatesAsync(mirrorRoot, i18nFolder, sourceHtmlFiles, cancellationToken);
         _ = await LoadOrCreateLanguageCatalogAsync("en", i18nFolder, sourceEntries, cancellationToken);
         var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
         var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
@@ -104,6 +106,117 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
             DefaultLanguage = defaultLanguage,
             AvailableLanguages = normalizedLanguages
         };
+    }
+
+    private async Task SavePerPageTemplatesAsync(
+        string mirrorRoot,
+        string i18nFolder,
+        IReadOnlyList<string> sourceHtmlFiles,
+        CancellationToken cancellationToken)
+    {
+        var perPageRoot = Path.Combine(i18nFolder, PerPageTemplatesFolderName);
+        if (Directory.Exists(perPageRoot))
+        {
+            Directory.Delete(perPageRoot, recursive: true);
+        }
+        Directory.CreateDirectory(perPageRoot);
+
+        var parser = new HtmlParser();
+        foreach (var relativeHtmlPath in sourceHtmlFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var htmlPath = Path.Combine(mirrorRoot, relativeHtmlPath);
+            var html = await File.ReadAllTextAsync(htmlPath, Encoding.UTF8, cancellationToken);
+            var document = await parser.ParseDocumentAsync(html, cancellationToken);
+            var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            ProcessTranslatableTokens(document, relativeHtmlPath, (key, value, _) =>
+            {
+                if (!entries.ContainsKey(key))
+                {
+                    entries[key] = value;
+                }
+            });
+
+            var jsonRelativePath = relativeHtmlPath
+                .Replace('\\', '/')
+                .TrimStart('/')
+                .Replace(".html", ".json", StringComparison.OrdinalIgnoreCase);
+            var templatePath = Path.Combine(perPageRoot, jsonRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(templatePath)!);
+            await SaveCatalogAsync(templatePath, "source", entries, cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> RegenerateLocalizedPagesAsync(
+        string mirrorRoot,
+        string language,
+        IReadOnlyList<string>? targetPages,
+        IReadOnlyList<string>? doNotTranslateTexts,
+        CancellationToken cancellationToken)
+    {
+        var normalizedLanguage = language?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedLanguage))
+        {
+            throw new ArgumentException("Language is required.", nameof(language));
+        }
+
+        var excludedRootSegments = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            LocalizedRootFolderName,
+            CatalogRootFolderName
+        };
+        var sourceFiles = EnumerateSourceFiles(mirrorRoot, excludedRootSegments).ToList();
+        var sourceHtmlFiles = sourceFiles
+            .Where(path => string.Equals(Path.GetExtension(path), ".html", StringComparison.OrdinalIgnoreCase))
+            .Select(path => path.Replace('\\', '/'))
+            .ToList();
+
+        if (sourceHtmlFiles.Count == 0)
+        {
+            logger.LogInformation("No HTML files found for localization in {MirrorRoot}", mirrorRoot);
+            return [];
+        }
+
+        var targetHtmlFiles = ResolveTargetHtmlFiles(sourceHtmlFiles, targetPages);
+        if (targetHtmlFiles.Count == 0)
+        {
+            return [];
+        }
+
+        var sourceEntries = await BuildSourceCatalogAsync(mirrorRoot, targetHtmlFiles, cancellationToken);
+        var i18nFolder = Path.Combine(mirrorRoot, CatalogRootFolderName);
+        Directory.CreateDirectory(i18nFolder);
+
+        var languageCatalog = await LoadOrCreateLanguageCatalogAsync(
+            normalizedLanguage,
+            i18nFolder,
+            sourceEntries,
+            cancellationToken);
+
+        var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
+        var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
+
+        var languageOutputRoot = Path.Combine(mirrorRoot, LocalizedRootFolderName, normalizedLanguage);
+        if (!Directory.Exists(languageOutputRoot))
+        {
+            CopySourceFiles(mirrorRoot, languageOutputRoot, sourceFiles);
+        }
+        else
+        {
+            // Re-copy only targeted source files to ensure we always translate from fresh original HTML.
+            CopySourceFiles(mirrorRoot, languageOutputRoot, targetHtmlFiles);
+        }
+
+        await TranslateHtmlFilesForLanguageAsync(
+            normalizedLanguage,
+            languageOutputRoot,
+            targetHtmlFiles,
+            languageCatalog,
+            doNotTranslateSet,
+            cancellationToken);
+
+        return targetHtmlFiles;
     }
 
     private async Task<Dictionary<string, string>> BuildSourceCatalogAsync(
@@ -421,7 +534,8 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
             return;
         }
 
-        if (doc.RootElement.TryGetProperty("entries", out var entriesNode) &&
+        if ((doc.RootElement.TryGetProperty("entries", out var entriesNode) ||
+             doc.RootElement.TryGetProperty("Entries", out entriesNode)) &&
             entriesNode.ValueKind == JsonValueKind.Object)
         {
             foreach (var property in entriesNode.EnumerateObject())
@@ -637,6 +751,65 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
         var normalized = relativePath.Replace('\\', '/');
         var slashIndex = normalized.IndexOf('/');
         return slashIndex < 0 ? normalized : normalized[..slashIndex];
+    }
+
+    private static List<string> ResolveTargetHtmlFiles(
+        IReadOnlyList<string> sourceHtmlFiles,
+        IReadOnlyList<string>? targetPages)
+    {
+        if (targetPages is null || targetPages.Count == 0)
+        {
+            return sourceHtmlFiles.ToList();
+        }
+
+        var sourceSet = new HashSet<string>(sourceHtmlFiles, StringComparer.OrdinalIgnoreCase);
+        var selected = new List<string>();
+        foreach (var page in targetPages)
+        {
+            var normalized = NormalizeTargetPage(page);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                continue;
+            }
+
+            if (!normalized.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized += ".html";
+            }
+
+            if (!sourceSet.Contains(normalized))
+            {
+                continue;
+            }
+
+            if (!selected.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                selected.Add(normalized);
+            }
+        }
+
+        return selected;
+    }
+
+    private static string NormalizeTargetPage(string? rawPage)
+    {
+        if (string.IsNullOrWhiteSpace(rawPage))
+        {
+            return string.Empty;
+        }
+
+        var page = rawPage.Trim().Replace('\\', '/');
+        const string localizedPrefix = "/_localized/";
+        var localizedIndex = page.IndexOf(localizedPrefix, StringComparison.OrdinalIgnoreCase);
+        if (localizedIndex >= 0)
+        {
+            var remaining = page[(localizedIndex + localizedPrefix.Length)..];
+            var slashIndex = remaining.IndexOf('/');
+            page = slashIndex >= 0 ? remaining[(slashIndex + 1)..] : remaining;
+        }
+
+        page = page.TrimStart('/');
+        return page;
     }
 
     private static List<string> NormalizeLanguages(IReadOnlyList<string> languages)

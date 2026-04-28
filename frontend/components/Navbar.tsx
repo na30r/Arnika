@@ -28,12 +28,17 @@ export function Navbar({ locale }: Props) {
     window.location.href = `/${segments.join("/")}`;
   }
 
-  function signOut() {
+  async function signOut() {
     clearSession();
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {
+      // ignore network error and continue redirect
+    }
     window.location.href = localePath(locale, "");
   }
 
-  const home = localePath(locale, "");
+  const home = localePath(locale, "admin");
   return (
     <header className="site-nav">
       <div className="nav-inner">
