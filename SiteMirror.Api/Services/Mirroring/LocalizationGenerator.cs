@@ -349,6 +349,7 @@ public const string PerPageTemplatesFolderName = "pages";
         CancellationToken cancellationToken)
     {
         var parser = new HtmlParser();
+        var commonOriginals = await LoadCommonOriginalsForTokenPassAsync(i18nFolder, cancellationToken);
         foreach (var relativeHtmlPath in sourceHtmlFiles)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -365,6 +366,14 @@ public const string PerPageTemplatesFolderName = "pages";
             {
                 var sourceValueKey = NormalizeForKey(sourceValue);
                 if (doNotTranslateSet.Contains(sourceValueKey))
+                {
+                    return;
+                }
+
+                // Enforce source-of-truth split:
+                // - _common content comes from token catalogs (fa.json via ResolveLocalizedValue)
+                // - all page-specific content must come from block JSON (applied below)
+                if (!string.IsNullOrWhiteSpace(sourceValueKey) && !commonOriginals.Contains(sourceValueKey))
                 {
                     return;
                 }
@@ -438,6 +447,55 @@ public const string PerPageTemplatesFolderName = "pages";
         }
 
         return sourceValue;
+    }
+
+    private static async Task<HashSet<string>> LoadCommonOriginalsForTokenPassAsync(
+        string i18nFolder,
+        CancellationToken cancellationToken)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        var commonPath = Path.Combine(i18nFolder, PerPageBlocksFolderName, CommonBlockFileName);
+        if (!File.Exists(commonPath))
+        {
+            return result;
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(commonPath, Encoding.UTF8, cancellationToken);
+            using var doc = JsonDocument.Parse(raw);
+            if ((!doc.RootElement.TryGetProperty("entries", out var entriesNode) &&
+                 !doc.RootElement.TryGetProperty("Entries", out entriesNode)) ||
+                entriesNode.ValueKind != JsonValueKind.Array)
+            {
+                return result;
+            }
+
+            foreach (var item in entriesNode.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var original = (item.TryGetProperty("original", out var originalNode) ||
+                                item.TryGetProperty("Original", out originalNode)) &&
+                               originalNode.ValueKind == JsonValueKind.String
+                    ? NormalizeForKey(originalNode.GetString() ?? string.Empty)
+                    : string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(original))
+                {
+                    result.Add(original);
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort only: fallback keeps existing behavior if common file parsing fails.
+        }
+
+        return result;
     }
 
     private static void ApplyPageBlockTranslations(

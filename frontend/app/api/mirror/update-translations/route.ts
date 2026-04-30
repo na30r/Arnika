@@ -6,6 +6,7 @@ type UpdateTranslationsBody = {
   language?: string;
   pagePath?: string;
   entries?: Record<string, string>;
+  sourceEntries?: Record<string, string>;
 };
 
 export async function POST(request: NextRequest) {
@@ -40,7 +41,8 @@ export async function POST(request: NextRequest) {
       version,
       language,
       pagePath,
-      entries: body.entries ?? {}
+      entries: body.entries ?? {},
+      sourceEntries: body.sourceEntries ?? {}
     }),
     cache: "no-store"
   });

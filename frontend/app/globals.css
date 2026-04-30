@@ -235,8 +235,13 @@ button:disabled {
 }
 
 .admin-layout {
-  grid-template-columns: 240px minmax(0, 1fr);
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0.8rem 1rem 1rem;
+  grid-template-columns: 260px minmax(0, 1fr);
   align-items: start;
+  min-height: calc(100vh - 64px);
 }
 
 .admin-sidebar {
@@ -268,6 +273,7 @@ button:disabled {
 .admin-content {
   display: grid;
   gap: 1rem;
+  min-height: 0;
 }
 
 .crawled-groups {
@@ -307,6 +313,28 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.6rem;
+}
+
+.translation-common-panel {
+  margin-top: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid #dce5ff;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7faff 0%, #fdfdff 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.translation-common-panel h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  color: #1b2a4a;
+}
+
+.translation-common-panel .muted {
+  margin: 0;
 }
 
 .translation-filters {
@@ -385,6 +413,12 @@ button:disabled {
   word-break: break-word;
 }
 
+.translation-en textarea,
+.translation-fa textarea {
+  min-height: 5rem;
+  margin: 0;
+}
+
 .translation-fa {
   border-right: none;
 }
@@ -444,6 +478,11 @@ iframe {
 
   .translation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .translation-common-panel {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .translation-row {

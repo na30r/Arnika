@@ -1,0 +1,437 @@
+﻿{
+  "Page": "/docs",
+  "Blocks": [],
+  "Groups": [
+    {
+      "Id": "g_8911e5274537",
+      "HeadingType": "intro",
+      "Heading": "",
+      "Blocks": [
+        {
+          "Id": "b_c92e394e88d5",
+          "Type": "rich_text",
+          "Original": "SaveDenyAccept allPrivacy Policy",
+          "Translated": "SaveDenyAccept all[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_1dc9f36c9f90",
+          "Type": "rich_text",
+          "Original": "SaveDenyAccept allPrivacy Policy",
+          "Translated": "SaveDenyAccept all[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_91b4874fd053",
+          "Type": "rich_text",
+          "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
+          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_4d66791e087b",
+          "Type": "rich_text",
+          "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
+          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_3ab9839355bc",
+          "Type": "rich_text",
+          "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
+          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_e5bcc8a1434f",
+          "Type": "rich_text",
+          "Original": "DenyAccept allConsent SettingsPrivacy Policy",
+          "Translated": "DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_908d6d3696f8",
+          "Type": "rich_text",
+          "Original": "Consent SettingsPrivacy Policy",
+          "Translated": "Consent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+        },
+        {
+          "Id": "b_7cdf60947058",
+          "Type": "paragraph",
+          "Original": "Using App Router",
+          "Translated": "Using App Router"
+        },
+        {
+          "Id": "b_d59c121b11cb",
+          "Type": "paragraph",
+          "Original": "Features available in /app",
+          "Translated": "Features available in /app"
+        },
+        {
+          "Id": "b_2c3551d0093f",
+          "Type": "paragraph",
+          "Original": "Latest Version",
+          "Translated": "Latest Version"
+        },
+        {
+          "Id": "b_7769829451f8",
+          "Type": "paragraph",
+          "Original": "16.2.4",
+          "Translated": "16.2.4"
+        },
+        {
+          "Id": "b_0ffe195f5440",
+          "Type": "paragraph",
+          "Original": "Using App Router",
+          "Translated": "Using App Router"
+        },
+        {
+          "Id": "b_5f642361d58b",
+          "Type": "paragraph",
+          "Original": "Features available in /app",
+          "Translated": "Features available in /app"
+        },
+        {
+          "Id": "b_ce3b2c2b0414",
+          "Type": "paragraph",
+          "Original": "Latest Version",
+          "Translated": "Latest Version"
+        },
+        {
+          "Id": "b_a5cdc96b9d4a",
+          "Type": "paragraph",
+          "Original": "16.2.4",
+          "Translated": "16.2.4"
+        },
+        {
+          "Id": "b_1822f856288b",
+          "Type": "list_item",
+          "Original": "What is Next.js?",
+          "Translated": "[What is Next.js?](#what-is-nextjs)"
+        },
+        {
+          "Id": "b_d5d6d6da53fa",
+          "Type": "list_item",
+          "Original": "How to use the docs",
+          "Translated": "[How to use the docs](#how-to-use-the-docs)"
+        },
+        {
+          "Id": "b_f963f636cf47",
+          "Type": "list_item",
+          "Original": "App Router and Pages Router",
+          "Translated": "[App Router and Pages Router](#app-router-and-pages-router)"
+        },
+        {
+          "Id": "b_f5b1e597e187",
+          "Type": "list_item",
+          "Original": "React version handling",
+          "Translated": "[React version handling](#react-version-handling)"
+        },
+        {
+          "Id": "b_3acd537cd406",
+          "Type": "list_item",
+          "Original": "Pre-requisite knowledge",
+          "Translated": "[Pre-requisite knowledge](#pre-requisite-knowledge)"
+        },
+        {
+          "Id": "b_cdc63efae172",
+          "Type": "list_item",
+          "Original": "Accessibility",
+          "Translated": "[Accessibility](#accessibility)"
+        },
+        {
+          "Id": "b_937a3a10319f",
+          "Type": "list_item",
+          "Original": "Join our Community",
+          "Translated": "[Join our Community](#join-our-community)"
+        },
+        {
+          "Id": "b_fed9d6480dc8",
+          "Type": "list_item",
+          "Original": "Next Steps",
+          "Translated": "[Next Steps](#next-steps)"
+        }
+      ]
+    },
+    {
+      "Id": "g_812a926df39c",
+      "HeadingType": "h1",
+      "Heading": "Next.js Docs",
+      "Blocks": [
+        {
+          "Id": "b_2812532a3764",
+          "Type": "heading",
+          "Original": "Next.js Docs",
+          "Translated": "Next.js Docs"
+        },
+        {
+          "Id": "b_f8210db73549",
+          "Type": "paragraph",
+          "Original": "Welcome to the Next.js documentation!",
+          "Translated": "Welcome to the Next.js documentation!"
+        }
+      ]
+    },
+    {
+      "Id": "g_e4e64c7044a0",
+      "HeadingType": "h2",
+      "Heading": "What is Next.js?",
+      "Blocks": [
+        {
+          "Id": "b_a147e47b5f99",
+          "Type": "heading",
+          "Original": "What is Next.js?",
+          "Translated": "What is Next.js?"
+        },
+        {
+          "Id": "b_ae951fdcfa91",
+          "Type": "paragraph",
+          "Original": "Next.js is a React framework for building full-stack web applications. You use React Components to build user interfaces, and Next.js for additional features and optimizations.",
+          "Translated": "Next.js is a React framework for building full-stack web applications. You use React Components to build user interfaces, and Next.js for additional features and optimizations."
+        },
+        {
+          "Id": "b_e361b275a6ad",
+          "Type": "paragraph",
+          "Original": "It also automatically configures lower-level tools like bundlers and compilers. You can instead focus on building your product and shipping quickly.",
+          "Translated": "It also automatically configures lower-level tools like bundlers and compilers. You can instead focus on building your product and shipping quickly."
+        },
+        {
+          "Id": "b_4af746360a87",
+          "Type": "paragraph",
+          "Original": "Whether you\u0027re an individual developer or part of a larger team, Next.js can help you build interactive, dynamic, and fast React applications.",
+          "Translated": "Whether you\u0027re an individual developer or part of a larger team, Next.js can help you build interactive, dynamic, and fast React applications."
+        }
+      ]
+    },
+    {
+      "Id": "g_4405174570d7",
+      "HeadingType": "h2",
+      "Heading": "How to use the docs",
+      "Blocks": [
+        {
+          "Id": "b_8b05e28af6bf",
+          "Type": "heading",
+          "Original": "How to use the docs",
+          "Translated": "How to use the docs"
+        },
+        {
+          "Id": "b_7fbb10da6057",
+          "Type": "paragraph",
+          "Original": "The docs are organized into 3 sections:",
+          "Translated": "The docs are organized into 3 sections:"
+        },
+        {
+          "Id": "b_62a759352598",
+          "Type": "list_item",
+          "Original": "Getting Started: Step-by-step tutorials to help you create a new application and learn the core Next.js features.",
+          "Translated": "[Getting Started](docs/app/getting-started.html): Step-by-step tutorials to help you create a new application and learn the core Next.js features."
+        },
+        {
+          "Id": "b_db9b775b9368",
+          "Type": "list_item",
+          "Original": "Guides: Tutorials on specific use cases, choose what\u0027s relevant to you.",
+          "Translated": "[Guides](docs/app/guides.html): Tutorials on specific use cases, choose what\u0027s relevant to you."
+        },
+        {
+          "Id": "b_d60e1d5464e4",
+          "Type": "list_item",
+          "Original": "API Reference: Detailed technical reference for every feature.",
+          "Translated": "[API Reference](docs/app/api-reference.html): Detailed technical reference for every feature."
+        },
+        {
+          "Id": "b_57f42ecaedd9",
+          "Type": "paragraph",
+          "Original": "Use the sidebar to navigate through the sections, or search (Ctrl\u002BK or Cmd\u002BK) to quickly find a page.",
+          "Translated": "Use the sidebar to navigate through the sections, or search (Ctrl\u002BK or Cmd\u002BK) to quickly find a page."
+        }
+      ]
+    },
+    {
+      "Id": "g_f53704d9ddb2",
+      "HeadingType": "h2",
+      "Heading": "App Router and Pages Router",
+      "Blocks": [
+        {
+          "Id": "b_a66c7b9cb7a6",
+          "Type": "heading",
+          "Original": "App Router and Pages Router",
+          "Translated": "App Router and Pages Router"
+        },
+        {
+          "Id": "b_72823a4c3a7f",
+          "Type": "paragraph",
+          "Original": "Next.js has two different routers:",
+          "Translated": "Next.js has two different routers:"
+        },
+        {
+          "Id": "b_f44a757d9db8",
+          "Type": "list_item",
+          "Original": "App Router: The newer router that supports new React features like Server Components.",
+          "Translated": "App Router: The newer router that supports new React features like Server Components."
+        },
+        {
+          "Id": "b_83ba7868ff69",
+          "Type": "list_item",
+          "Original": "Pages Router: The original router, still supported and being improved.",
+          "Translated": "Pages Router: The original router, still supported and being improved."
+        },
+        {
+          "Id": "b_bc41e4631dd9",
+          "Type": "paragraph",
+          "Original": "At the top of the sidebar, you\u0027ll notice a dropdown menu that allows you to switch between the App Router and the Pages Router docs.",
+          "Translated": "At the top of the sidebar, you\u0027ll notice a dropdown menu that allows you to switch between the [App Router](docs/app.html) and the [Pages Router](docs/pages.html) docs."
+        }
+      ]
+    },
+    {
+      "Id": "g_1d68ae819168",
+      "HeadingType": "h3",
+      "Heading": "React version handling",
+      "Blocks": [
+        {
+          "Id": "b_e25aaf56ae1f",
+          "Type": "heading",
+          "Original": "React version handling",
+          "Translated": "\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+        },
+        {
+          "Id": "b_6e83517cfbfd",
+          "Type": "paragraph",
+          "Original": "The App Router and Pages Router handle React versions differently:",
+          "Translated": "The App Router and Pages Router handle React versions differently:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+        },
+        {
+          "Id": "b_7dda6fa893c1",
+          "Type": "list_item",
+          "Original": "App Router: Uses React canary releases built-in, which include all the stable React 19 changes, as well as newer features being validated in frameworks, prior to a new React release.",
+          "Translated": "App Router: Uses [React canary releases](https://react.dev/blog/2023/05/03/react-canaries) built-in, which include all the stable React 19 changes, as well as newer features being validated in frameworks, prior to a new React release.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+        },
+        {
+          "Id": "b_91f70d1295fc",
+          "Type": "list_item",
+          "Original": "Pages Router: Uses the React version installed in your project\u0027s package.json.",
+          "Translated": "Pages Router: Uses the React version installed in your project\u0027s package.json.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+        },
+        {
+          "Id": "b_80aebe1034f9",
+          "Type": "paragraph",
+          "Original": "This approach ensures new React features work reliably in the App Router while maintaining backwards compatibility for existing Pages Router applications.",
+          "Translated": "This approach ensures new React features work reliably in the App Router while maintaining backwards compatibility for existing Pages Router applications.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+        }
+      ]
+    },
+    {
+      "Id": "g_5c2fef6d053c",
+      "HeadingType": "h2",
+      "Heading": "Pre-requisite knowledge",
+      "Blocks": [
+        {
+          "Id": "b_999e36b2f3d9",
+          "Type": "heading",
+          "Original": "Pre-requisite knowledge",
+          "Translated": "Pre-requisite knowledge"
+        },
+        {
+          "Id": "b_0bdab8b399b9",
+          "Type": "paragraph",
+          "Original": "Our documentation assumes some familiarity with web development. Before getting started, it\u0027ll help if you\u0027re comfortable with:",
+          "Translated": "Our documentation assumes some familiarity with web development. Before getting started, it\u0027ll help if you\u0027re comfortable with:"
+        },
+        {
+          "Id": "b_f81077b19fd1",
+          "Type": "list_item",
+          "Original": "HTML",
+          "Translated": "HTML"
+        },
+        {
+          "Id": "b_ecf7276e630a",
+          "Type": "list_item",
+          "Original": "CSS",
+          "Translated": "CSS"
+        },
+        {
+          "Id": "b_c84a293614f4",
+          "Type": "list_item",
+          "Original": "JavaScript",
+          "Translated": "JavaScript"
+        },
+        {
+          "Id": "b_f02f4f18313b",
+          "Type": "list_item",
+          "Original": "React",
+          "Translated": "React"
+        },
+        {
+          "Id": "b_43efc1715472",
+          "Type": "paragraph",
+          "Original": "If you\u0027re new to React or need a refresher, we recommend starting with our React Foundations course, and the Next.js Foundations course that has you building an application as you learn.",
+          "Translated": "If you\u0027re new to React or need a refresher, we recommend starting with our [React Foundations course](learn/react-foundations.html), and the [Next.js Foundations course](learn/dashboard-app.html) that has you building an application as you learn."
+        }
+      ]
+    },
+    {
+      "Id": "g_7ad31f396334",
+      "HeadingType": "h2",
+      "Heading": "Accessibility",
+      "Blocks": [
+        {
+          "Id": "b_8ffbf49fcdd0",
+          "Type": "heading",
+          "Original": "Accessibility",
+          "Translated": "Accessibility"
+        },
+        {
+          "Id": "b_95552bd4fa27",
+          "Type": "paragraph",
+          "Original": "For the best experience when using a screen reader, we recommend using Firefox and NVDA, or Safari and VoiceOver.",
+          "Translated": "For the best experience when using a screen reader, we recommend using Firefox and NVDA, or Safari and VoiceOver."
+        }
+      ]
+    },
+    {
+      "Id": "g_1a30b4a9bdc0",
+      "HeadingType": "h2",
+      "Heading": "Join our Community",
+      "Blocks": [
+        {
+          "Id": "b_16a5c94f8532",
+          "Type": "heading",
+          "Original": "Join our Community",
+          "Translated": "Join our Community"
+        },
+        {
+          "Id": "b_933dc68c9e6b",
+          "Type": "paragraph",
+          "Original": "If you have questions about anything related to Next.js, you\u0027re always welcome to ask our community on GitHub Discussions, Discord, X (Twitter), and Reddit.",
+          "Translated": "If you have questions about anything related to Next.js, you\u0027re always welcome to ask our community on [GitHub Discussions](https://github.com/vercel/next.js/discussions), [Discord](https://discord.com/invite/bUG2bvbtHy), [X (Twitter)](https://x.com/nextjs), and [Reddit](https://www.reddit.com/r/nextjs)."
+        }
+      ]
+    },
+    {
+      "Id": "g_8dddf70fa748",
+      "HeadingType": "h2",
+      "Heading": "Next Steps",
+      "Blocks": [
+        {
+          "Id": "b_24419f6d096b",
+          "Type": "heading",
+          "Original": "Next Steps",
+          "Translated": "Next Steps"
+        }
+      ]
+    },
+    {
+      "Id": "g_7733c94a79cd",
+      "HeadingType": "h3",
+      "Heading": "Getting Started",
+      "Blocks": [
+        {
+          "Id": "b_bad16fe30eac",
+          "Type": "heading",
+          "Original": "Getting Started",
+          "Translated": "Getting Started"
+        },
+        {
+          "Id": "b_2f9ffd0bc931",
+          "Type": "paragraph",
+          "Original": "Was this helpful?",
+          "Translated": "Was this helpful?"
+        }
+      ]
+    }
+  ]
+}

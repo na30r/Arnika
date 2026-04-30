@@ -1,0 +1,14 @@
+<svg width="441" height="287" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <mask id="b" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="-5" y="-7" width="447" height="294">
+    <path fill="url(#a)" d="M-5-7h447v294H-5z"/>
+  </mask>
+  <g opacity=".08" stroke="#000000" stroke-dasharray="1 1" mask="url(#b)">
+    <path d="M-15.252 15.5h457.136M-15.252 31.5h457.136M-15.252 47.5h457.136M-15.252 63.5h457.136M-15.252 79.5h457.136M-15.252 95.5h457.136M-15.252 111.5h457.136M-15.252 127.5h457.136M-15.252 143.5h457.136M-15.252 159.5h457.136M-15.252 175.5h457.136M-15.252 191.5h457.136M-15.252 207.5h457.136M-15.252 223.5h457.136M-15.252 239.5h457.136M-15.252 255.5h457.136M-.063 0v256M15.937 0v256M31.937 0v256M47.937 0v256M63.937 0v256M79.937 0v256M95.937 0v256M111.937 0v256M127.937 0v256M143.937 0v256M159.937 0v256M175.937 0v256M191.937 0v256M207.937 0v256M223.937 0v256M239.937 0v256M255.937 0v256M271.937 0v256M287.937 0v256M303.937 0v256M319.937 0v256M335.937 0v256M351.937 0v256M367.937 0v256M383.937 0v256M399.937 0v256M415.937 0v256M431.937 0v256"/>
+  </g>
+  <defs>
+    <linearGradient id="a" x1="218.5" y1="-7" x2="218.5" y2="287" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#000000"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

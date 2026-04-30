@@ -624,6 +624,7 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         var incoming = request.Entries ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        var incomingSource = request.SourceEntries ?? new Dictionary<string, string>(StringComparer.Ordinal);
         if (incoming.Count > 0)
         {
             var incomingById = new Dictionary<string, string>(incoming, StringComparer.Ordinal);
@@ -661,6 +662,54 @@ public sealed class MirrorService : ISiteMirrorService
                     if (incomingById.TryGetValue(block.Id, out var translated))
                     {
                         updatedBlocks.Add(block with { Translated = translated ?? string.Empty });
+                    }
+                    else
+                    {
+                        updatedBlocks.Add(block);
+                    }
+                }
+
+                blockDoc.Groups[g] = group with { Blocks = updatedBlocks };
+            }
+        }
+
+        if (incomingSource.Count > 0)
+        {
+            var incomingSourceById = new Dictionary<string, string>(incomingSource, StringComparer.Ordinal);
+            for (var i = 0; i < blockDoc.Blocks.Count; i++)
+            {
+                var block = blockDoc.Blocks[i];
+                if (string.IsNullOrWhiteSpace(block.Id))
+                {
+                    continue;
+                }
+
+                if (incomingSourceById.TryGetValue(block.Id, out var original))
+                {
+                    blockDoc.Blocks[i] = block with { Original = original ?? string.Empty };
+                }
+            }
+
+            for (var g = 0; g < blockDoc.Groups.Count; g++)
+            {
+                var group = blockDoc.Groups[g];
+                if (group.Blocks.Count == 0)
+                {
+                    continue;
+                }
+
+                var updatedBlocks = new List<BlockItemPayload>(group.Blocks.Count);
+                foreach (var block in group.Blocks)
+                {
+                    if (string.IsNullOrWhiteSpace(block.Id))
+                    {
+                        updatedBlocks.Add(block);
+                        continue;
+                    }
+
+                    if (incomingSourceById.TryGetValue(block.Id, out var original))
+                    {
+                        updatedBlocks.Add(block with { Original = original ?? string.Empty });
                     }
                     else
                     {

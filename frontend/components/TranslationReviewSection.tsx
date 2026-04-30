@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useMemo, useState } from "react";
 import { authHeaders } from "../lib/auth";
 
 type BlockFile = {
@@ -89,23 +89,18 @@ export function TranslationReviewSection() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingCommon, setUploadingCommon] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [rowSearch, setRowSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [previewLanguage, setPreviewLanguage] = useState("fa");
 
   const changedCount = useMemo(() => rows.filter((r) => r.fa !== r.en && r.fa.trim().length > 0).length, [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => rowMatchesText(r, rowSearch) && rowMatchesStatus(r, statusFilter));
   }, [rows, rowSearch, statusFilter]);
-
-  useEffect(() => {
-    if (editingKey && !filteredRows.some((r) => r.key === editingKey)) {
-      setEditingKey(null);
-    }
-  }, [editingKey, filteredRows]);
 
   async function loadPage() {
     setLoading(true);
@@ -167,6 +162,10 @@ export function TranslationReviewSection() {
     setRows((prev) => prev.map((row) => (row.key === key ? { ...row, fa: value } : row)));
   }
 
+  function updateEn(key: string, value: string) {
+    setRows((prev) => prev.map((row) => (row.key === key ? { ...row, en: value } : row)));
+  }
+
   async function submitChanges() {
     if (rows.length === 0) {
       setError("Load a page first.");
@@ -177,7 +176,9 @@ export function TranslationReviewSection() {
     setMessage(null);
     try {
       const entries: Record<string, string> = {};
+      const sourceEntries: Record<string, string> = {};
       for (const row of rows) {
+        sourceEntries[row.key] = row.en;
         if (row.fa !== row.en) {
           entries[row.key] = row.fa;
         }
@@ -194,7 +195,8 @@ export function TranslationReviewSection() {
           version: version.trim(),
           language: "fa",
           pagePath: normalizePagePath(pagePath),
-          entries
+          entries,
+          sourceEntries
         })
       });
 
@@ -257,10 +259,73 @@ export function TranslationReviewSection() {
     }
   }
 
+  async function onUploadCommonJson(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingCommon(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const form = new FormData();
+      form.set("siteHost", siteHost.trim());
+      form.set("version", version.trim());
+      form.set("language", "fa");
+      form.set("file", file, file.name);
+
+      const response = await fetch("/api/mirror/update-common-translations/upload", {
+        method: "POST",
+        headers: {
+          ...authHeaders()
+        },
+        body: form
+      });
+
+      const text = await response.text();
+      const payload = text
+        ? (JSON.parse(text) as { message?: string; rebuiltPageCount?: number; updatedCommonCount?: number })
+        : {};
+      if (!response.ok) {
+        throw new Error(payload.message || `Common upload failed (${response.status}).`);
+      }
+
+      setMessage(
+        `Applied common JSON (${payload.updatedCommonCount ?? 0} entries) and rebuilt ${payload.rebuiltPageCount ?? 0} page(s).`
+      );
+      await loadPage();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to upload common JSON.");
+    } finally {
+      setUploadingCommon(false);
+      event.target.value = "";
+    }
+  }
+
   return (
     <section className="card controls">
       <h2>Translation Review (EN vs FA)</h2>
       <p className="muted">Load one page from block JSON, compare EN/FA, click FA cell to edit, then submit all changes.</p>
+
+      <div className="translation-common-panel">
+        <div>
+          <h3>Apply `_common.json` To All Pages</h3>
+          <p className="muted">
+            Upload a common translation JSON file and apply it site-wide for this host/version.
+          </p>
+        </div>
+        <label className="btn-ghost file-upload">
+          {uploadingCommon ? "Applying..." : "Upload Common JSON + Rebuild All"}
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={onUploadCommonJson}
+            hidden
+            disabled={uploadingCommon}
+          />
+        </label>
+      </div>
 
       <div className="form translation-grid">
         <label htmlFor="tr-site">Site Host</label>
@@ -286,6 +351,25 @@ export function TranslationReviewSection() {
 
       {error && <p className="error">{error}</p>}
       {message && <p className="muted">{message}</p>}
+
+      {rows.length > 0 && (
+        <div className="card viewer" style={{ marginTop: 12 }}>
+          <div className="viewer-header">
+            <h2>Mirrored Preview</h2>
+            <input
+              value={previewLanguage}
+              onChange={(e) => setPreviewLanguage(e.target.value.toLowerCase())}
+              placeholder="fa"
+              style={{ maxWidth: 120 }}
+            />
+          </div>
+          <iframe
+            key={`${siteHost}-${version}-${pagePath}-${previewLanguage}`}
+            src={`/mirror/${siteHost.trim()}/${version.trim()}/_localized/${previewLanguage}/${normalizePagePath(pagePath)}.html`}
+            title="Translation preview"
+          />
+        </div>
+      )}
 
       {rows.length > 0 && (
         <div className="translation-filters" role="search">
@@ -326,31 +410,28 @@ export function TranslationReviewSection() {
       {rows.length > 0 && (
         <div className="translation-table">
           <div className="translation-head">Key</div>
-          <div className="translation-head">English</div>
-          <div className="translation-head">Persian (click to edit)</div>
+          <div className="translation-head">English (editable)</div>
+          <div className="translation-head">Persian (editable)</div>
           {filteredRows.length === 0 ? (
             <div className="translation-empty">No rows match the current filter. Clear the search or change &quot;Show&quot;.</div>
           ) : (
             filteredRows.map((row) => {
-              const isEditing = editingKey === row.key;
               return (
                 <div className="translation-row" key={row.key}>
                   <code className="translation-key">{row.key}</code>
-                  <div className="translation-en">{row.en}</div>
+                  <div className="translation-en">
+                    <textarea
+                      value={row.en}
+                      onChange={(e) => updateEn(row.key, e.target.value)}
+                      rows={2}
+                    />
+                  </div>
                   <div className="translation-fa">
-                    {isEditing ? (
-                      <textarea
-                        value={row.fa}
-                        onChange={(e) => updateFa(row.key, e.target.value)}
-                        onBlur={() => setEditingKey(null)}
-                        rows={2}
-                        autoFocus
-                      />
-                    ) : (
-                      <button type="button" className="translation-editable" onClick={() => setEditingKey(row.key)}>
-                        {row.fa}
-                      </button>
-                    )}
+                    <textarea
+                      value={row.fa}
+                      onChange={(e) => updateFa(row.key, e.target.value)}
+                      rows={2}
+                    />
                   </div>
                 </div>
               );

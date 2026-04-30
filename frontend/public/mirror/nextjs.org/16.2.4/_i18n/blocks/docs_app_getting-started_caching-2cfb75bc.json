@@ -1,0 +1,20 @@
+﻿{
+  "Page": "/docs/app/getting-started/caching-2cfb75bc",
+  "Blocks": [],
+  "Groups": [
+    {
+      "Id": "g_66425b0b7a7e",
+      "HeadingType": "intro",
+      "Heading": "",
+      "Blocks": [
+        {
+          "Id": "b_fba9f05badec",
+          "Type": "paragraph",
+          "Original": "Loading posts...",
+          "Translated": "Loading posts...",
+          "GroupId": "g_66425b0b7a7e"
+        }
+      ]
+    }
+  ]
+}

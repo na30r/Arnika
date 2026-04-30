@@ -1,0 +1,1715 @@
+﻿{
+  "Language": "fa",
+  "Entries": [
+    {
+      "Key": "k_0013fa2e7a98",
+      "Original": "Layouts and Pages",
+      "Translated": ""
+    },
+    {
+      "Key": "k_011e9c1535d1",
+      "Original": "Next.js Compiler",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0161ce7d9795",
+      "Original": "cacheTag",
+      "Translated": ""
+    },
+    {
+      "Key": "k_01cec705801d",
+      "Original": "Route Segment ConfigdynamicParamsmaxDurationpreferredRegionruntime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_03a68b7d8b85",
+      "Original": "Memory Usage",
+      "Translated": ""
+    },
+    {
+      "Key": "k_057b6197438c",
+      "Original": "webpack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_05e564c2fa8e",
+      "Original": "Caching (Previous Model)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_05f5ff0e1f8e",
+      "Original": "ISR",
+      "Translated": ""
+    },
+    {
+      "Key": "k_06135ccdbe7e",
+      "Original": "revalidatePath",
+      "Translated": ""
+    },
+    {
+      "Key": "k_064507756be8",
+      "Original": "PPR Platform Guide",
+      "Translated": ""
+    },
+    {
+      "Key": "k_086ef5e65c46",
+      "Original": "unstable_rethrow",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0894c345b1d4",
+      "Original": "Client-side Fetching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_09e871c98fef",
+      "Original": "Images",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0a4470d64e9d",
+      "Original": "Skip to content",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0b9d2b2362bc",
+      "Original": "Blog",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0c2fd78a93a1",
+      "Original": "Prefetching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0c4f0574d906",
+      "Original": "Static Site Generation (SSG)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0c73cb67237f",
+      "Original": "cacheHandlers",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0c9f35123a76",
+      "Original": "serverExternalPackages",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0d5695019fb0",
+      "Original": "transpilePackages",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0db0e9fb96eb",
+      "Original": "generateImageMetadata",
+      "Translated": ""
+    },
+    {
+      "Key": "k_0e873ea4f7c9",
+      "Original": "Multi-Zones",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1029d6764481",
+      "Original": "output",
+      "Translated": ""
+    },
+    {
+      "Key": "k_10805a0fbcf5",
+      "Original": "layout.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1382876a6e9a",
+      "Original": "CI Build Caching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1404e5ef3cec",
+      "Original": "Deploying to Platforms",
+      "Translated": ""
+    },
+    {
+      "Key": "k_144c8fd746c4",
+      "Original": "Version 16",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1632d8680d3e",
+      "Original": "Public pages",
+      "Translated": ""
+    },
+    {
+      "Key": "k_194e13da720a",
+      "Original": "CSS",
+      "Translated": ""
+    },
+    {
+      "Key": "k_19d81c90efac",
+      "Original": "basePath",
+      "Translated": ""
+    },
+    {
+      "Key": "k_19f49d852660",
+      "Original": "images",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1ad4678d83db",
+      "Original": "Server and Client Components",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1c8c2066451e",
+      "Original": "Version 12",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1d7a8fcd8b63",
+      "Original": "favicon, icon, and apple-icon",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1e8325521df6",
+      "Original": "Streaming",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1f2e69ec932f",
+      "Original": "Script Component",
+      "Translated": ""
+    },
+    {
+      "Key": "k_1f4b68267372",
+      "Original": "inlineCss",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2082fb461989",
+      "Original": "Stay updated on new releases and features, guides, and case studies.",
+      "Translated": ""
+    },
+    {
+      "Key": "k_20bb4efd64b3",
+      "Original": "Route Handlers",
+      "Translated": ""
+    },
+    {
+      "Key": "k_218887269ad5",
+      "Original": "Team",
+      "Translated": ""
+    },
+    {
+      "Key": "k_21a17ce8f6a8",
+      "Original": "httpAgentOptions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_21b2034ae2b0",
+      "Original": "AdaptersConfigurationCreating an AdapterAPI ReferenceTesting AdaptersRouting with @next/routingImplementing PPR in an AdapterRuntime IntegrationInvoking EntrypointsOutput TypesRouting InformationUse Cases",
+      "Translated": ""
+    },
+    {
+      "Key": "k_21b6159eef8e",
+      "Original": "ComponentsFontForm ComponentImage ComponentLink ComponentScript Component",
+      "Translated": ""
+    },
+    {
+      "Key": "k_22cc8b7c861f",
+      "Original": "UpgradingCodemodsVersion 14Version 15Version 16",
+      "Translated": ""
+    },
+    {
+      "Key": "k_25bc96295797",
+      "Original": "Analytics",
+      "Translated": ""
+    },
+    {
+      "Key": "k_25c57e4c0b8f",
+      "Original": "Migrating to Cache Components",
+      "Translated": ""
+    },
+    {
+      "Key": "k_25dc000dcd3e",
+      "Original": "getServerSideProps",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2687c8413b1a",
+      "Original": "Third Party Libraries",
+      "Translated": ""
+    },
+    {
+      "Key": "k_26b47e3d8252",
+      "Original": "headers",
+      "Translated": ""
+    },
+    {
+      "Key": "k_26b56c1bdfb0",
+      "Original": "refresh",
+      "Translated": ""
+    },
+    {
+      "Key": "k_26e1b07dfaa6",
+      "Original": "adapterPath",
+      "Translated": ""
+    },
+    {
+      "Key": "k_28602a480863",
+      "Original": "JSON-LD",
+      "Translated": ""
+    },
+    {
+      "Key": "k_28ab3f769cab",
+      "Original": "useParams",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2bff805c7b7a",
+      "Original": "Tailwind CSS v3",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2cbec0c26839",
+      "Original": "Next.js Conf",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2de56e4434c3",
+      "Original": "default.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_2df1fd0b9693",
+      "Original": "expireTime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_30894faa2581",
+      "Original": "mdx-components.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_33b718e3426e",
+      "Original": "Development Environment",
+      "Translated": ""
+    },
+    {
+      "Key": "k_349a9d154e3e",
+      "Original": "Image Optimization",
+      "Translated": ""
+    },
+    {
+      "Key": "k_34b58850b291",
+      "Original": "Routing Information",
+      "Translated": ""
+    },
+    {
+      "Key": "k_377f6a321ea4",
+      "Original": "robots.txt",
+      "Translated": ""
+    },
+    {
+      "Key": "k_37e6babacffc",
+      "Original": "Data Security",
+      "Translated": ""
+    },
+    {
+      "Key": "k_381e3298b2b8",
+      "Original": "Scripts",
+      "Translated": ""
+    },
+    {
+      "Key": "k_387485c3637a",
+      "Original": "ESLint",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3a3a46fce614",
+      "Original": "webVitalsAttribution",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3a58b13470f6",
+      "Original": "draftMode",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3ae5a4f21ea0",
+      "Original": "Subscribe to our newsletter",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3b755f7b857b",
+      "Original": "Internationalization",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3c1c400cbc4e",
+      "Original": "About Vercel",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3c4e88762ea7",
+      "Original": "Version 10",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3c9d57ee37a9",
+      "Original": "maxDuration",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3d07fe6f9560",
+      "Original": "use cache",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3e8f79c6b842",
+      "Original": "Project Structure",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3f1151c8b153",
+      "Original": "template.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_3f16d98fa849",
+      "Original": "Cypress",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4018de1e9acd",
+      "Original": "unstable_cache",
+      "Translated": ""
+    },
+    {
+      "Key": "k_405906c9d5be",
+      "Original": "after",
+      "Translated": ""
+    },
+    {
+      "Key": "k_40b90ed9428b",
+      "Original": "Evals",
+      "Translated": ""
+    },
+    {
+      "Key": "k_426e95aa8d56",
+      "Original": "useSearchParams",
+      "Translated": ""
+    },
+    {
+      "Key": "k_42f7b07db92a",
+      "Original": "logging",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4546db7275da",
+      "Original": "Fast Refresh",
+      "Translated": ""
+    },
+    {
+      "Key": "k_47e69e75f6b5",
+      "Original": "Vite",
+      "Translated": ""
+    },
+    {
+      "Key": "k_48bf3bbfe2cd",
+      "Original": "Fetching Data",
+      "Translated": ""
+    },
+    {
+      "Key": "k_48c482a6b10e",
+      "Original": "Preview Mode",
+      "Translated": ""
+    },
+    {
+      "Key": "k_49318f6bbb3a",
+      "Original": "cacheHandler",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4a7b4f205b13",
+      "Original": "ImageResponse",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4b44ab3c2f30",
+      "Original": "Self-Hosting",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4bab2d8fe13f",
+      "Original": "More",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4bec9575721b",
+      "Original": "Forms",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4c4d24abca3f",
+      "Original": "forbidden.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4e74c039d3ad",
+      "Original": "Getting StartedInstallationProject StructureImagesFontsCSSDeploying",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4f6d25447079",
+      "Original": "Support Policy",
+      "Translated": ""
+    },
+    {
+      "Key": "k_4f7d902f8a02",
+      "Original": "generateBuildId",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5042af4bd681",
+      "Original": "View transitions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_50514d7f69e6",
+      "Original": "generateMetadata",
+      "Translated": ""
+    },
+    {
+      "Key": "k_50e19fda0d5b",
+      "Original": "Image",
+      "Translated": ""
+    },
+    {
+      "Key": "k_52a77a37b808",
+      "Original": "useSelectedLayoutSegment",
+      "Translated": ""
+    },
+    {
+      "Key": "k_53a754e3d992",
+      "Original": "Lazy Loading",
+      "Translated": ""
+    },
+    {
+      "Key": "k_53fbbe9a98f6",
+      "Original": "Server-side Rendering (SSR)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5442e2b64fa0",
+      "Original": "GitHub",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5466d6eb957b",
+      "Original": "UpgradingCodemodsVersion 10Version 11Version 12Version 13Version 14Version 9",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5577e4870234",
+      "Original": "Showcase",
+      "Translated": ""
+    },
+    {
+      "Key": "k_56016f7b288f",
+      "Original": "exportPathMap",
+      "Translated": ""
+    },
+    {
+      "Key": "k_56275f40c3f4",
+      "Original": "Client-side Rendering (CSR)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_56b71e89fb10",
+      "Original": "Videos",
+      "Translated": ""
+    },
+    {
+      "Key": "k_570e9af5f040",
+      "Original": "Routing with @next/routing",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5854a82bc437",
+      "Original": "forbidden",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5946189824aa",
+      "Original": "useReportWebVitals",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5b77857c39e7",
+      "Original": "Intercepting Routes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5d329c039314",
+      "Original": "TestingCypressJestPlaywrightVitest",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5e4eb6475602",
+      "Original": "next CLI",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5f8209262189",
+      "Original": "ArchitectureAccessibilityFast RefreshNext.js CompilerSupported Browsers",
+      "Translated": ""
+    },
+    {
+      "Key": "k_5fff1f56919b",
+      "Original": "Error Handling",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6054af2f0c9c",
+      "Original": "generateViewport",
+      "Translated": ""
+    },
+    {
+      "Key": "k_60790f7c8417",
+      "Original": "Caching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_60c1acd90083",
+      "Original": "\u00A9 2026 Vercel, Inc.",
+      "Translated": ""
+    },
+    {
+      "Key": "k_60e22121bdd0",
+      "Original": "Redirecting",
+      "Translated": ""
+    },
+    {
+      "Key": "k_619eb950de7e",
+      "Original": "GuidesAnalyticsAuthenticationBabelCI Build CachingContent Security PolicyCSS-in-JSCustom ServerDebuggingDraft ModeEnvironment VariablesFormsISRInstrumentationInternationalizationLazy LoadingMDXMigratingApp RouterCreate React AppViteMulti-ZonesOpenTelemetryPackage BundlingPostCSSPreview ModeProductionRedirectingSassScriptsSelf-HostingStatic ExportsTailwind CSSTestingCypressJestPlaywrightVitestThird Party LibrariesUpgradingCodemodsVersion 10Version 11Version 12Version 13Version 14Version 9",
+      "Translated": ""
+    },
+    {
+      "Key": "k_61c9b2b17db7",
+      "Original": "public",
+      "Translated": ""
+    },
+    {
+      "Key": "k_627b9d0e895d",
+      "Original": "cacheComponents",
+      "Translated": ""
+    },
+    {
+      "Key": "k_63b0d2dd354f",
+      "Original": "Automatic Static Optimization",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6518df8cbea8",
+      "Original": "instrumentation.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_65610394afdc",
+      "Original": "reactCompiler",
+      "Translated": ""
+    },
+    {
+      "Key": "k_67cb5afcac91",
+      "Original": "Version 13",
+      "Translated": ""
+    },
+    {
+      "Key": "k_68147f16d43d",
+      "Original": "API ReferenceComponentsFontFormHeadImageImage (Legacy)LinkScriptFile-system conventionsinstrumentation.jsProxypublicsrc DirectoryFunctionsgetInitialPropsgetServerSidePropsgetStaticPathsgetStaticPropsNextRequestNextResponseuseParamsuseReportWebVitalsuseRouteruseSearchParamsuserAgentConfigurationnext.config.js OptionsadapterPathallowedDevOriginsassetPrefixbasePathbundlePagesRouterDependenciescompresscrossOrigindeploymentIddevIndicatorsdistDirenvexportPathMapgenerateBuildIdgenerateEtagsheadershttpAgentOptionsimagesloggingonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsexperimental.proxyClientMaxBodySizereactStrictModeredirectsrewritesserverExternalPackagestrailingSlashtranspilePackagesturbopacktypescripturlImportsuseLightningcsswebpackwebVitalsAttributionTypeScriptESLintCLIcreate-next-app CLInext CLIAdaptersConfigurationCreating an AdapterAPI ReferenceTesting AdaptersRouting with @next/routingImplementing PPR in an AdapterRuntime IntegrationInvoking EntrypointsOutput TypesRouting InformationUse CasesEdge RuntimeTurbopack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_68a4194227be",
+      "Original": "Docs",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6acccd95ff90",
+      "Original": "authInterrupts",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6c3bfc8e6df7",
+      "Original": "instrumentation-client.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6d46b82162ba",
+      "Original": "MigratingApp RouterCreate React AppVite",
+      "Translated": ""
+    },
+    {
+      "Key": "k_6dd4fe806eb6",
+      "Original": "Telemetry",
+      "Translated": ""
+    },
+    {
+      "Key": "k_701b074d29ec",
+      "Original": "Data FetchinggetStaticPropsgetStaticPathsForms and MutationsgetServerSidePropsClient-side Fetching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_722f19eb19a7",
+      "Original": "onDemandEntries",
+      "Translated": ""
+    },
+    {
+      "Key": "k_72a5ca0450be",
+      "Original": "Multi-tenant",
+      "Translated": ""
+    },
+    {
+      "Key": "k_738a83020fe8",
+      "Original": "not-found.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_73acf387a7ff",
+      "Original": "getStaticPaths",
+      "Translated": ""
+    },
+    {
+      "Key": "k_73b55f978f85",
+      "Original": "create-next-app CLI",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7427cf697be1",
+      "Original": "Glossary",
+      "Translated": ""
+    },
+    {
+      "Key": "k_74a9340bbf5b",
+      "Original": "Package Bundling",
+      "Translated": ""
+    },
+    {
+      "Key": "k_74cbaeca4aec",
+      "Original": "Custom Server",
+      "Translated": ""
+    },
+    {
+      "Key": "k_754164850f38",
+      "Original": "Configuration",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7570e7ba00ee",
+      "Original": "Image Component",
+      "Translated": ""
+    },
+    {
+      "Key": "k_75ac9c34b745",
+      "Original": "generateEtags",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7655602dc8cc",
+      "Original": "How Revalidation Works",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7687f88be994",
+      "Original": "Dynamic Routes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_774e0ed0a838",
+      "Original": "page.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_79adadd90fcf",
+      "Original": "unauthorized.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7a0a9bd139f8",
+      "Original": "Contact Sales",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7b8c929aaded",
+      "Original": "Creating an Adapter",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7c595d497fcc",
+      "Original": "FunctionsgetInitialPropsgetServerSidePropsgetStaticPathsgetStaticPropsNextRequestNextResponseuseParamsuseReportWebVitalsuseRouteruseSearchParamsuserAgent",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7c97251091bc",
+      "Original": "preferredRegion",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7cc4f9956d41",
+      "Original": "Static Exports",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7cfb3e41d813",
+      "Original": "mdxRs",
+      "Translated": ""
+    },
+    {
+      "Key": "k_7f15f5c5165e",
+      "Original": "Link Component",
+      "Translated": ""
+    },
+    {
+      "Key": "k_80446347ede5",
+      "Original": "Form",
+      "Translated": ""
+    },
+    {
+      "Key": "k_814605c64a5c",
+      "Original": "connection",
+      "Translated": ""
+    },
+    {
+      "Key": "k_82339be87e00",
+      "Original": "RenderingServer-side Rendering (SSR)Static Site Generation (SSG)Automatic Static OptimizationClient-side Rendering (CSR)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_823619e079c3",
+      "Original": "Governance",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8424acc914b2",
+      "Original": "unstable_noStore",
+      "Translated": ""
+    },
+    {
+      "Key": "k_849ea77800df",
+      "Original": "Search documentation...CtrlKSearch...\u2318K",
+      "Translated": ""
+    },
+    {
+      "Key": "k_86e82e7944fd",
+      "Original": "Version 14",
+      "Translated": ""
+    },
+    {
+      "Key": "k_86eeb820cdcb",
+      "Original": "Forms and Mutations",
+      "Translated": ""
+    },
+    {
+      "Key": "k_87df60de337f",
+      "Original": "Resources",
+      "Translated": ""
+    },
+    {
+      "Key": "k_895b27c88016",
+      "Original": "Debugging",
+      "Translated": ""
+    },
+    {
+      "Key": "k_899e8a61956a",
+      "Original": "getStaticProps",
+      "Translated": ""
+    },
+    {
+      "Key": "k_89d6bb15c7a8",
+      "Original": "compress",
+      "Translated": ""
+    },
+    {
+      "Key": "k_89de01be211c",
+      "Original": "Contribution Guide",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8a93e3a1f5c5",
+      "Original": "revalidateTag",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8b92bf501dff",
+      "Original": "route.jsdynamicParamsmaxDurationpreferredRegionruntime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8c3d112f68fc",
+      "Original": "serverActions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8c9a7ee07eb4",
+      "Original": "Configurationnext.config.js OptionsadapterPathallowedDevOriginsassetPrefixbasePathbundlePagesRouterDependenciescompresscrossOrigindeploymentIddevIndicatorsdistDirenvexportPathMapgenerateBuildIdgenerateEtagsheadershttpAgentOptionsimagesloggingonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsexperimental.proxyClientMaxBodySizereactStrictModeredirectsrewritesserverExternalPackagestrailingSlashtranspilePackagesturbopacktypescripturlImportsuseLightningcsswebpackwebVitalsAttributionTypeScriptESLint",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8dbdaa6a5c09",
+      "Original": "Linking and Navigating",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8fa41d59c259",
+      "Original": "Releases",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8fc435e75dff",
+      "Original": "use cache: remote",
+      "Translated": ""
+    },
+    {
+      "Key": "k_8ff903495db4",
+      "Original": "assetPrefix",
+      "Translated": ""
+    },
+    {
+      "Key": "k_901f4056faa4",
+      "Original": "generateStaticParams",
+      "Translated": ""
+    },
+    {
+      "Key": "k_902c91d94e0f",
+      "Original": "Legal",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9087e3011f32",
+      "Original": "src Directory",
+      "Translated": ""
+    },
+    {
+      "Key": "k_91cb6d1538d3",
+      "Original": "userAgent",
+      "Translated": ""
+    },
+    {
+      "Key": "k_920f8f5815b3",
+      "Original": "env",
+      "Translated": ""
+    },
+    {
+      "Key": "k_92a518c0d73b",
+      "Original": "PWAs",
+      "Translated": ""
+    },
+    {
+      "Key": "k_93de79fa0605",
+      "Original": "Directivesuse cacheuse cache: privateuse cache: remoteuse clientuse server",
+      "Translated": ""
+    },
+    {
+      "Key": "k_949e5aa7985b",
+      "Original": "Font Optimization",
+      "Translated": ""
+    },
+    {
+      "Key": "k_94aafb45eaff",
+      "Original": "Invoking Entrypoints",
+      "Translated": ""
+    },
+    {
+      "Key": "k_955cee4493aa",
+      "Original": "turbopack.ignoreIssue",
+      "Translated": ""
+    },
+    {
+      "Key": "k_96015bed3922",
+      "Original": "Metadata and OG images",
+      "Translated": ""
+    },
+    {
+      "Key": "k_96396de020ff",
+      "Original": "updateTag",
+      "Translated": ""
+    },
+    {
+      "Key": "k_97a6fab19aed",
+      "Original": "Open Source Software",
+      "Translated": ""
+    },
+    {
+      "Key": "k_981e64855127",
+      "Original": "Turbopack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_985ed572c06d",
+      "Original": "Mutating Data",
+      "Translated": ""
+    },
+    {
+      "Key": "k_991b411cc600",
+      "Original": "sitemap.xml",
+      "Translated": ""
+    },
+    {
+      "Key": "k_99c09a674c1a",
+      "Original": "trailingSlash",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9ac42a4bebed",
+      "Original": "Revalidating",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9c072f24b54a",
+      "Original": "MDX",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9c11fe0a7d4e",
+      "Original": "Cookie Preferences",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9d849f7c06de",
+      "Original": "CLIcreate-next-appnext CLI",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9d9f2ff112fd",
+      "Original": "unauthorized",
+      "Translated": ""
+    },
+    {
+      "Key": "k_9db108ba6b7f",
+      "Original": "Privacy Policy",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a0fed5ad9676",
+      "Original": "Form Component",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a1d8b1686c94",
+      "Original": "Create React App",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a470a6fb7d31",
+      "Original": "Vitest",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a5a070b6446a",
+      "Original": "unstable_catchError",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a64994781105",
+      "Original": "crossOrigin",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a6e78a6bf2b5",
+      "Original": "next.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttribution",
+      "Translated": ""
+    },
+    {
+      "Key": "k_a7dd3a1d8ed5",
+      "Original": "Upgrading",
+      "Translated": ""
+    },
+    {
+      "Key": "k_aa750b92c5f7",
+      "Original": "Parallel Routes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ac70f5e4298c",
+      "Original": "bundlePagesRouterDependencies",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ad53822d51d9",
+      "Original": "ShowcaseDocsBlogTemplatesEnterprise",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ad63d77e62af",
+      "Original": "Testing Adapters",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ad874c9770f1",
+      "Original": "File-system conventionsinstrumentation.jsProxypublicsrc Directory",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ad8cee67138e",
+      "Original": "fetch",
+      "Translated": ""
+    },
+    {
+      "Key": "k_adf9c8454f0b",
+      "Original": "File-system conventionsdefault.jsDynamic Segmentserror.jsforbidden.jsinstrumentation.jsinstrumentation-client.jsIntercepting Routeslayout.jsloading.jsmdx-components.jsnot-found.jspage.jsParallel Routesproxy.jspublicroute.jsdynamicParamsmaxDurationpreferredRegionruntimeRoute Groupssrctemplate.jsunauthorized.jsMetadata Filesfavicon, icon, and apple-iconmanifest.jsonopengraph-image and twitter-imagerobots.txtsitemap.xmlRoute Segment ConfigdynamicParamsmaxDurationpreferredRegionruntime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_af05b0f3d097",
+      "Original": "useLinkStatus",
+      "Translated": ""
+    },
+    {
+      "Key": "k_af0a20eda54c",
+      "Original": "optimizePackageImports",
+      "Translated": ""
+    },
+    {
+      "Key": "k_af36386d16f9",
+      "Original": "Pages and Layouts",
+      "Translated": ""
+    },
+    {
+      "Key": "k_af54f4118b5e",
+      "Original": "appDir",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b048378ee8f5",
+      "Original": "Learn",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b0e5a04165d7",
+      "Original": "urlImports",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b18d1e57ecc0",
+      "Original": "notFound",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b276f94cd8d0",
+      "Original": "API Reference",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b29161bdc3f1",
+      "Original": "Version 15",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b33d452df824",
+      "Original": "ConfiguringError Handling",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b49a4e290ef9",
+      "Original": "Supported Browsers",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b5de65f84eb0",
+      "Original": "Output Types",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b684e83e72a2",
+      "Original": "GuidesAI Coding AgentsAnalyticsAuthenticationBackend for FrontendCaching (Previous Model)CDN CachingCI Build CachingContent Security PolicyCSS-in-JSCustom ServerData SecurityDebuggingDeploying to PlatformsDraft ModeEnvironment VariablesFormsHow Revalidation WorksISRInstrumentationInternationalizationJSON-LDLazy LoadingDevelopment EnvironmentNext.js MCP ServerMDXMemory UsageMigratingApp RouterCreate React AppViteMigrating to Cache ComponentsMulti-tenantMulti-zonesOpenTelemetryPackage BundlingPPR Platform GuidePrefetchingPreserving UI stateProductionPWAsPublic pagesRedirectingRendering PhilosophySassScriptsSelf-HostingSPAsStatic ExportsStreamingTailwind CSS v3TestingCypressJestPlaywrightVitestThird Party LibrariesUpgradingCodemodsVersion 14Version 15Version 16VideosView transitions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b6eeeb3abd2a",
+      "Original": "Sass",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b702cd0d856c",
+      "Original": "Configurationnext.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttributionTypeScriptESLint",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b781df54c263",
+      "Original": "Backend for Frontend",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b97c4d4cddf2",
+      "Original": "Font",
+      "Translated": ""
+    },
+    {
+      "Key": "k_b98ef172f56f",
+      "Original": "reactMaxHeadersLength",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ba3c9627f625",
+      "Original": "Search documentation...CtrlKSearch...\u2318KFeedbackLearn",
+      "Translated": ""
+    },
+    {
+      "Key": "k_baa9ccfe8765",
+      "Original": "Multi-zones",
+      "Translated": ""
+    },
+    {
+      "Key": "k_baba4d96a9d4",
+      "Original": "Getting StartedInstallationProject StructureLayouts and PagesLinking and NavigatingServer and Client ComponentsFetching DataMutating DataCachingRevalidatingError HandlingCSSImage OptimizationFont OptimizationMetadata and OG imagesRoute HandlersProxyDeployingUpgrading",
+      "Translated": ""
+    },
+    {
+      "Key": "k_bb8aae68d92c",
+      "Original": "use cache: private",
+      "Translated": ""
+    },
+    {
+      "Key": "k_bc093cb0672b",
+      "Original": "API ReferenceDirectivesuse cacheuse cache: privateuse cache: remoteuse clientuse serverComponentsFontForm ComponentImage ComponentLink ComponentScript ComponentFile-system conventionsdefault.jsDynamic Segmentserror.jsforbidden.jsinstrumentation.jsinstrumentation-client.jsIntercepting Routeslayout.jsloading.jsmdx-components.jsnot-found.jspage.jsParallel Routesproxy.jspublicroute.jsdynamicParamsmaxDurationpreferredRegionruntimeRoute Groupssrctemplate.jsunauthorized.jsMetadata Filesfavicon, icon, and apple-iconmanifest.jsonopengraph-image and twitter-imagerobots.txtsitemap.xmlRoute Segment ConfigdynamicParamsmaxDurationpreferredRegionruntimeFunctionsaftercacheLifecacheTagunstable_catchErrorconnectioncookiesdraftModefetchforbiddengenerateImageMetadatagenerateMetadatagenerateSitemapsgenerateStaticParamsgenerateViewportheadersImageResponseNextRequestNextResponsenotFoundpermanentRedirectredirectrefreshrevalidatePathrevalidateTagunauthorizedunstable_cacheunstable_noStoreunstable_rethrowupdateTaguseLinkStatususeParamsusePathnameuseReportWebVitalsuseRouteruseSearchParamsuseSelectedLayoutSegmentuseSelectedLayoutSegmentsuserAgentConfigurationnext.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttributionTypeScriptESLintCLIcreate-next-appnext CLIAdaptersConfigurationCreating an AdapterAPI ReferenceTesting AdaptersRouting with @next/routingImplementing PPR in an AdapterRuntime IntegrationInvoking EntrypointsOutput TypesRouting InformationUse CasesEdge RuntimeTurbopack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_bea1fc41988c",
+      "Original": "Rspack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_beb86d56202c",
+      "Original": "Previews",
+      "Translated": ""
+    },
+    {
+      "Key": "k_bf819e403eda",
+      "Original": "usePathname",
+      "Translated": ""
+    },
+    {
+      "Key": "k_bfd58ee3a270",
+      "Original": "Community",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c00eeeef5e48",
+      "Original": "CLIcreate-next-app CLInext CLI",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c016cff33ad4",
+      "Original": "Metadata Filesfavicon, icon, and apple-iconmanifest.jsonopengraph-image and twitter-imagerobots.txtsitemap.xml",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c032adc1ff62",
+      "Original": "X",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c0f4d7560348",
+      "Original": "pageExtensions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c1d7d47e93b3",
+      "Original": "Route Groups",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c2115d99c068",
+      "Original": "Playwright",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c245537444f6",
+      "Original": "Image (Legacy)",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c3198b400a33",
+      "Original": "CDN Caching",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c3f94efd4755",
+      "Original": "Next.js Commerce",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c4f4064bbf87",
+      "Original": "CommunityContribution GuideRspack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c55f0a5d2a13",
+      "Original": "useRouter",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c5c0671a0be6",
+      "Original": "Use Cases",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c6934726efb4",
+      "Original": "cssChunking",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c720314e15ea",
+      "Original": "productionBrowserSourceMaps",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c770c049f846",
+      "Original": "SPAs",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c7afff3f789c",
+      "Original": "Jest",
+      "Translated": ""
+    },
+    {
+      "Key": "k_c81b79df3c64",
+      "Original": "Installation",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ca2809d878b3",
+      "Original": "use client",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ca642a226869",
+      "Original": "manifest.json",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cadc330494d8",
+      "Original": "turbopackFileSystemCache",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cb12da8fc723",
+      "Original": "useLightningcss",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cb463e5f6734",
+      "Original": "viewTransition",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cb49b30bf89c",
+      "Original": "Instrumentation",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cb683f9b7920",
+      "Original": "FunctionsaftercacheLifecacheTagunstable_catchErrorconnectioncookiesdraftModefetchforbiddengenerateImageMetadatagenerateMetadatagenerateSitemapsgenerateStaticParamsgenerateViewportheadersImageResponseNextRequestNextResponsenotFoundpermanentRedirectredirectrefreshrevalidatePathrevalidateTagunauthorizedunstable_cacheunstable_noStoreunstable_rethrowupdateTaguseLinkStatususeParamsusePathnameuseReportWebVitalsuseRouteruseSearchParamsuseSelectedLayoutSegmentuseSelectedLayoutSegmentsuserAgent",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cc3a28281e30",
+      "Original": "permanentRedirect",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cc62c81ec84f",
+      "Original": "ComponentsFontFormHeadImageImage (Legacy)LinkScript",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cc872caac987",
+      "Original": "NextRequest",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ccd590643649",
+      "Original": "Preserving UI state",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ce5245f3d960",
+      "Original": "rewrites",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ce6c4851899f",
+      "Original": "serverComponentsHmrCache",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cebb531a3a67",
+      "Original": "cacheLife",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cf8364cdd0b5",
+      "Original": "experimental.proxyClientMaxBodySize",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cfc4275e1338",
+      "Original": "useSelectedLayoutSegments",
+      "Translated": ""
+    },
+    {
+      "Key": "k_cfea889477e2",
+      "Original": "Tailwind CSS",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d04eff9a958d",
+      "Original": "deploymentId",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d0517071aa37",
+      "Original": "Link",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d0c0316ae0cb",
+      "Original": "Version 11",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d15b9dfea803",
+      "Original": "Custom App",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d1cea344353e",
+      "Original": "Proxy",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d2bd354967d6",
+      "Original": "cookies",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d39649457f7a",
+      "Original": "Codemods",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d4a86cb946d4",
+      "Original": "TypeScript",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d51bbcee942e",
+      "Original": "taint",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d589c1ca5c26",
+      "Original": "proxyClientMaxBodySize",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d660049bc1f2",
+      "Original": "Accessibility",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d6981f74767d",
+      "Original": "Subscribe",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d709a4c191c2",
+      "Original": "getInitialProps",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d901cc1147fe",
+      "Original": "staticGeneration*",
+      "Translated": ""
+    },
+    {
+      "Key": "k_d90d0791ac3d",
+      "Original": "next.config.js OptionsadapterPathallowedDevOriginsassetPrefixbasePathbundlePagesRouterDependenciescompresscrossOrigindeploymentIddevIndicatorsdistDirenvexportPathMapgenerateBuildIdgenerateEtagsheadershttpAgentOptionsimagesloggingonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsexperimental.proxyClientMaxBodySizereactStrictModeredirectsrewritesserverExternalPackagestrailingSlashtranspilePackagesturbopacktypescripturlImportsuseLightningcsswebpackwebVitalsAttribution",
+      "Translated": ""
+    },
+    {
+      "Key": "k_daf16c03e6c3",
+      "Original": "Bluesky",
+      "Translated": ""
+    },
+    {
+      "Key": "k_dba304c418f3",
+      "Original": "Custom Document",
+      "Translated": ""
+    },
+    {
+      "Key": "k_dc4bf05c3dfc",
+      "Original": "CSS-in-JS",
+      "Translated": ""
+    },
+    {
+      "Key": "k_df45aff83b00",
+      "Original": "sassOptions",
+      "Translated": ""
+    },
+    {
+      "Key": "k_df70fc7991d3",
+      "Original": "Production",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e1cf62dbf03e",
+      "Original": "reactStrictMode",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e1ef5f69d50d",
+      "Original": "generateSitemaps",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e246b032b438",
+      "Original": "App Router",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e45d28067764",
+      "Original": "Next.js \u002B Vercel",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e46678782b10",
+      "Original": "AI Coding Agents",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e4b290eee7ee",
+      "Original": "Content Security Policy",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e4de95bf6b26",
+      "Original": "Implementing PPR in an Adapter",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e4e1b2a0ae13",
+      "Original": "Ecosystem Working Group",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e4e9b011ec91",
+      "Original": "use server",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e55e4e50eec9",
+      "Original": "opengraph-image and twitter-image",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e5ffd15be706",
+      "Original": "Head",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e737a090242c",
+      "Original": "Deploying",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e85ccb21ee5f",
+      "Original": "loading.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e85d0c43619e",
+      "Original": "turbopack",
+      "Translated": ""
+    },
+    {
+      "Key": "k_e8cb69e2eb3c",
+      "Original": "PostCSS",
+      "Translated": ""
+    },
+    {
+      "Key": "k_eb7593397f4d",
+      "Original": "typedRoutes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ec072bba7bef",
+      "Original": "Environment Variables",
+      "Translated": ""
+    },
+    {
+      "Key": "k_eca5d4c90e3f",
+      "Original": "API Routes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ed36013032b1",
+      "Original": "Edge Runtime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ed749e9c1f17",
+      "Original": "allowedDevOrigins",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ee1acfa55eb1",
+      "Original": "Authentication",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ee6d6afa9f3a",
+      "Original": "Script",
+      "Translated": ""
+    },
+    {
+      "Key": "k_eea1cad5570f",
+      "Original": "Building Your ApplicationRoutingPages and LayoutsDynamic RoutesLinking and NavigatingCustom AppCustom DocumentAPI RoutesCustom ErrorsRenderingServer-side Rendering (SSR)Static Site Generation (SSG)Automatic Static OptimizationClient-side Rendering (CSR)Data FetchinggetStaticPropsgetStaticPathsForms and MutationsgetServerSidePropsClient-side FetchingConfiguringError Handling",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ef45a3896c3e",
+      "Original": "devIndicators",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ef6a3aedf77b",
+      "Original": "proxy.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ef8418cdda28",
+      "Original": "Rendering Philosophy",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f064db214fba",
+      "Original": "dynamicParams",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f180eaba8de6",
+      "Original": "error.js",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f1e14133adae",
+      "Original": "redirects",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f27fede2220b",
+      "Original": "src",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f2812805ca7b",
+      "Original": "Runtime Integration",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f2e18ffc17e2",
+      "Original": "runtime",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f36b6c0210e2",
+      "Original": "htmlLimitedBots",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f3bf8dee016c",
+      "Original": "Babel",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f41b3b7b16a5",
+      "Original": "create-next-app",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f428c60e3e25",
+      "Original": "staleTimes",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f68c1eed8a5b",
+      "Original": "Dynamic Segments",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f7206d19fdc5",
+      "Original": "Custom Errors",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f96a97451bb1",
+      "Original": "distDir",
+      "Translated": ""
+    },
+    {
+      "Key": "k_f9b491b776b2",
+      "Original": "Draft Mode",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fa0c97372b5e",
+      "Original": "NextResponse",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fab7cba8b023",
+      "Original": "OpenTelemetry",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fad5d3cbe72c",
+      "Original": "poweredByHeader",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fb5ed1e8458c",
+      "Original": "redirect",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fb9da861bdb8",
+      "Original": "typescript",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fbceb8e783a0",
+      "Original": "RoutingPages and LayoutsDynamic RoutesLinking and NavigatingCustom AppCustom DocumentAPI RoutesCustom Errors",
+      "Translated": ""
+    },
+    {
+      "Key": "k_fe45a0fbc9e7",
+      "Original": "Next.js MCP Server",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ffc132add562",
+      "Original": "Version 9",
+      "Translated": ""
+    },
+    {
+      "Key": "k_ffe688a50143",
+      "Original": "Fonts",
+      "Translated": ""
+    }
+  ]
+}

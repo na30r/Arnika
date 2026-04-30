@@ -13,4 +13,7 @@ public sealed class UpdateBlockTranslationsRequest
 
     // block.id -> translated value
     public Dictionary<string, string> Entries { get; init; } = new(StringComparer.Ordinal);
+
+    // block.id -> source/original value (optional, for EN/source edits)
+    public Dictionary<string, string>? SourceEntries { get; init; }
 }
