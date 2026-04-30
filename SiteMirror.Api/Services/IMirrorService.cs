@@ -13,8 +13,21 @@ public interface ISiteMirrorService
     Task<UpdateTranslationsResult> UpdateTranslationsAsync(UpdateTranslationsRequest request, CancellationToken cancellationToken = default);
 
     Task<UpdateBlockTranslationsResult> UpdateBlockTranslationsAsync(UpdateBlockTranslationsRequest request, CancellationToken cancellationToken = default);
+    Task<ApplyCommonBlockTranslationsResult> ApplyCommonBlockTranslationsAsync(
+        string siteHost,
+        string version,
+        string language,
+        Stream fileStream,
+        CancellationToken cancellationToken = default);
+    Task<ApplyCommonBlockTranslationsResult> UpdateCommonBlockTranslationsAsync(
+        UpdateCommonBlockTranslationsRequest request,
+        CancellationToken cancellationToken = default);
 
     Task<CreateInjectionAssetResult> CreateInjectionAssetAsync(CreateInjectionAssetRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<InjectionAssetDto>> GetInjectionAssetsAsync(string siteHost, string version, CancellationToken cancellationToken = default);
+    Task<InjectionAssetDto?> GetInjectionAssetAsync(string assetId, CancellationToken cancellationToken = default);
+    Task<InjectionAssetDto> UpdateInjectionAssetAsync(string assetId, UpdateInjectionAssetRequest request, CancellationToken cancellationToken = default);
+    Task DeleteInjectionAssetAsync(string assetId, CancellationToken cancellationToken = default);
 
     Task<FixPageLinksResult> FixPageLinksAsync(FixPageLinksRequest request, CancellationToken cancellationToken = default);
 }

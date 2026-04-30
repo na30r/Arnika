@@ -12,6 +12,10 @@ public sealed class MirrorRequest
 
     public string[]? DoNotTranslateTexts { get; init; }
 
+    // CSS class names whose container content should be treated as common/global
+    // (all nested translatable blocks go to _i18n/blocks/_common.json).
+    public string[]? GeneralTranslationClasses { get; init; }
+
     public int ExtraWaitMs { get; init; } = 4_000;
 
     public bool AutoScroll { get; init; } = true;

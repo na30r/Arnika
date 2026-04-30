@@ -14,6 +14,7 @@ internal sealed partial class LocalizationGenerator(ILogger<LocalizationGenerato
     public const string DoNotTranslateFileName = "do-not-translate.json";
 public const string PerPageTemplatesFolderName = "pages";
     public const string PerPageBlocksFolderName = "blocks";
+    public const string CommonBlockFileName = "_common.json";
 
     private static readonly HashSet<string> NonTranslatableContainers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -34,6 +35,7 @@ public const string PerPageTemplatesFolderName = "pages";
         string mirrorRoot,
         IReadOnlyList<string> languages,
         IReadOnlyList<string>? doNotTranslateTexts,
+        IReadOnlyList<string>? generalTranslationClasses,
         CancellationToken cancellationToken)
     {
         var normalizedLanguages = NormalizeLanguages(languages);
@@ -69,7 +71,12 @@ public const string PerPageTemplatesFolderName = "pages";
 
         await SaveCatalogAsync(Path.Combine(i18nFolder, "source.json"), "en", sourceEntries, cancellationToken);
         await SavePerPageTemplatesAsync(mirrorRoot, i18nFolder, sourceHtmlFiles, cancellationToken);
-        await SavePerPageBlocksAsync(mirrorRoot, i18nFolder, sourceHtmlFiles, cancellationToken);
+        await SavePerPageBlocksAsync(
+            mirrorRoot,
+            i18nFolder,
+            sourceHtmlFiles,
+            generalTranslationClasses,
+            cancellationToken);
         _ = await LoadOrCreateLanguageCatalogAsync("en", i18nFolder, sourceEntries, cancellationToken);
         var effectiveDoNotTranslateTexts = await ResolveDoNotTranslateTextsAsync(i18nFolder, doNotTranslateTexts, cancellationToken);
         var doNotTranslateSet = BuildDoNotTranslateSet(effectiveDoNotTranslateTexts);
@@ -93,6 +100,7 @@ public const string PerPageTemplatesFolderName = "pages";
             await TranslateHtmlFilesForLanguageAsync(
                 language,
                 languageOutputRoot,
+                i18nFolder,
                 sourceHtmlFiles,
                 languageCatalog,
                 doNotTranslateSet,
@@ -154,6 +162,7 @@ public const string PerPageTemplatesFolderName = "pages";
         string mirrorRoot,
         string i18nFolder,
         IReadOnlyList<string> sourceHtmlFiles,
+        IReadOnlyList<string>? generalTranslationClasses,
         CancellationToken cancellationToken)
     {
         var perPageBlocksRoot = Path.Combine(i18nFolder, PerPageBlocksFolderName);
@@ -164,6 +173,9 @@ public const string PerPageTemplatesFolderName = "pages";
         Directory.CreateDirectory(perPageBlocksRoot);
         var rootIndex = new List<RootBlockEntry>();
         var usedRootFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var commonKeys = await LoadCommonBlockKeysAsync(i18nFolder, cancellationToken);
+        var commonClasses = NormalizeCommonClassNames(generalTranslationClasses);
+        var commonEntries = await LoadCommonEntriesByKeyAsync(i18nFolder, cancellationToken);
 
         var parser = new HtmlParser();
         foreach (var relativeHtmlPath in sourceHtmlFiles)
@@ -178,11 +190,17 @@ public const string PerPageTemplatesFolderName = "pages";
                 .Replace('\\', '/')
                 .TrimStart('/')
                 .Replace(".html", string.Empty, StringComparison.OrdinalIgnoreCase);
-            var grouped = ExtractSemanticBlocksWithGroups(document, normalizedPage);
+            var grouped = ExtractSemanticBlocksWithGroups(
+                document,
+                normalizedPage,
+                commonKeys,
+                commonClasses,
+                commonEntries);
             var payload = new BlockPageDocument
             {
                 Page = normalizedPage,
-                Blocks = grouped.Blocks,
+                // Avoid duplicate payload size: when groups exist, blocks are already nested there.
+                Blocks = grouped.Groups.Count > 0 ? [] : grouped.Blocks,
                 Groups = grouped.Groups
             };
 
@@ -208,6 +226,8 @@ public const string PerPageTemplatesFolderName = "pages";
                 RootFile = rootAliasFileName
             });
         }
+
+        await SaveCommonEntriesAsync(perPageBlocksRoot, commonEntries, cancellationToken);
 
         var indexPath = Path.Combine(perPageBlocksRoot, "_root-index.json");
         var indexPayload = new RootBlockIndex
@@ -283,6 +303,7 @@ public const string PerPageTemplatesFolderName = "pages";
         await TranslateHtmlFilesForLanguageAsync(
             normalizedLanguage,
             languageOutputRoot,
+            i18nFolder,
             targetHtmlFiles,
             languageCatalog,
             doNotTranslateSet,
@@ -321,6 +342,7 @@ public const string PerPageTemplatesFolderName = "pages";
     private async Task TranslateHtmlFilesForLanguageAsync(
         string language,
         string languageOutputRoot,
+        string i18nFolder,
         IReadOnlyList<string> sourceHtmlFiles,
         LanguageCatalog languageCatalog,
         HashSet<string> doNotTranslateSet,
@@ -353,6 +375,15 @@ public const string PerPageTemplatesFolderName = "pages";
                     setValue(localizedValue);
                 }
             });
+
+            // Apply paragraph/list block translations after token-level replacements so translators can
+            // translate full sentences from docs.json while preserving inline links.
+            ApplyPageBlockTranslations(
+                document,
+                relativeHtmlPath,
+                i18nFolder,
+                languageCatalog,
+                doNotTranslateSet);
 
             if (document.DocumentElement is not null)
             {
@@ -407,6 +438,355 @@ public const string PerPageTemplatesFolderName = "pages";
         }
 
         return sourceValue;
+    }
+
+    private static void ApplyPageBlockTranslations(
+        IDocument document,
+        string relativeHtmlPath,
+        string i18nFolder,
+        LanguageCatalog languageCatalog,
+        HashSet<string> doNotTranslateSet)
+    {
+        var blockPath = Path.Combine(
+            i18nFolder,
+            PerPageBlocksFolderName,
+            relativeHtmlPath
+                .Replace('\\', '/')
+                .TrimStart('/')
+                .Replace(".html", ".json", StringComparison.OrdinalIgnoreCase)
+                .Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(blockPath))
+        {
+            return;
+        }
+
+        BlockPageDocument? blockDoc;
+        try
+        {
+            var raw = File.ReadAllText(blockPath, Encoding.UTF8);
+            blockDoc = JsonSerializer.Deserialize<BlockPageDocument>(raw);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (blockDoc is null)
+        {
+            return;
+        }
+
+        var blockItems = blockDoc.Groups.Count > 0
+            ? blockDoc.Groups.SelectMany(group => group.Blocks).ToList()
+            : blockDoc.Blocks.ToList();
+        if (blockItems.Count == 0)
+        {
+            return;
+        }
+
+        var translatedBySignature = new Dictionary<string, Queue<string>>(StringComparer.Ordinal);
+        foreach (var block in blockItems)
+        {
+            if (string.IsNullOrWhiteSpace(block.Type) ||
+                string.Equals(block.Type, "inline_text", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var original = NormalizeForKey(block.Original ?? string.Empty);
+            var translated = (block.Translated ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(original) ||
+                string.IsNullOrWhiteSpace(translated) ||
+                string.Equals(original, NormalizeForKey(translated), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (doNotTranslateSet.Contains(original))
+            {
+                continue;
+            }
+
+            var signature = $"{block.Type.Trim().ToLowerInvariant()}|{original}";
+            if (!translatedBySignature.TryGetValue(signature, out var queue))
+            {
+                queue = new Queue<string>();
+                translatedBySignature[signature] = queue;
+            }
+
+            queue.Enqueue(translated);
+        }
+
+        if (translatedBySignature.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var element in document.All)
+        {
+            if (NonTranslatableContainers.Contains(element.LocalName) || IsWithinNonTranslatableContainer(element))
+            {
+                continue;
+            }
+
+            var blockType = ResolveSemanticBlockType(element);
+            if (blockType is null ||
+                string.Equals(blockType, "inline_text", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (string.Equals(blockType, "paragraph", StringComparison.OrdinalIgnoreCase) &&
+                IsRedundantParagraphInsideListItem(element))
+            {
+                continue;
+            }
+
+            var original = NormalizeForKey(element.TextContent ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(original))
+            {
+                continue;
+            }
+
+            var signature = $"{blockType}|{original}";
+            if (!translatedBySignature.TryGetValue(signature, out var queue) || queue.Count == 0)
+            {
+                continue;
+            }
+
+            var translated = queue.Dequeue();
+            if (TryApplyTranslatedTextPreservingLinks(element, translated, languageCatalog))
+            {
+                continue;
+            }
+
+            element.TextContent = translated;
+        }
+    }
+
+    private static bool TryApplyTranslatedTextPreservingLinks(
+        IElement element,
+        string translated,
+        LanguageCatalog languageCatalog)
+    {
+        if (TryApplyTranslatedInlineLinks(element, translated))
+        {
+            return true;
+        }
+
+        var anchors = element.QuerySelectorAll("a")
+            .OfType<IElement>()
+            .Where(a => !string.IsNullOrWhiteSpace(NormalizeForKey(a.TextContent ?? string.Empty)))
+            .ToList();
+        if (anchors.Count == 0)
+        {
+            return false;
+        }
+
+        var parts = new List<(string text, IElement? anchor)>();
+        var searchFrom = 0;
+        foreach (var anchor in anchors)
+        {
+            var anchorText = NormalizeForKey(anchor.TextContent ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(anchorText))
+            {
+                return false;
+            }
+
+            string? translatedAnchorText = null;
+            var anchorKey = NormalizeForKey(anchorText);
+            if (!string.IsNullOrWhiteSpace(anchorKey) &&
+                languageCatalog.BySourceText.TryGetValue(anchorKey, out var bySource) &&
+                !string.IsNullOrWhiteSpace(bySource))
+            {
+                translatedAnchorText = bySource.Trim();
+            }
+
+            var candidates = new List<string> { anchorText };
+            if (!string.IsNullOrWhiteSpace(translatedAnchorText) &&
+                !candidates.Contains(translatedAnchorText, StringComparer.Ordinal))
+            {
+                candidates.Add(translatedAnchorText);
+            }
+
+            var foundIndex = -1;
+            var matchedText = string.Empty;
+            foreach (var candidate in candidates)
+            {
+                var candidateIndex = translated.IndexOf(candidate, searchFrom, StringComparison.Ordinal);
+                if (candidateIndex < 0)
+                {
+                    continue;
+                }
+
+                if (foundIndex < 0 || candidateIndex < foundIndex)
+                {
+                    foundIndex = candidateIndex;
+                    matchedText = candidate;
+                }
+            }
+
+            if (foundIndex < 0)
+            {
+                return false;
+            }
+
+            parts.Add((translated.Substring(searchFrom, foundIndex - searchFrom), null));
+            parts.Add((string.Empty, anchor));
+            searchFrom = foundIndex + matchedText.Length;
+        }
+
+        parts.Add((translated.Substring(searchFrom), null));
+
+        foreach (var child in element.ChildNodes.ToArray())
+        {
+            child.Parent?.RemoveChild(child);
+        }
+
+        var document = element.Owner;
+        if (document is null)
+        {
+            return false;
+        }
+
+        foreach (var (text, anchor) in parts)
+        {
+            if (!string.IsNullOrEmpty(text))
+            {
+                element.AppendChild(document.CreateTextNode(text));
+            }
+
+            if (anchor is not null)
+            {
+                element.AppendChild(anchor.Clone(true));
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryApplyTranslatedInlineLinks(IElement element, string translated)
+    {
+        // Allow translators to define links directly in block translation text using:
+        // [visible text](https://example.com) or [text](/relative/path)
+        var matches = RegexInlineLink().Matches(translated);
+        if (matches.Count == 0)
+        {
+            return false;
+        }
+
+        var document = element.Owner;
+        if (document is null)
+        {
+            return false;
+        }
+
+        var parts = new List<(string text, string? href)>();
+        var cursor = 0;
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            if (match.Index > cursor)
+            {
+                parts.Add((translated.Substring(cursor, match.Index - cursor), null));
+            }
+
+            var linkText = match.Groups[1].Value;
+            var href = match.Groups[2].Value.Trim();
+            if (string.IsNullOrWhiteSpace(linkText) || string.IsNullOrWhiteSpace(href))
+            {
+                return false;
+            }
+
+            parts.Add((linkText, href));
+            cursor = match.Index + match.Length;
+        }
+
+        if (cursor < translated.Length)
+        {
+            parts.Add((translated[cursor..], null));
+        }
+
+        foreach (var child in element.ChildNodes.ToArray())
+        {
+            child.Parent?.RemoveChild(child);
+        }
+
+        foreach (var (text, href) in parts)
+        {
+            if (href is null)
+            {
+                if (!string.IsNullOrEmpty(text))
+                {
+                    element.AppendChild(document.CreateTextNode(text));
+                }
+
+                continue;
+            }
+
+            var anchor = document.CreateElement("a");
+            anchor.SetAttribute("href", href);
+            anchor.TextContent = text;
+
+            if (Uri.TryCreate(href, UriKind.Absolute, out var absolute) &&
+                (absolute.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+                 absolute.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                anchor.SetAttribute("target", "_blank");
+                anchor.SetAttribute("rel", "noopener noreferrer nofollow");
+            }
+
+            element.AppendChild(anchor);
+        }
+
+        return true;
+    }
+
+    private static string BuildInitialTranslatedValue(IElement element, string fallbackOriginal)
+    {
+        if (element.QuerySelector("a[href]") is null)
+        {
+            return fallbackOriginal;
+        }
+
+        var seeded = BuildInlineLinkMarkdown(element);
+        var normalized = NormalizeForKey(seeded);
+        return string.IsNullOrWhiteSpace(normalized) ? fallbackOriginal : normalized;
+    }
+
+    private static string BuildInlineLinkMarkdown(INode node)
+    {
+        if (node is IText textNode)
+        {
+            return textNode.Data ?? string.Empty;
+        }
+
+        if (node is not IElement element)
+        {
+            return string.Empty;
+        }
+
+        if (string.Equals(element.LocalName, "a", StringComparison.OrdinalIgnoreCase))
+        {
+            var href = element.GetAttribute("href")?.Trim() ?? string.Empty;
+            var linkText = NormalizeForKey(element.TextContent ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(href) && !string.IsNullOrWhiteSpace(linkText))
+            {
+                return $"[{linkText}]({href})";
+            }
+        }
+
+        var sb = new StringBuilder();
+        foreach (var child in element.ChildNodes)
+        {
+            sb.Append(BuildInlineLinkMarkdown(child));
+        }
+
+        return sb.ToString();
     }
 
     private static async Task<IReadOnlyList<string>> ResolveDoNotTranslateTextsAsync(
@@ -738,15 +1118,20 @@ public const string PerPageTemplatesFolderName = "pages";
         }
     }
 
+    internal static string BuildGlobalTextKey(string sourceValue)
+    {
+        var normalizedValue = NormalizeForKey(sourceValue);
+        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(normalizedValue));
+        return $"k_{Convert.ToHexString(bytes).ToLowerInvariant()[..12]}";
+    }
+
     private static string BuildTranslationKey(string relativeHtmlPath, int ordinal, string sourceValue)
     {
         // Global/shared key strategy:
         // keys are generated from normalized source text only so repeated
         // strings (navbar/footer/common labels) share the same key across pages.
         // This allows one translation entry to update all pages together.
-        var normalizedValue = NormalizeForKey(sourceValue);
-        var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(normalizedValue));
-        return $"k_{Convert.ToHexString(bytes).ToLowerInvariant()[..12]}";
+        return BuildGlobalTextKey(sourceValue);
     }
 
     private static string BuildRootAliasFileName(string nestedJsonPath, HashSet<string> usedNames)
@@ -884,7 +1269,12 @@ public const string PerPageTemplatesFolderName = "pages";
         return false;
     }
 
-    private static GroupedBlocksResult ExtractSemanticBlocksWithGroups(IDocument document, string pagePath)
+    private static GroupedBlocksResult ExtractSemanticBlocksWithGroups(
+        IDocument document,
+        string pagePath,
+        HashSet<string> commonKeys,
+        HashSet<string> commonClassNames,
+        Dictionary<string, CommonBlockEntry> commonEntriesByKey)
     {
         var blocks = new List<BlockDocumentItem>();
         var groups = new List<BlockGroupDocumentItem>();
@@ -900,8 +1290,16 @@ public const string PerPageTemplatesFolderName = "pages";
                 continue;
             }
 
-            var blockType = ResolveSemanticBlockType(element.LocalName);
+            var blockType = ResolveSemanticBlockType(element);
             if (blockType is null)
+            {
+                continue;
+            }
+
+            // <li><p>…</p></li> (common in Next.js / MDX): the <li> already becomes a list_item with
+            // the same TextContent as the inner <p>. Skip the inner <p> to avoid duplicate blocks.
+            if (string.Equals(blockType, "paragraph", StringComparison.OrdinalIgnoreCase) &&
+                IsRedundantParagraphInsideListItem(element))
             {
                 continue;
             }
@@ -909,6 +1307,37 @@ public const string PerPageTemplatesFolderName = "pages";
             var original = NormalizeForKey(element.TextContent ?? string.Empty);
             if (string.IsNullOrWhiteSpace(original))
             {
+                continue;
+            }
+
+            var commonKey = BuildGlobalTextKey(original);
+            var inCommonArea = commonKeys.Contains(commonKey) || IsInsideCommonContainer(element, commonClassNames);
+
+            // Inline tags are used only to improve common extraction. For page-specific blocks,
+            // keeping them causes heavy duplication next to parent paragraph/list blocks.
+            if (blockType == "inline_text" && !inCommonArea)
+            {
+                continue;
+            }
+
+            // If inline text is already represented by an ancestor semantic block in common area,
+            // skip it to avoid repeated entries like li + a/span with same content.
+            if (blockType == "inline_text" && HasAncestorPrimarySemanticBlock(element))
+            {
+                continue;
+            }
+
+            if (inCommonArea)
+            {
+                if (!commonEntriesByKey.ContainsKey(commonKey))
+                {
+                    commonEntriesByKey[commonKey] = new CommonBlockEntry
+                    {
+                        Key = commonKey,
+                        Original = original,
+                        Translated = string.Empty
+                    };
+                }
                 continue;
             }
 
@@ -945,7 +1374,8 @@ public const string PerPageTemplatesFolderName = "pages";
                 Id = BuildBlockId(pagePath, blockOrdinal, blockType, original),
                 Type = blockType,
                 Original = original,
-                Translated = string.Empty,
+                // Prefill with source text; if this block contains links, seed markdown links with fixed hrefs.
+                Translated = BuildInitialTranslatedValue(element, original),
                 GroupId = activeGroupId
             };
             blocks.Add(block);
@@ -955,12 +1385,219 @@ public const string PerPageTemplatesFolderName = "pages";
         return new GroupedBlocksResult
         {
             Blocks = blocks,
-            Groups = groups
+            Groups = groups.Where(g => g.Blocks.Count > 0).ToList()
         };
     }
 
-    private static string? ResolveSemanticBlockType(string? localName)
+    private static bool IsInsideCommonContainer(IElement element, HashSet<string> commonClassNames)
     {
+        var current = element;
+        while (current is not null)
+        {
+            if (string.Equals(current.LocalName, "header", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(current.LocalName, "footer", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (commonClassNames.Count > 0)
+            {
+                foreach (var className in current.ClassList)
+                {
+                    var normalized = className?.Trim().ToLowerInvariant();
+                    if (!string.IsNullOrWhiteSpace(normalized) && commonClassNames.Contains(normalized))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            current = current.ParentElement;
+        }
+
+        return false;
+    }
+
+    private static bool HasAncestorPrimarySemanticBlock(IElement element)
+    {
+        var current = element.ParentElement;
+        while (current is not null)
+        {
+            var tag = current.LocalName?.ToLowerInvariant();
+            if (tag is "p" or "li" or "h1" or "h2" or "h3" or "h4" or "h5" or "h6")
+            {
+                return true;
+            }
+
+            if (IsLinkRichTextContainer(current))
+            {
+                return true;
+            }
+
+            current = current.ParentElement;
+        }
+
+        return false;
+    }
+
+    private static bool IsRedundantParagraphInsideListItem(IElement element)
+    {
+        if (!string.Equals(element.LocalName, "p", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var parent = element.ParentElement;
+        if (parent is null || !string.Equals(parent.LocalName, "li", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        IElement? onlyElementChild = null;
+        foreach (var child in parent.Children)
+        {
+            if (string.Equals(child.LocalName, "script", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(child.LocalName, "style", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (onlyElementChild is not null)
+            {
+                return false;
+            }
+
+            onlyElementChild = child;
+        }
+
+        return onlyElementChild is not null && ReferenceEquals(onlyElementChild, element);
+    }
+
+    private static HashSet<string> NormalizeCommonClassNames(IReadOnlyList<string>? generalTranslationClasses)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in generalTranslationClasses ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(item))
+            {
+                continue;
+            }
+
+            var normalized = item.Trim().TrimStart('.').ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                result.Add(normalized);
+            }
+        }
+
+        return result;
+    }
+
+    private static async Task<Dictionary<string, CommonBlockEntry>> LoadCommonEntriesByKeyAsync(
+        string i18nFolder,
+        CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(i18nFolder, PerPageBlocksFolderName, CommonBlockFileName);
+        if (!File.Exists(path))
+        {
+            return new Dictionary<string, CommonBlockEntry>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(path, Encoding.UTF8, cancellationToken);
+            var payload = JsonSerializer.Deserialize<CommonBlockCatalog>(raw);
+            return payload?.Entries?
+                .Where(e => !string.IsNullOrWhiteSpace(e.Key))
+                .ToDictionary(e => e.Key, e => e, StringComparer.Ordinal)
+                   ?? new Dictionary<string, CommonBlockEntry>(StringComparer.Ordinal);
+        }
+        catch
+        {
+            return new Dictionary<string, CommonBlockEntry>(StringComparer.Ordinal);
+        }
+    }
+
+    private static Task SaveCommonEntriesAsync(
+        string perPageBlocksRoot,
+        Dictionary<string, CommonBlockEntry> commonEntriesByKey,
+        CancellationToken cancellationToken)
+    {
+        var payload = new CommonBlockCatalog
+        {
+            Language = "fa",
+            Entries = commonEntriesByKey.Values
+                .OrderBy(x => x.Key, StringComparer.Ordinal)
+                .ToList()
+        };
+        var json = JsonSerializer.Serialize(payload, JsonOptions);
+        var commonPath = Path.Combine(perPageBlocksRoot, CommonBlockFileName);
+        return File.WriteAllTextAsync(commonPath, json, Encoding.UTF8, cancellationToken);
+    }
+
+    private static async Task<HashSet<string>> LoadCommonBlockKeysAsync(string i18nFolder, CancellationToken cancellationToken)
+    {
+        var commonPath = Path.Combine(i18nFolder, PerPageBlocksFolderName, CommonBlockFileName);
+        if (!File.Exists(commonPath))
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(commonPath, Encoding.UTF8, cancellationToken);
+            using var doc = JsonDocument.Parse(raw);
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            if (!doc.RootElement.TryGetProperty("entries", out var entriesNode) &&
+                !doc.RootElement.TryGetProperty("Entries", out entriesNode))
+            {
+                return result;
+            }
+
+            if (entriesNode.ValueKind != JsonValueKind.Array)
+            {
+                return result;
+            }
+
+            foreach (var item in entriesNode.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var translated = (item.TryGetProperty("translated", out var translatedNode) ||
+                                  item.TryGetProperty("Translated", out translatedNode)) &&
+                                 translatedNode.ValueKind == JsonValueKind.String
+                    ? translatedNode.GetString()?.Trim()
+                    : string.Empty;
+                if (string.IsNullOrWhiteSpace(translated))
+                {
+                    continue;
+                }
+
+                if ((item.TryGetProperty("key", out var keyNode) || item.TryGetProperty("Key", out keyNode)) &&
+                    keyNode.ValueKind == JsonValueKind.String)
+                {
+                    var key = keyNode.GetString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        result.Add(key);
+                    }
+                }
+            }
+
+            return result;
+        }
+        catch
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+    }
+
+    private static string? ResolveSemanticBlockType(IElement element)
+    {
+        var localName = element.LocalName;
         if (string.IsNullOrWhiteSpace(localName))
         {
             return null;
@@ -977,8 +1614,43 @@ public const string PerPageTemplatesFolderName = "pages";
         {
             "p" => "paragraph",
             "li" => "list_item",
+            "a" => "inline_text",
+            "button" => "inline_text",
+            "span" => "inline_text",
+            "div" or "section" or "article" => IsLinkRichTextContainer(element) ? "rich_text" : null,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Many doc sites use div/section containers for paragraph-like copy with inline links
+    /// instead of a &lt;p&gt; tag. Capture those so link-heavy paragraphs are not lost.
+    /// </summary>
+    private static bool IsLinkRichTextContainer(IElement element)
+    {
+        var tag = element.LocalName.ToLowerInvariant();
+        if (tag is not ("div" or "section" or "article"))
+        {
+            return false;
+        }
+
+        if (element.QuerySelector("p, li, h1, h2, h3, h4, h5, h6") is not null)
+        {
+            return false;
+        }
+
+        if (element.QuerySelector("a, button") is null)
+        {
+            return false;
+        }
+
+        var text = element.TextContent?.Trim() ?? string.Empty;
+        if (text.Length < 20 || text.Length > 8_000)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static string GetFirstPathSegment(string relativePath)
@@ -1080,6 +1752,9 @@ public const string PerPageTemplatesFolderName = "pages";
     [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
     private static partial System.Text.RegularExpressions.Regex RegexWhitespace();
 
+    [System.Text.RegularExpressions.GeneratedRegex(@"\[([^\]]+)\]\(([^)]+)\)")]
+    private static partial System.Text.RegularExpressions.Regex RegexInlineLink();
+
     private sealed class TranslationCatalog
     {
         public string Language { get; init; } = "en";
@@ -1151,6 +1826,19 @@ public const string PerPageTemplatesFolderName = "pages";
         public required Dictionary<string, string> ByKey { get; init; }
 
         public required Dictionary<string, string> BySourceText { get; init; }
+    }
+
+    private sealed class CommonBlockCatalog
+    {
+        public string Language { get; init; } = "fa";
+        public List<CommonBlockEntry> Entries { get; init; } = [];
+    }
+
+    private sealed class CommonBlockEntry
+    {
+        public string Key { get; init; } = string.Empty;
+        public string Original { get; init; } = string.Empty;
+        public string Translated { get; init; } = string.Empty;
     }
 
     internal sealed class LocalizationGenerationResult

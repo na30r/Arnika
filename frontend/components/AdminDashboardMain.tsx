@@ -42,6 +42,7 @@ export function AdminDashboardMain() {
   const [linkDrillCount, setLinkDrillCount] = useState(0);
   const [languagesText, setLanguagesText] = useState("en");
   const [doNotTranslateText, setDoNotTranslateText] = useState("");
+  const [generalClassesText, setGeneralClassesText] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +82,10 @@ export function AdminDashboardMain() {
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean);
+      const parsedGeneralClasses = generalClassesText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
       const response = await fetch("/api/mirror", {
         method: "POST",
         headers: {
@@ -93,6 +98,7 @@ export function AdminDashboardMain() {
           linkDrillCount,
           languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
           doNotTranslateTexts: parsedDoNotTranslateTexts,
+          generalTranslationClasses: parsedGeneralClasses,
           extraWaitMs: 4000,
           autoScroll: true,
           scrollStepPx: 1200,
@@ -228,6 +234,14 @@ export function AdminDashboardMain() {
             onChange={(event) => setDoNotTranslateText(event.target.value)}
             placeholder={"API\nHTTP\nNext.js"}
             rows={5}
+          />
+          <label htmlFor="general-classes-input">General Translation Classes (one per line)</label>
+          <textarea
+            id="general-classes-input"
+            value={generalClassesText}
+            onChange={(event) => setGeneralClassesText(event.target.value)}
+            placeholder={"navbar-module__cV3TuW__nav\nfooter\nshared-banner"}
+            rows={4}
           />
         </form>
 

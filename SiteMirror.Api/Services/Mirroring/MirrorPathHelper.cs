@@ -81,7 +81,7 @@ internal sealed class MirrorPathHelper
             Fragment = string.Empty
         };
         var normalizedPath = builder.Path;
-        if (normalizedPath.Length > 1 && normalizedPath.EndsWith('/', StringComparison.Ordinal))
+        if (normalizedPath.Length > 1 && normalizedPath.EndsWith("/", StringComparison.Ordinal))
         {
             normalizedPath = normalizedPath.TrimEnd('/');
         }

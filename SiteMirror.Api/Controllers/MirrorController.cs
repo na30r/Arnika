@@ -307,6 +307,69 @@ public sealed class MirrorController(
         }
     }
 
+    [HttpGet("injections")]
+    [ProducesResponseType(typeof(IReadOnlyList<InjectionAssetDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<InjectionAssetDto>>> GetInjectionAssets(
+        [FromQuery] string siteHost,
+        [FromQuery] string version,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.GetInjectionAssetsAsync(siteHost, version, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("injections/{assetId}")]
+    [ProducesResponseType(typeof(InjectionAssetDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<InjectionAssetDto>> GetInjectionAsset(
+        [FromRoute] string assetId,
+        CancellationToken cancellationToken)
+    {
+        var result = await mirrorService.GetInjectionAssetAsync(assetId, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(new { message = $"Asset not found: {assetId}" });
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPut("injections/{assetId}")]
+    [ProducesResponseType(typeof(InjectionAssetDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<InjectionAssetDto>> UpdateInjectionAsset(
+        [FromRoute] string assetId,
+        [FromBody] UpdateInjectionAssetRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.UpdateInjectionAssetAsync(assetId, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("injections/{assetId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteInjectionAsset(
+        [FromRoute] string assetId,
+        CancellationToken cancellationToken)
+    {
+        await mirrorService.DeleteInjectionAssetAsync(assetId, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("update-block-translations")]
     [ProducesResponseType(typeof(UpdateBlockTranslationsResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -382,6 +445,69 @@ public sealed class MirrorController(
             return BadRequest(new { message = ex.Message });
         }
         catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("update-common-translations/upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApplyCommonBlockTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApplyCommonBlockTranslationsResult>> UploadCommonTranslations(
+        [FromForm] UploadCommonBlockTranslationsForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is null || form.File.Length == 0)
+        {
+            return BadRequest(new { message = "Translation file is required." });
+        }
+
+        try
+        {
+            await using var stream = form.File.OpenReadStream();
+            var result = await mirrorService.ApplyCommonBlockTranslationsAsync(
+                form.SiteHost,
+                form.Version,
+                form.Language,
+                stream,
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid common translation JSON. Expected block file format or {\"entries\":{\"Original\":\"Translated\"}}."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("update-common-translations")]
+    [ProducesResponseType(typeof(ApplyCommonBlockTranslationsResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApplyCommonBlockTranslationsResult>> UpdateCommonTranslations(
+        [FromBody] UpdateCommonBlockTranslationsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.UpdateCommonBlockTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
         {
             return BadRequest(new { message = ex.Message });
         }

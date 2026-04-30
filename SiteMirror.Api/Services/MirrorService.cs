@@ -266,6 +266,7 @@ public sealed class MirrorService : ISiteMirrorService
                 siteOutputPath,
                 requestedLanguages,
                 request.DoNotTranslateTexts,
+                request.GeneralTranslationClasses,
                 cancellationToken);
             _logger.LogInformation("Stage generate-localizations: complete");
 
@@ -726,6 +727,247 @@ public sealed class MirrorService : ISiteMirrorService
         };
     }
 
+    public async Task<ApplyCommonBlockTranslationsResult> ApplyCommonBlockTranslationsAsync(
+        string siteHost,
+        string version,
+        string language,
+        Stream fileStream,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(siteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(siteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            throw new ArgumentException("Language is required.", nameof(language));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(siteHost.Trim());
+        var normalizedVersion = NormalizeVersion(version);
+        var normalizedLanguage = language.Trim().ToLowerInvariant();
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, normalizedHost, normalizedVersion);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        var sourceCatalogPath = Path.Combine(i18nFolder, "source.json");
+        var sourceEntries = await LoadLanguageEntriesAsync(sourceCatalogPath, cancellationToken);
+        var incoming = await ParseCommonBlockEntriesAsync(fileStream, sourceEntries, cancellationToken);
+        var blocksFolder = Path.Combine(i18nFolder, LocalizationGenerator.PerPageBlocksFolderName);
+        Directory.CreateDirectory(blocksFolder);
+        var commonPath = Path.Combine(blocksFolder, LocalizationGenerator.CommonBlockFileName);
+
+        var existing = await LoadCommonCatalogAsync(commonPath, cancellationToken);
+        var merged = new Dictionary<string, CommonBlockEntryPayload>(existing, StringComparer.Ordinal);
+        foreach (var entry in incoming)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Key))
+            {
+                continue;
+            }
+
+            if (merged.TryGetValue(entry.Key, out var existingEntry))
+            {
+                merged[entry.Key] = existingEntry with
+                {
+                    Original = string.IsNullOrWhiteSpace(entry.Original) ? existingEntry.Original : entry.Original,
+                    Translated = string.IsNullOrWhiteSpace(entry.Translated) ? existingEntry.Translated : entry.Translated
+                };
+            }
+            else
+            {
+                merged[entry.Key] = entry;
+            }
+        }
+
+        var commonPayload = new CommonBlockCatalogPayload
+        {
+            Language = normalizedLanguage,
+            Entries = merged.Values
+                .OrderBy(x => x.Key, StringComparer.Ordinal)
+                .ToList()
+        };
+        var commonJson = JsonSerializer.Serialize(commonPayload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(commonPath, commonJson, Encoding.UTF8, cancellationToken);
+
+        var languageCatalogPath = Path.Combine(i18nFolder, $"{normalizedLanguage}.json");
+        var mergedLanguageEntries = await LoadLanguageEntriesAsync(languageCatalogPath, cancellationToken);
+        foreach (var entry in merged.Values)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Original) ||
+                string.IsNullOrWhiteSpace(entry.Translated) ||
+                string.Equals(entry.Original, entry.Translated, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            mergedLanguageEntries[entry.Original] = entry.Translated;
+        }
+
+        var languagePayload = new TranslationCatalogPayload
+        {
+            Language = normalizedLanguage,
+            Entries = mergedLanguageEntries
+                .OrderBy(item => item.Key, StringComparer.Ordinal)
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)
+        };
+        var languageJson = JsonSerializer.Serialize(languagePayload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(languageCatalogPath, languageJson, Encoding.UTF8, cancellationToken);
+
+        var rebuiltPages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
+            siteOutputPath,
+            normalizedLanguage,
+            targetPages: null,
+            doNotTranslateTexts: null,
+            cancellationToken);
+
+        return new ApplyCommonBlockTranslationsResult
+        {
+            SiteHost = normalizedHost,
+            Version = normalizedVersion,
+            Language = normalizedLanguage,
+            CommonFilePath = commonPath,
+            UpdatedCommonCount = merged.Count,
+            RebuiltPageCount = rebuiltPages.Count,
+            RebuiltPages = rebuiltPages
+        };
+    }
+
+    public async Task<ApplyCommonBlockTranslationsResult> UpdateCommonBlockTranslationsAsync(
+        UpdateCommonBlockTranslationsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Language))
+        {
+            throw new ArgumentException("Language is required.", nameof(request.Language));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var normalizedVersion = NormalizeVersion(request.Version);
+        var normalizedLanguage = request.Language.Trim().ToLowerInvariant();
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, normalizedHost, normalizedVersion);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        var sourceCatalogPath = Path.Combine(i18nFolder, "source.json");
+        var sourceEntries = await LoadLanguageEntriesAsync(sourceCatalogPath, cancellationToken);
+        var sourceByTextKey = sourceEntries
+            .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+            .ToDictionary(x => LocalizationGenerator.BuildGlobalTextKey(x.Value), x => x.Value, StringComparer.Ordinal);
+
+        var blocksFolder = Path.Combine(i18nFolder, LocalizationGenerator.PerPageBlocksFolderName);
+        Directory.CreateDirectory(blocksFolder);
+        var commonPath = Path.Combine(blocksFolder, LocalizationGenerator.CommonBlockFileName);
+        var existing = await LoadCommonCatalogAsync(commonPath, cancellationToken);
+        var merged = new Dictionary<string, CommonBlockEntryPayload>(existing, StringComparer.Ordinal);
+
+        foreach (var pair in request.Entries ?? new Dictionary<string, string>(StringComparer.Ordinal))
+        {
+            var rawKey = pair.Key?.Trim() ?? string.Empty;
+            var translated = pair.Value ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(rawKey))
+            {
+                continue;
+            }
+
+            string key;
+            string original;
+            if (rawKey.StartsWith("k_", StringComparison.Ordinal))
+            {
+                key = rawKey;
+                merged.TryGetValue(key, out var existingEntry);
+                if (!sourceEntries.TryGetValue(key, out original!) && existingEntry is null)
+                {
+                    continue;
+                }
+                original = sourceEntries.TryGetValue(key, out var sourceOriginal)
+                    ? sourceOriginal
+                    : existingEntry.Original;
+            }
+            else
+            {
+                original = rawKey;
+                key = LocalizationGenerator.BuildGlobalTextKey(original);
+                if (sourceByTextKey.TryGetValue(key, out var sourceOriginal))
+                {
+                    original = sourceOriginal;
+                }
+            }
+
+            merged[key] = new CommonBlockEntryPayload
+            {
+                Key = key,
+                Original = original,
+                Translated = translated
+            };
+        }
+
+        var commonPayload = new CommonBlockCatalogPayload
+        {
+            Language = normalizedLanguage,
+            Entries = merged.Values
+                .OrderBy(x => x.Key, StringComparer.Ordinal)
+                .ToList()
+        };
+        var commonJson = JsonSerializer.Serialize(commonPayload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(commonPath, commonJson, Encoding.UTF8, cancellationToken);
+
+        var languageCatalogPath = Path.Combine(i18nFolder, $"{normalizedLanguage}.json");
+        var mergedLanguageEntries = await LoadLanguageEntriesAsync(languageCatalogPath, cancellationToken);
+        foreach (var entry in merged.Values)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Original) ||
+                string.IsNullOrWhiteSpace(entry.Translated) ||
+                string.Equals(entry.Original, entry.Translated, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            mergedLanguageEntries[entry.Original] = entry.Translated;
+        }
+
+        var languagePayload = new TranslationCatalogPayload
+        {
+            Language = normalizedLanguage,
+            Entries = mergedLanguageEntries
+                .OrderBy(item => item.Key, StringComparer.Ordinal)
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)
+        };
+        var languageJson = JsonSerializer.Serialize(languagePayload, CatalogJsonOptions);
+        await File.WriteAllTextAsync(languageCatalogPath, languageJson, Encoding.UTF8, cancellationToken);
+
+        var rebuiltPages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
+            siteOutputPath,
+            normalizedLanguage,
+            targetPages: null,
+            doNotTranslateTexts: null,
+            cancellationToken);
+
+        return new ApplyCommonBlockTranslationsResult
+        {
+            SiteHost = normalizedHost,
+            Version = normalizedVersion,
+            Language = normalizedLanguage,
+            CommonFilePath = commonPath,
+            UpdatedCommonCount = merged.Count,
+            RebuiltPageCount = rebuiltPages.Count,
+            RebuiltPages = rebuiltPages
+        };
+    }
+
     public async Task<CreateInjectionAssetResult> CreateInjectionAssetAsync(
         CreateInjectionAssetRequest request,
         CancellationToken cancellationToken = default)
@@ -808,6 +1050,233 @@ public sealed class MirrorService : ISiteMirrorService
             PagesInjected = injected.Count,
             InjectedPages = injected
         };
+    }
+
+    public async Task<IReadOnlyList<InjectionAssetDto>> GetInjectionAssetsAsync(
+        string siteHost,
+        string version,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_dbConnectionString))
+        {
+            return [];
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(siteHost.Trim());
+        var normalizedVersion = NormalizeVersion(version);
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(_dbConnectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string q = """
+            SELECT AssetId, SiteHost, Version, AssetType, Name, Description, RelativeFilePath, CreatedAtUtc
+            FROM dbo.InjectionAssets
+            WHERE SiteHost = @SiteHost AND Version = @Version
+            ORDER BY CreatedAtUtc DESC;
+            """;
+        var list = new List<InjectionAssetDto>();
+        await using (var cmd = new Microsoft.Data.SqlClient.SqlCommand(q, connection))
+        {
+            cmd.Parameters.AddWithValue("@SiteHost", normalizedHost);
+            cmd.Parameters.AddWithValue("@Version", normalizedVersion);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                list.Add(new InjectionAssetDto
+                {
+                    AssetId = reader.GetString(0),
+                    SiteHost = reader.GetString(1),
+                    Version = reader.GetString(2),
+                    AssetType = reader.GetString(3),
+                    Name = reader.GetString(4),
+                    Description = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+                    RelativeFilePath = reader.GetString(6),
+                    CreatedAtUtc = reader.GetFieldValue<DateTimeOffset>(7),
+                    TargetPages = []
+                });
+            }
+        }
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            var targets = await LoadInjectionTargetsAsync(connection, list[i].AssetId, cancellationToken);
+            var row = list[i];
+            list[i] = new InjectionAssetDto
+            {
+                AssetId = row.AssetId,
+                SiteHost = row.SiteHost,
+                Version = row.Version,
+                AssetType = row.AssetType,
+                Name = row.Name,
+                Description = row.Description,
+                RelativeFilePath = row.RelativeFilePath,
+                CreatedAtUtc = row.CreatedAtUtc,
+                TargetPages = targets
+            };
+        }
+
+        return list;
+    }
+
+    public async Task<InjectionAssetDto?> GetInjectionAssetAsync(string assetId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_dbConnectionString) || string.IsNullOrWhiteSpace(assetId))
+        {
+            return null;
+        }
+
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(_dbConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        const string q = """
+            SELECT AssetId, SiteHost, Version, AssetType, Name, Description, RelativeFilePath, CreatedAtUtc
+            FROM dbo.InjectionAssets
+            WHERE AssetId = @AssetId;
+            """;
+        await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(q, connection);
+        cmd.Parameters.AddWithValue("@AssetId", assetId);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        var dto = new InjectionAssetDto
+        {
+            AssetId = reader.GetString(0),
+            SiteHost = reader.GetString(1),
+            Version = reader.GetString(2),
+            AssetType = reader.GetString(3),
+            Name = reader.GetString(4),
+            Description = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+            RelativeFilePath = reader.GetString(6),
+            CreatedAtUtc = reader.GetFieldValue<DateTimeOffset>(7),
+            TargetPages = []
+        };
+        await reader.CloseAsync();
+        var targets = await LoadInjectionTargetsAsync(connection, assetId, cancellationToken);
+        return new InjectionAssetDto
+        {
+            AssetId = dto.AssetId,
+            SiteHost = dto.SiteHost,
+            Version = dto.Version,
+            AssetType = dto.AssetType,
+            Name = dto.Name,
+            Description = dto.Description,
+            RelativeFilePath = dto.RelativeFilePath,
+            CreatedAtUtc = dto.CreatedAtUtc,
+            TargetPages = targets
+        };
+    }
+
+    public async Task<InjectionAssetDto> UpdateInjectionAssetAsync(
+        string assetId,
+        UpdateInjectionAssetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var asset = await GetInjectionAssetAsync(assetId, cancellationToken)
+                    ?? throw new FileNotFoundException($"Injection asset not found: {assetId}");
+
+        if (string.IsNullOrWhiteSpace(_dbConnectionString))
+        {
+            throw new InvalidOperationException("Database connection is not configured.");
+        }
+
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteRoot = Path.Combine(outputRoot, asset.SiteHost, asset.Version);
+        var absoluteFilePath = Path.Combine(siteRoot, asset.RelativeFilePath.Replace('/', Path.DirectorySeparatorChar));
+        if (request.Content is not null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(absoluteFilePath)!);
+            await File.WriteAllTextAsync(absoluteFilePath, request.Content, Encoding.UTF8, cancellationToken);
+        }
+
+        var updatedName = string.IsNullOrWhiteSpace(request.Name) ? asset.Name : request.Name.Trim();
+        var updatedDescription = request.Description ?? asset.Description;
+
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(_dbConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        const string q = """
+            UPDATE dbo.InjectionAssets
+            SET Name = @Name, Description = @Description
+            WHERE AssetId = @AssetId;
+            """;
+        await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(q, connection);
+        cmd.Parameters.AddWithValue("@Name", updatedName);
+        cmd.Parameters.AddWithValue("@Description", updatedDescription);
+        cmd.Parameters.AddWithValue("@AssetId", assetId);
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+
+        return (await GetInjectionAssetAsync(assetId, cancellationToken))!;
+    }
+
+    public async Task DeleteInjectionAssetAsync(string assetId, CancellationToken cancellationToken = default)
+    {
+        var asset = await GetInjectionAssetAsync(assetId, cancellationToken);
+        if (asset is null || string.IsNullOrWhiteSpace(_dbConnectionString))
+        {
+            return;
+        }
+
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteRoot = Path.Combine(outputRoot, asset.SiteHost, asset.Version);
+        var absoluteFilePath = Path.Combine(siteRoot, asset.RelativeFilePath.Replace('/', Path.DirectorySeparatorChar));
+        var publicPath = $"/mirror/{asset.SiteHost}/{asset.Version}/{asset.RelativeFilePath}";
+
+        var parser = new HtmlParser();
+        foreach (var rel in asset.TargetPages)
+        {
+            var full = Path.Combine(siteRoot, rel.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(full))
+            {
+                continue;
+            }
+
+            var raw = await File.ReadAllTextAsync(full, Encoding.UTF8, cancellationToken);
+            var doc = await parser.ParseDocumentAsync(raw, cancellationToken);
+            var removed = false;
+            foreach (var link in doc.QuerySelectorAll($"link[data-site-mirror-injection][href='{publicPath}']").ToArray())
+            {
+                link.Remove();
+                removed = true;
+            }
+            foreach (var script in doc.QuerySelectorAll($"script[data-site-mirror-injection][src='{publicPath}']").ToArray())
+            {
+                script.Remove();
+                removed = true;
+            }
+            if (removed)
+            {
+                var html = doc.DocumentElement?.OuterHtml ?? raw;
+                await File.WriteAllTextAsync(full, html, Encoding.UTF8, cancellationToken);
+            }
+        }
+
+        if (File.Exists(absoluteFilePath))
+        {
+            File.Delete(absoluteFilePath);
+        }
+
+        await using var connection = new Microsoft.Data.SqlClient.SqlConnection(_dbConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await using (var delTargets = new Microsoft.Data.SqlClient.SqlCommand("DELETE FROM dbo.InjectionAssetTargets WHERE AssetId=@AssetId;", connection, (Microsoft.Data.SqlClient.SqlTransaction)transaction))
+            {
+                delTargets.Parameters.AddWithValue("@AssetId", assetId);
+                await delTargets.ExecuteNonQueryAsync(cancellationToken);
+            }
+            await using (var delAsset = new Microsoft.Data.SqlClient.SqlCommand("DELETE FROM dbo.InjectionAssets WHERE AssetId=@AssetId;", connection, (Microsoft.Data.SqlClient.SqlTransaction)transaction))
+            {
+                delAsset.Parameters.AddWithValue("@AssetId", assetId);
+                await delAsset.ExecuteNonQueryAsync(cancellationToken);
+            }
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     private async Task<PageExecutionResult> MirrorPageCoreAsync(
@@ -1004,6 +1473,7 @@ public sealed class MirrorService : ISiteMirrorService
         string siteOutputPath,
         IReadOnlyList<string> requestedLanguages,
         IReadOnlyList<string>? doNotTranslateTexts,
+        IReadOnlyList<string>? generalTranslationClasses,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stage generate-localizations: generating localized copies for languages {Languages}",
@@ -1012,6 +1482,7 @@ public sealed class MirrorService : ISiteMirrorService
             siteOutputPath,
             requestedLanguages,
             doNotTranslateTexts,
+            generalTranslationClasses,
             cancellationToken);
         _logger.LogInformation("Stage generate-localizations: complete");
     }
@@ -1393,6 +1864,188 @@ public sealed class MirrorService : ISiteMirrorService
         return result;
     }
 
+    private static async Task<Dictionary<string, CommonBlockEntryPayload>> LoadCommonCatalogAsync(
+        string commonPath,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(commonPath))
+        {
+            return new Dictionary<string, CommonBlockEntryPayload>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            var raw = await File.ReadAllTextAsync(commonPath, Encoding.UTF8, cancellationToken);
+            var payload = JsonSerializer.Deserialize<CommonBlockCatalogPayload>(raw);
+            var result = new Dictionary<string, CommonBlockEntryPayload>(StringComparer.Ordinal);
+            foreach (var item in payload?.Entries ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(item.Key))
+                {
+                    continue;
+                }
+
+                result[item.Key] = item;
+            }
+
+            return result;
+        }
+        catch
+        {
+            return new Dictionary<string, CommonBlockEntryPayload>(StringComparer.Ordinal);
+        }
+    }
+
+    private static async Task<List<CommonBlockEntryPayload>> ParseCommonBlockEntriesAsync(
+        Stream stream,
+        IReadOnlyDictionary<string, string> sourceEntries,
+        CancellationToken cancellationToken)
+    {
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new JsonException("Root JSON must be an object.");
+        }
+
+        var result = new Dictionary<string, CommonBlockEntryPayload>(StringComparer.Ordinal);
+        static void Add(
+            Dictionary<string, CommonBlockEntryPayload> map,
+            IReadOnlyDictionary<string, string> sources,
+            string? keyOrId,
+            string? original,
+            string? translated)
+        {
+            var explicitKey = (keyOrId ?? string.Empty).Trim();
+            var normalizedOriginal = (original ?? string.Empty).Trim();
+            var normalizedTranslated = (translated ?? string.Empty).Trim();
+            if (explicitKey.StartsWith("k_", StringComparison.Ordinal) &&
+                string.IsNullOrWhiteSpace(normalizedOriginal) &&
+                sources.TryGetValue(explicitKey, out var sourceText))
+            {
+                normalizedOriginal = sourceText?.Trim() ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedOriginal) && !explicitKey.StartsWith("k_", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var key = explicitKey.StartsWith("k_", StringComparison.Ordinal)
+                ? explicitKey
+                : LocalizationGenerator.BuildGlobalTextKey(normalizedOriginal);
+
+            if (string.IsNullOrWhiteSpace(normalizedOriginal) &&
+                sources.TryGetValue(key, out var sourceByKey))
+            {
+                normalizedOriginal = sourceByKey?.Trim() ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedOriginal))
+            {
+                return;
+            }
+
+            map[key] = new CommonBlockEntryPayload
+            {
+                Key = key,
+                Original = normalizedOriginal,
+                Translated = normalizedTranslated
+            };
+        }
+
+        void ParseBlockArray(JsonElement blocksNode)
+        {
+            foreach (var item in blocksNode.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var original = (item.TryGetProperty("original", out var o1) || item.TryGetProperty("Original", out o1)) &&
+                               o1.ValueKind == JsonValueKind.String
+                    ? o1.GetString()
+                    : null;
+                var keyOrId = (item.TryGetProperty("id", out var i1) || item.TryGetProperty("Id", out i1) ||
+                               item.TryGetProperty("key", out i1) || item.TryGetProperty("Key", out i1)) &&
+                              i1.ValueKind == JsonValueKind.String
+                    ? i1.GetString()
+                    : null;
+                var translated = (item.TryGetProperty("translated", out var t1) || item.TryGetProperty("Translated", out t1)) &&
+                                 t1.ValueKind == JsonValueKind.String
+                    ? t1.GetString()
+                    : null;
+                Add(result, sourceEntries, keyOrId, original, translated);
+            }
+        }
+
+        if ((doc.RootElement.TryGetProperty("blocks", out var blocksNode) ||
+             doc.RootElement.TryGetProperty("Blocks", out blocksNode)) &&
+            blocksNode.ValueKind == JsonValueKind.Array)
+        {
+            ParseBlockArray(blocksNode);
+        }
+
+        if ((doc.RootElement.TryGetProperty("groups", out var groupsNode) ||
+             doc.RootElement.TryGetProperty("Groups", out groupsNode)) &&
+            groupsNode.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var group in groupsNode.EnumerateArray())
+            {
+                if (group.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if ((group.TryGetProperty("blocks", out var groupBlocks) ||
+                     group.TryGetProperty("Blocks", out groupBlocks)) &&
+                    groupBlocks.ValueKind == JsonValueKind.Array)
+                {
+                    ParseBlockArray(groupBlocks);
+                }
+            }
+        }
+
+        if (result.Count == 0 &&
+            ((doc.RootElement.TryGetProperty("entries", out var entriesNode) ||
+              doc.RootElement.TryGetProperty("Entries", out entriesNode)) &&
+             entriesNode.ValueKind == JsonValueKind.Object))
+        {
+            foreach (var property in entriesNode.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                Add(result, sourceEntries, null, property.Name, property.Value.GetString());
+            }
+        }
+
+        if (result.Count == 0)
+        {
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var name = property.Name;
+                if (name.StartsWith("k_", StringComparison.Ordinal))
+                {
+                    Add(result, sourceEntries, name, null, property.Value.GetString());
+                }
+                else
+                {
+                    Add(result, sourceEntries, null, name, property.Value.GetString());
+                }
+            }
+        }
+
+        return result.Values.ToList();
+    }
+
     private static string NormalizeBlockPagePath(string rawPage)
     {
         var normalized = rawPage.Trim().Replace('\\', '/').TrimStart('/');
@@ -1558,6 +2211,28 @@ public sealed class MirrorService : ISiteMirrorService
         }
     }
 
+    private static async Task<IReadOnlyList<string>> LoadInjectionTargetsAsync(
+        Microsoft.Data.SqlClient.SqlConnection connection,
+        string assetId,
+        CancellationToken cancellationToken)
+    {
+        const string q = """
+            SELECT TargetPagePath
+            FROM dbo.InjectionAssetTargets
+            WHERE AssetId = @AssetId
+            ORDER BY TargetPagePath;
+            """;
+        await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(q, connection);
+        cmd.Parameters.AddWithValue("@AssetId", assetId);
+        var list = new List<string>();
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            list.Add(reader.GetString(0));
+        }
+        return list;
+    }
+
     private static List<BlockItemPayload> FlattenBlockItems(BlockPagePayload blockPage)
     {
         if (blockPage.Groups.Count > 0)
@@ -1703,6 +2378,19 @@ public sealed class MirrorService : ISiteMirrorService
         public string Language { get; init; } = "en";
 
         public Dictionary<string, string> Entries { get; init; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed class CommonBlockCatalogPayload
+    {
+        public string Language { get; init; } = "fa";
+        public List<CommonBlockEntryPayload> Entries { get; init; } = [];
+    }
+
+    private sealed record CommonBlockEntryPayload
+    {
+        public string Key { get; init; } = string.Empty;
+        public string Original { get; init; } = string.Empty;
+        public string Translated { get; init; } = string.Empty;
     }
 
     private sealed class BlockPagePayload

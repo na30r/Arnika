@@ -403,14 +403,15 @@ internal sealed class MirrorState
         var key = _pathHelper.NormalizeUri(absolute);
         if (!_urlToRelativePath.TryGetValue(key, out var targetRelativePath))
         {
-            var fallbackPath = _pathHelper.MapUriToRelativePath(absolute, mediaType: null);
-            if (File.Exists(Path.Combine(_outputDir, fallbackPath)))
+            // Always normalize same-site links to their mirrored path shape, even if that target
+            // page/resource has not been crawled yet. This keeps navigation consistent.
+            if (IsSameSiteHost(absolute))
             {
-                targetRelativePath = fallbackPath;
+                targetRelativePath = _pathHelper.MapUriToRelativePath(absolute, mediaType: null);
             }
             else
             {
-                // Do not rewrite to a synthetic path when we have not actually downloaded the target.
+                // Keep off-site links unchanged.
                 _logger.LogDebug("No local mapping found for {Url}; keeping original reference.", absolute);
                 return candidateUrl;
             }
@@ -432,6 +433,18 @@ internal sealed class MirrorState
         }
 
         return relative;
+    }
+
+    private bool IsSameSiteHost(Uri uri)
+    {
+        var rootHost = _rootUri.Host.Trim().ToLowerInvariant();
+        var candidateHost = uri.Host.Trim().ToLowerInvariant();
+        if (rootHost == candidateHost)
+        {
+            return true;
+        }
+
+        return rootHost == $"www.{candidateHost}" || candidateHost == $"www.{rootHost}";
     }
 
     /// <summary>

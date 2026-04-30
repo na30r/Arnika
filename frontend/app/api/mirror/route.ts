@@ -6,6 +6,7 @@ type MirrorRequestBody = {
   linkDrillCount?: number;
   languages?: string[];
   doNotTranslateTexts?: string[];
+  generalTranslationClasses?: string[];
   extraWaitMs?: number;
   autoScroll?: boolean;
   scrollStepPx?: number;
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     linkDrillCount: body.linkDrillCount ?? 0,
     languages: body.languages,
     doNotTranslateTexts: body.doNotTranslateTexts,
+    generalTranslationClasses: body.generalTranslationClasses,
     extraWaitMs: body.extraWaitMs ?? 4000,
     autoScroll: body.autoScroll ?? true,
     scrollStepPx: body.scrollStepPx ?? 1200,
