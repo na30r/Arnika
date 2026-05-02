@@ -542,7 +542,7 @@ public const string PerPageTemplatesFolderName = "pages";
             return;
         }
 
-        var translatedBySignature = new Dictionary<string, Queue<string>>(StringComparer.Ordinal);
+        var translatedBySignature = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var block in blockItems)
         {
             if (string.IsNullOrWhiteSpace(block.Type) ||
@@ -566,13 +566,9 @@ public const string PerPageTemplatesFolderName = "pages";
             }
 
             var signature = $"{block.Type.Trim().ToLowerInvariant()}|{original}";
-            if (!translatedBySignature.TryGetValue(signature, out var queue))
-            {
-                queue = new Queue<string>();
-                translatedBySignature[signature] = queue;
-            }
-
-            queue.Enqueue(translated);
+            // Use one deterministic translation per semantic signature and apply it to all
+            // matching DOM occurrences (desktop/mobile duplicates, hidden nav copies, etc.).
+            translatedBySignature[signature] = translated;
         }
 
         if (translatedBySignature.Count == 0)
@@ -607,12 +603,10 @@ public const string PerPageTemplatesFolderName = "pages";
             }
 
             var signature = $"{blockType}|{original}";
-            if (!translatedBySignature.TryGetValue(signature, out var queue) || queue.Count == 0)
+            if (!translatedBySignature.TryGetValue(signature, out var translated) || string.IsNullOrWhiteSpace(translated))
             {
                 continue;
             }
-
-            var translated = queue.Dequeue();
             if (TryApplyTranslatedTextPreservingLinks(element, translated, languageCatalog))
             {
                 continue;
@@ -1487,7 +1481,7 @@ public const string PerPageTemplatesFolderName = "pages";
                 return true;
             }
 
-            if (IsLinkRichTextContainer(current))
+            if (IsLinkRichTextContainer(current) || IsProseTextContainer(current))
             {
                 return true;
             }
@@ -1675,9 +1669,60 @@ public const string PerPageTemplatesFolderName = "pages";
             "a" => "inline_text",
             "button" => "inline_text",
             "span" => "inline_text",
-            "div" or "section" or "article" => IsLinkRichTextContainer(element) ? "rich_text" : null,
+            "div" or "section" or "article" => IsLinkRichTextContainer(element)
+                ? "rich_text"
+                : IsProseTextContainer(element)
+                    ? "paragraph"
+                    : null,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Paragraph-like copy is sometimes a &lt;div&gt; with only text (no &lt;p&gt;, no links).
+    /// Those were previously invisible to block extraction because only link-bearing divs qualified.
+    /// </summary>
+    private static bool IsProseTextContainer(IElement element)
+    {
+        var tag = element.LocalName.ToLowerInvariant();
+        if (tag is not ("div" or "section" or "article"))
+        {
+            return false;
+        }
+
+        if (IsLinkRichTextContainer(element))
+        {
+            return false;
+        }
+
+        if (element.QuerySelector("p, li, h1, h2, h3, h4, h5, h6") is not null)
+        {
+            return false;
+        }
+
+        if (element.QuerySelector("a, button") is not null)
+        {
+            return false;
+        }
+
+        var text = element.TextContent?.Trim() ?? string.Empty;
+        if (text.Length < 20 || text.Length > 8_000)
+        {
+            return false;
+        }
+
+        // Skip pure wrappers so we do not duplicate the same string on parent and child divs.
+        var hasNonWhiteDirectText = element.ChildNodes.Any(n =>
+            n.NodeType == NodeType.Text && !string.IsNullOrWhiteSpace(n.TextContent));
+        var elementChildren = element.Children.OfType<IElement>().ToList();
+        if (!hasNonWhiteDirectText &&
+            elementChildren.Count == 1 &&
+            elementChildren[0].LocalName is "div" or "section" or "article")
+        {
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
