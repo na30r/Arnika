@@ -30,4 +30,12 @@ public interface ISiteMirrorService
     Task DeleteInjectionAssetAsync(string assetId, CancellationToken cancellationToken = default);
 
     Task<FixPageLinksResult> FixPageLinksAsync(FixPageLinksRequest request, CancellationToken cancellationToken = default);
+
+    Task<BlockTranslationFlatMergeResponse> MergeFlatBlockTranslationsAsync(
+        BlockTranslationFlatMergeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<BlockPageToFlatResponse> BlockPageToFlatAsync(
+        BlockPageToFlatRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -34,6 +34,13 @@ public sealed class MirrorService : ISiteMirrorService
         WriteIndented = true
     };
 
+    private static readonly JsonSerializerOptions BlockExchangeReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
     public MirrorService(
         IOptions<MirrorSettings> options,
         IOptions<DatabaseSettings> dbOptions,
@@ -773,6 +780,43 @@ public sealed class MirrorService : ISiteMirrorService
             UpdatedEntryCount = incoming.Count,
             RebuiltPageCount = rebuiltPages.Count,
             RebuiltPages = rebuiltPages
+        };
+    }
+
+    public async Task<BlockTranslationFlatMergeResponse> MergeFlatBlockTranslationsAsync(
+        BlockTranslationFlatMergeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var blockDoc = await LoadBlockPagePayloadForExchangeAsync(request, cancellationToken);
+        var rawTranslations = request.Translations.Count > 0 ? request.Translations : request.Entries;
+        var translations = NormalizeTranslationMap(rawTranslations);
+        var (merged, usedKeys) = MergeTranslationsIntoPayload(
+            blockDoc,
+            translations,
+            request.EmptyTranslationUsesOriginal);
+        var json = JsonSerializer.Serialize(merged, CatalogJsonOptions);
+        var unmatched = translations.Keys.Where(k => !usedKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        return new BlockTranslationFlatMergeResponse
+        {
+            BlockPageJson = json,
+            Items = BuildExchangeItems(merged),
+            UnmatchedTranslationKeys = unmatched
+        };
+    }
+
+    public async Task<BlockPageToFlatResponse> BlockPageToFlatAsync(
+        BlockPageToFlatRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var blockDoc = await LoadBlockPagePayloadForExchangeFromFlatRequestAsync(request, cancellationToken);
+        var entries = ExtractFlatEntriesFromPayload(blockDoc, request.UseOriginalWhenTranslatedEmpty);
+        var entriesJson = JsonSerializer.Serialize(
+            new Dictionary<string, string>(entries, StringComparer.Ordinal),
+            CatalogJsonOptions);
+        return new BlockPageToFlatResponse
+        {
+            Entries = entries,
+            EntriesJson = entriesJson
         };
     }
 
@@ -2282,6 +2326,308 @@ public sealed class MirrorService : ISiteMirrorService
         return list;
     }
 
+    private async Task<BlockPagePayload> LoadBlockPagePayloadForExchangeAsync(
+        BlockTranslationFlatMergeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.BlockPageJson))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<BlockPagePayload>(request.BlockPageJson, BlockExchangeReadOptions)
+                       ?? new BlockPagePayload();
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException("Invalid BlockPageJson.", ex);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(request.SiteHost) ||
+            string.IsNullOrWhiteSpace(request.Version) ||
+            string.IsNullOrWhiteSpace(request.PagePath))
+        {
+            throw new ArgumentException(
+                "Provide BlockPageJson or all of SiteHost, Version, and PagePath to load the block template.");
+        }
+
+        var siteHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var version = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, siteHost, version);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var normalizedPagePath = NormalizeBlockPagePath(request.PagePath);
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        var blockPath = Path.Combine(
+            i18nFolder,
+            LocalizationGenerator.PerPageBlocksFolderName,
+            normalizedPagePath.Replace('/', Path.DirectorySeparatorChar) + ".json");
+        if (!File.Exists(blockPath))
+        {
+            throw new FileNotFoundException($"Block page not found: {normalizedPagePath}.json", blockPath);
+        }
+
+        var raw = await File.ReadAllTextAsync(blockPath, Encoding.UTF8, cancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<BlockPagePayload>(raw, BlockExchangeReadOptions) ?? new BlockPagePayload();
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException($"Invalid block page JSON at {blockPath}.", ex);
+        }
+    }
+
+    private async Task<BlockPagePayload> LoadBlockPagePayloadForExchangeFromFlatRequestAsync(
+        BlockPageToFlatRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.BlockPageJson))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<BlockPagePayload>(request.BlockPageJson, BlockExchangeReadOptions)
+                       ?? new BlockPagePayload();
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException("Invalid BlockPageJson.", ex);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(request.SiteHost) ||
+            string.IsNullOrWhiteSpace(request.Version) ||
+            string.IsNullOrWhiteSpace(request.PagePath))
+        {
+            throw new ArgumentException(
+                "Provide BlockPageJson or all of SiteHost, Version, and PagePath.");
+        }
+
+        var mergeRequest = new BlockTranslationFlatMergeRequest
+        {
+            SiteHost = request.SiteHost,
+            Version = request.Version,
+            PagePath = request.PagePath
+        };
+        return await LoadBlockPagePayloadForExchangeAsync(mergeRequest, cancellationToken);
+    }
+
+    private static Dictionary<string, string> NormalizeTranslationMap(
+        IReadOnlyDictionary<string, string>? raw)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var pair in raw ?? new Dictionary<string, string>())
+        {
+            var key = pair.Key.Trim();
+            if (string.IsNullOrEmpty(key))
+            {
+                continue;
+            }
+
+            result[key] = pair.Value?.Trim() ?? string.Empty;
+        }
+
+        return result;
+    }
+
+    private static bool TryPickTranslation(
+        BlockItemPayload block,
+        IReadOnlyDictionary<string, string> translations,
+        out string value,
+        out string matchedKey)
+    {
+        value = string.Empty;
+        matchedKey = string.Empty;
+        if (!string.IsNullOrWhiteSpace(block.Id))
+        {
+            var idKey = block.Id.Trim();
+            if (translations.TryGetValue(idKey, out var byId))
+            {
+                matchedKey = idKey;
+                value = byId;
+                return true;
+            }
+        }
+
+        var original = block.Original?.Trim() ?? string.Empty;
+        if (original.Length > 0 && translations.TryGetValue(original, out var byOriginal))
+        {
+            matchedKey = original;
+            value = byOriginal;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static (BlockPagePayload merged, HashSet<string> usedTranslationKeys) MergeTranslationsIntoPayload(
+        BlockPagePayload doc,
+        Dictionary<string, string> translations,
+        bool emptyTranslationUsesOriginal)
+    {
+        var usedTranslationKeys = new HashSet<string>(StringComparer.Ordinal);
+
+        string ResolveTranslated(BlockItemPayload block)
+        {
+            var orig = block.Original?.Trim() ?? string.Empty;
+
+            if (TryPickTranslation(block, translations, out var picked, out var mk))
+            {
+                usedTranslationKeys.Add(mk);
+                if (string.IsNullOrEmpty(picked))
+                {
+                    return emptyTranslationUsesOriginal ? orig : string.Empty;
+                }
+
+                if (!emptyTranslationUsesOriginal &&
+                    string.Equals(picked, orig, StringComparison.Ordinal))
+                {
+                    return string.Empty;
+                }
+
+                return picked;
+            }
+
+            var existing = block.Translated?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(existing))
+            {
+                return emptyTranslationUsesOriginal ? orig : string.Empty;
+            }
+
+            if (!emptyTranslationUsesOriginal &&
+                string.Equals(existing, orig, StringComparison.Ordinal))
+            {
+                return string.Empty;
+            }
+
+            return existing;
+        }
+
+        var newTopBlocks = doc.Blocks
+            .Select(b => b with { Translated = ResolveTranslated(b) })
+            .ToList();
+
+        var newGroups = new List<BlockGroupPayload>(doc.Groups.Count);
+        foreach (var group in doc.Groups)
+        {
+            var inner = new List<BlockItemPayload>(group.Blocks.Count);
+            foreach (var b in group.Blocks)
+            {
+                inner.Add(b with
+                {
+                    Translated = ResolveTranslated(b),
+                    GroupId = string.IsNullOrWhiteSpace(b.GroupId) ? group.Id : b.GroupId
+                });
+            }
+
+            newGroups.Add(group with { Blocks = inner });
+        }
+
+        var merged = new BlockPagePayload
+        {
+            Page = doc.Page,
+            Blocks = newTopBlocks,
+            Groups = newGroups
+        };
+        return (merged, usedTranslationKeys);
+    }
+
+    private static List<BlockExchangeItemDto> BuildExchangeItems(BlockPagePayload doc)
+    {
+        var items = new List<BlockExchangeItemDto>();
+        foreach (var b in doc.Blocks)
+        {
+            if (string.IsNullOrWhiteSpace(b.Original) && string.IsNullOrWhiteSpace(b.Id))
+            {
+                continue;
+            }
+
+            items.Add(new BlockExchangeItemDto
+            {
+                Id = b.Id,
+                Type = b.Type,
+                Original = b.Original,
+                Translated = b.Translated,
+                GroupId = b.GroupId
+            });
+        }
+
+        foreach (var g in doc.Groups)
+        {
+            foreach (var b in g.Blocks)
+            {
+                if (string.IsNullOrWhiteSpace(b.Original) && string.IsNullOrWhiteSpace(b.Id))
+                {
+                    continue;
+                }
+
+                items.Add(new BlockExchangeItemDto
+                {
+                    Id = b.Id,
+                    Type = b.Type,
+                    Original = b.Original,
+                    Translated = b.Translated,
+                    GroupId = string.IsNullOrWhiteSpace(b.GroupId) ? g.Id : b.GroupId
+                });
+            }
+        }
+
+        return items;
+    }
+
+    private static Dictionary<string, string> ExtractFlatEntriesFromPayload(
+        BlockPagePayload doc,
+        bool useOriginalWhenTranslatedEmpty)
+    {
+        var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+        void AddBlock(BlockItemPayload b)
+        {
+            var o = b.Original?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(o))
+            {
+                return;
+            }
+
+            var t = b.Translated?.Trim() ?? string.Empty;
+            if (useOriginalWhenTranslatedEmpty)
+            {
+                if (string.IsNullOrEmpty(t))
+                {
+                    t = o;
+                }
+            }
+            else
+            {
+                // Placeholder blocks often copy English into Translated; treat as untranslated.
+                if (string.IsNullOrEmpty(t) || string.Equals(t, o, StringComparison.Ordinal))
+                {
+                    t = string.Empty;
+                }
+            }
+
+            entries[o] = t;
+        }
+
+        foreach (var b in doc.Blocks)
+        {
+            AddBlock(b);
+        }
+
+        foreach (var g in doc.Groups)
+        {
+            foreach (var b in g.Blocks)
+            {
+                AddBlock(b);
+            }
+        }
+
+        return entries;
+    }
+
     private static List<BlockItemPayload> FlattenBlockItems(BlockPagePayload blockPage)
     {
         if (blockPage.Groups.Count > 0)
@@ -2460,6 +2806,8 @@ public sealed class MirrorService : ISiteMirrorService
         public string Original { get; init; } = string.Empty;
 
         public string Translated { get; init; } = string.Empty;
+
+        public string? GroupId { get; init; }
     }
 
     private sealed record BlockGroupPayload

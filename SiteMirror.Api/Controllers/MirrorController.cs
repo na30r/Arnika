@@ -450,6 +450,58 @@ public sealed class MirrorController(
         }
     }
 
+    [HttpPost("block-exchange/merge-flat")]
+    [ProducesResponseType(typeof(BlockTranslationFlatMergeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BlockTranslationFlatMergeResponse>> MergeFlatBlockTranslations(
+        [FromBody] BlockTranslationFlatMergeRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.MergeFlatBlockTranslationsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("block-exchange/to-flat")]
+    [ProducesResponseType(typeof(BlockPageToFlatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BlockPageToFlatResponse>> BlockPageToFlat(
+        [FromBody] BlockPageToFlatRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.BlockPageToFlatAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("update-common-translations/upload")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ApplyCommonBlockTranslationsResult), StatusCodes.Status200OK)]

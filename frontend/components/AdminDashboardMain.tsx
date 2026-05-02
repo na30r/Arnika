@@ -7,6 +7,7 @@ import { type Locale, t } from "../lib/i18n";
 import { TranslationReviewSection } from "./TranslationReviewSection";
 import { CrawledSitesSection } from "./CrawledSitesSection";
 import { AssetInjectionSection } from "./AssetInjectionSection";
+import { BlockExchangeSection } from "./BlockExchangeSection";
 
 type MirrorResponse = {
   crawlId?: string;
@@ -48,7 +49,9 @@ export function AdminDashboardMain() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MirrorResponse | null>(null);
   const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/_localized/en/docs.html");
-  const [activeSection, setActiveSection] = useState<"crawl" | "translations" | "crawledSites" | "assetInjection">("crawl");
+  const [activeSection, setActiveSection] = useState<
+    "crawl" | "translations" | "blockExchange" | "crawledSites" | "assetInjection"
+  >("crawl");
 
   let iframeSrc = manualPreviewPath.trim();
   if (result?.frontendPreviewPath && result?.siteHost && result?.version) {
@@ -156,6 +159,13 @@ export function AdminDashboardMain() {
           onClick={() => setActiveSection("translations")}
         >
           Translation Review
+        </button>
+        <button
+          type="button"
+          className={`sidebar-item ${activeSection === "blockExchange" ? "active" : ""}`}
+          onClick={() => setActiveSection("blockExchange")}
+        >
+          Block JSON exchange
         </button>
         <button
           type="button"
@@ -338,6 +348,8 @@ export function AdminDashboardMain() {
       </>
       ) : activeSection === "translations" ? (
         <TranslationReviewSection />
+      ) : activeSection === "blockExchange" ? (
+        <BlockExchangeSection />
       ) : activeSection === "crawledSites" ? (
         <CrawledSitesSection />
       ) : (

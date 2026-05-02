@@ -4,22 +4,12 @@
     {
       "Key": "k_0013fa2e7a98",
       "Original": "Layouts and Pages",
-      "Translated": "\u0686\u06CC\u062F\u0645\u0627\u0646\u200C\u0647\u0627 \u0648 \u0635\u0641\u062D\u0627\u062A (Layouts and Pages)"
-    },
-    {
-      "Key": "k_010b85ad56b3",
-      "Original": "Getting Started",
-      "Translated": "\u0634\u0631\u0648\u0639 \u06A9\u0627\u0631"
-    },
-    {
-      "Key": "k_010e0706c32c",
-      "Original": "Latest Version16.2.4",
-      "Translated": "\u0622\u062E\u0631\u06CC\u0646 \u0646\u0633\u062E\u0647 16.2.4"
+      "Translated": ""
     },
     {
       "Key": "k_011e9c1535d1",
       "Original": "Next.js Compiler",
-      "Translated": "\u06A9\u0627\u0645\u067E\u0627\u06CC\u0644\u0631 Next.js"
+      "Translated": ""
     },
     {
       "Key": "k_0161ce7d9795",
@@ -62,11 +52,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_0820b32b206b",
-      "Original": "Testing",
-      "Translated": ""
-    },
-    {
       "Key": "k_086ef5e65c46",
       "Original": "unstable_rethrow",
       "Translated": ""
@@ -89,7 +74,7 @@
     {
       "Key": "k_0b9d2b2362bc",
       "Original": "Blog",
-      "Translated": "\u0648\u0628\u0644\u0627\u06AF "
+      "Translated": ""
     },
     {
       "Key": "k_0c2fd78a93a1",
@@ -162,11 +147,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_1972cde2261e",
-      "Original": "16.2.4",
-      "Translated": ""
-    },
-    {
       "Key": "k_19d81c90efac",
       "Original": "basePath",
       "Translated": ""
@@ -179,7 +159,7 @@
     {
       "Key": "k_1ad4678d83db",
       "Original": "Server and Client Components",
-      "Translated": "\u06A9\u0627\u0645\u067E\u0648\u0646\u0646\u062A\u200C\u0647\u0627\u06CC \u0633\u0631\u0648\u0631 \u0648 \u06A9\u0644\u0627\u06CC\u0646\u062A (Server and Client Components)"
+      "Translated": ""
     },
     {
       "Key": "k_1c8c2066451e",
@@ -214,12 +194,12 @@
     {
       "Key": "k_20bb4efd64b3",
       "Original": "Route Handlers",
-      "Translated": "Route Handlers"
+      "Translated": ""
     },
     {
       "Key": "k_218887269ad5",
       "Original": "Team",
-      "Translated": "\u062A\u06CC\u0645"
+      "Translated": ""
     },
     {
       "Key": "k_21a17ce8f6a8",
@@ -244,7 +224,7 @@
     {
       "Key": "k_25bc96295797",
       "Original": "Analytics",
-      "Translated": "\u062A\u062D\u0644\u06CC\u0644 "
+      "Translated": ""
     },
     {
       "Key": "k_25c57e4c0b8f",
@@ -287,21 +267,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_28c82071e940",
-      "Original": "Directives",
-      "Translated": "\u062F\u0633\u062A\u0648\u0631\u0627\u0644\u0639\u0645\u0644\u200C\u0647\u0627 (Directives)"
-    },
-    {
-      "Key": "k_2a2e9c3feb90",
-      "Original": "Latest Version",
-      "Translated": ""
-    },
-    {
-      "Key": "k_2b961dea1dc0",
-      "Original": "Functions",
-      "Translated": "\u062A\u0648\u0627\u0628\u0639 (Functions)"
-    },
-    {
       "Key": "k_2bff805c7b7a",
       "Original": "Tailwind CSS v3",
       "Translated": ""
@@ -327,11 +292,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_32bc3c22148b",
-      "Original": "Configuring",
-      "Translated": ""
-    },
-    {
       "Key": "k_33b718e3426e",
       "Original": "Development Environment",
       "Translated": ""
@@ -339,7 +299,7 @@
     {
       "Key": "k_349a9d154e3e",
       "Original": "Image Optimization",
-      "Translated": "\u0628\u0647\u06CC\u0646\u0647\u200C\u0633\u0627\u0632\u06CC \u062A\u0635\u0648\u06CC\u0631 (Image Optimization)"
+      "Translated": ""
     },
     {
       "Key": "k_34b58850b291",
@@ -382,11 +342,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_3b1ccb93d65a",
-      "Original": "Search...\u2318K",
-      "Translated": ""
-    },
-    {
       "Key": "k_3b755f7b857b",
       "Original": "Internationalization",
       "Translated": ""
@@ -409,12 +364,12 @@
     {
       "Key": "k_3d07fe6f9560",
       "Original": "use cache",
-      "Translated": "use cache"
+      "Translated": ""
     },
     {
       "Key": "k_3e8f79c6b842",
       "Original": "Project Structure",
-      "Translated": "\u0633\u0627\u062E\u062A\u0627\u0631 \u067E\u0631\u0648\u0698\u0647 (Project Structure)"
+      "Translated": ""
     },
     {
       "Key": "k_3f1151c8b153",
@@ -439,7 +394,7 @@
     {
       "Key": "k_40b90ed9428b",
       "Original": "Evals",
-      "Translated": "\u0627\u0631\u0632\u06CC\u0627\u0628\u06CC\u200C\u0647\u0627 "
+      "Translated": ""
     },
     {
       "Key": "k_426e95aa8d56",
@@ -454,7 +409,7 @@
     {
       "Key": "k_4546db7275da",
       "Original": "Fast Refresh",
-      "Translated": "Fast Refresh"
+      "Translated": ""
     },
     {
       "Key": "k_47e69e75f6b5",
@@ -464,7 +419,7 @@
     {
       "Key": "k_48bf3bbfe2cd",
       "Original": "Fetching Data",
-      "Translated": "\u062F\u0631\u06CC\u0627\u0641\u062A \u062F\u0627\u062F\u0647 (Fetching Data)"
+      "Translated": ""
     },
     {
       "Key": "k_48c482a6b10e",
@@ -482,24 +437,14 @@
       "Translated": ""
     },
     {
-      "Key": "k_4a89fe44e390",
-      "Original": "Using App Router",
-      "Translated": ""
-    },
-    {
       "Key": "k_4b44ab3c2f30",
       "Original": "Self-Hosting",
       "Translated": ""
     },
     {
-      "Key": "k_4b62155b3f77",
-      "Original": "Using App RouterFeatures available in /app",
-      "Translated": ""
-    },
-    {
       "Key": "k_4bab2d8fe13f",
       "Original": "More",
-      "Translated": "\u0628\u06CC\u0634\u062A\u0631 "
+      "Translated": ""
     },
     {
       "Key": "k_4bec9575721b",
@@ -519,7 +464,7 @@
     {
       "Key": "k_4f6d25447079",
       "Original": "Support Policy",
-      "Translated": "\u062E\u0637 \u0645\u0634\u06CC \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC (Support Policy)"
+      "Translated": ""
     },
     {
       "Key": "k_4f7d902f8a02",
@@ -559,7 +504,7 @@
     {
       "Key": "k_5442e2b64fa0",
       "Original": "GitHub",
-      "Translated": "GitHub"
+      "Translated": ""
     },
     {
       "Key": "k_5466d6eb957b",
@@ -569,7 +514,7 @@
     {
       "Key": "k_5577e4870234",
       "Original": "Showcase",
-      "Translated": "\u0646\u0645\u0648\u0646\u0647\u200C\u06A9\u0627\u0631\u0647\u0627 "
+      "Translated": ""
     },
     {
       "Key": "k_56016f7b288f",
@@ -629,7 +574,7 @@
     {
       "Key": "k_5fff1f56919b",
       "Original": "Error Handling",
-      "Translated": "\u0645\u062F\u06CC\u0631\u06CC\u062A \u062E\u0637\u0627 (Error Handling)"
+      "Translated": ""
     },
     {
       "Key": "k_6054af2f0c9c",
@@ -639,7 +584,7 @@
     {
       "Key": "k_60790f7c8417",
       "Original": "Caching",
-      "Translated": "Caching"
+      "Translated": ""
     },
     {
       "Key": "k_60c1acd90083",
@@ -684,7 +629,7 @@
     {
       "Key": "k_67b6d0808473",
       "Original": "File-system conventions",
-      "Translated": "\u0642\u0631\u0627\u0631\u062F\u0627\u062F\u0647\u0627\u06CC \u0633\u06CC\u0633\u062A\u0645 \u0641\u0627\u06CC\u0644 (File-system conventions)"
+      "Translated": ""
     },
     {
       "Key": "k_67cb5afcac91",
@@ -699,7 +644,7 @@
     {
       "Key": "k_68a4194227be",
       "Original": "Docs",
-      "Translated": "\u0645\u0633\u062A\u0646\u062F\u0627\u062A "
+      "Translated": ""
     },
     {
       "Key": "k_6acccd95ff90",
@@ -719,12 +664,7 @@
     {
       "Key": "k_6dd4fe806eb6",
       "Original": "Telemetry",
-      "Translated": "Telemetry"
-    },
-    {
-      "Key": "k_700b401ca52b",
-      "Original": "CLI",
-      "Translated": "CLI"
+      "Translated": ""
     },
     {
       "Key": "k_701b074d29ec",
@@ -759,7 +699,7 @@
     {
       "Key": "k_7427cf697be1",
       "Original": "Glossary",
-      "Translated": "\u0648\u0627\u0698\u0647\u200C\u0646\u0627\u0645\u0647 (Glossary)"
+      "Translated": ""
     },
     {
       "Key": "k_74a9340bbf5b",
@@ -774,7 +714,7 @@
     {
       "Key": "k_754164850f38",
       "Original": "Configuration",
-      "Translated": "\u067E\u06CC\u06A9\u0631\u0628\u0646\u062F\u06CC (Configuration)"
+      "Translated": ""
     },
     {
       "Key": "k_7570e7ba00ee",
@@ -802,11 +742,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_78327bd6b1c4",
-      "Original": "Migrating",
-      "Translated": ""
-    },
-    {
       "Key": "k_79adadd90fcf",
       "Original": "unauthorized.js",
       "Translated": ""
@@ -814,7 +749,7 @@
     {
       "Key": "k_7a0a9bd139f8",
       "Original": "Contact Sales",
-      "Translated": "\u062A\u0645\u0627\u0633 \u0628\u0627 \u0641\u0631\u0648\u0634 "
+      "Translated": ""
     },
     {
       "Key": "k_7b8c929aaded",
@@ -842,11 +777,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_7d15dd1bec2e",
-      "Original": "Routing",
-      "Translated": ""
-    },
-    {
       "Key": "k_7f15f5c5165e",
       "Original": "Link Component",
       "Translated": ""
@@ -854,11 +784,6 @@
     {
       "Key": "k_80446347ede5",
       "Original": "Form",
-      "Translated": ""
-    },
-    {
-      "Key": "k_811a6d5a2e04",
-      "Original": "next.config.js",
       "Translated": ""
     },
     {
@@ -874,7 +799,7 @@
     {
       "Key": "k_823619e079c3",
       "Original": "Governance",
-      "Translated": "\u062D\u0627\u06A9\u0645\u06CC\u062A (Governance)"
+      "Translated": ""
     },
     {
       "Key": "k_8424acc914b2",
@@ -882,389 +807,369 @@
       "Translated": ""
     },
     {
+      "Key": "k_849ea77800df",
+      "Original": "Search documentation...CtrlKSearch...\u2318K",
+      "Translated": ""
+    },
+    {
       "Key": "k_86e82e7944fd",
       "Original": "Version 14",
-      "Translated": "\u0648\u0631\u0698\u0646 14"
+      "Translated": ""
     },
     {
       "Key": "k_86eeb820cdcb",
       "Original": "Forms and Mutations",
-      "Translated": "\u0641\u0631\u0645\u200C\u0647\u0627 \u0648 \u062A\u063A\u06CC\u06CC\u0631\u0627\u062A (Forms and Mutations)"
+      "Translated": ""
     },
     {
       "Key": "k_87df60de337f",
       "Original": "Resources",
-      "Translated": "\u0645\u0646\u0627\u0628\u0639 (Resources)"
-    },
-    {
-      "Key": "k_890e1257a40d",
-      "Original": "Data Fetching",
-      "Translated": "\u062F\u0631\u06CC\u0627\u0641\u062A \u062F\u0627\u062F\u0647 (Data Fetching)"
+      "Translated": ""
     },
     {
       "Key": "k_895b27c88016",
       "Original": "Debugging",
-      "Translated": "\u0627\u0634\u06A9\u0627\u0644\u200C\u0632\u062F\u0627\u06CC\u06CC (Debugging)"
+      "Translated": ""
     },
     {
       "Key": "k_899e8a61956a",
       "Original": "getStaticProps",
-      "Translated": "getStaticProps"
-    },
-    {
-      "Key": "k_89b86ab0e66f",
-      "Original": "Language",
-      "Translated": "fa"
+      "Translated": ""
     },
     {
       "Key": "k_89d6bb15c7a8",
       "Original": "compress",
-      "Translated": "\u0641\u0634\u0631\u062F\u0647\u200C\u0633\u0627\u0632\u06CC (compress)"
+      "Translated": ""
     },
     {
       "Key": "k_89de01be211c",
       "Original": "Contribution Guide",
-      "Translated": "\u0631\u0627\u0647\u0646\u0645\u0627\u06CC \u0645\u0634\u0627\u0631\u06A9\u062A (Contribution Guide)"
+      "Translated": ""
     },
     {
       "Key": "k_8a93e3a1f5c5",
       "Original": "revalidateTag",
-      "Translated": "revalidateTag"
+      "Translated": ""
     },
     {
       "Key": "k_8b92bf501dff",
       "Original": "route.jsdynamicParamsmaxDurationpreferredRegionruntime",
-      "Translated": "route.jsdynamicParamsmaxDurationpreferredRegionruntime"
+      "Translated": ""
     },
     {
       "Key": "k_8c3d112f68fc",
       "Original": "serverActions",
-      "Translated": "serverActions"
+      "Translated": ""
     },
     {
       "Key": "k_8c9a7ee07eb4",
       "Original": "Configurationnext.config.js OptionsadapterPathallowedDevOriginsassetPrefixbasePathbundlePagesRouterDependenciescompresscrossOrigindeploymentIddevIndicatorsdistDirenvexportPathMapgenerateBuildIdgenerateEtagsheadershttpAgentOptionsimagesloggingonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsexperimental.proxyClientMaxBodySizereactStrictModeredirectsrewritesserverExternalPackagestrailingSlashtranspilePackagesturbopacktypescripturlImportsuseLightningcsswebpackwebVitalsAttributionTypeScriptESLint",
-      "Translated": "\u067E\u06CC\u06A9\u0631\u0628\u0646\u062F\u06CCnext.config.js OptionsadapterPathallowedDevOriginsassetPrefixbasePathbundlePagesRouterDependenciescompresscrossOrigindeploymentIddevIndicatorsdistDirenvexportPathMapgenerateBuildIdgenerateEtagsheadershttpAgentOptionsimagesloggingonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsexperimental.proxyClientMaxBodySizereactStrictModeredirectsrewritesserverExternalPackagestrailingSlashtranspilePackagesturbopacktypescripturlImportsuseLightningcsswebpackwebVitalsAttributionTypeScriptESLint"
+      "Translated": ""
     },
     {
       "Key": "k_8dbdaa6a5c09",
       "Original": "Linking and Navigating",
-      "Translated": "\u0644\u06CC\u0646\u06A9\u200C\u062F\u0647\u06CC \u0648 \u067E\u06CC\u0645\u0627\u06CC\u0634 (Linking and Navigating)"
+      "Translated": ""
     },
     {
       "Key": "k_8fa41d59c259",
       "Original": "Releases",
-      "Translated": "Releases"
+      "Translated": ""
     },
     {
       "Key": "k_8fc435e75dff",
       "Original": "use cache: remote",
-      "Translated": "use cache: remote"
+      "Translated": ""
     },
     {
       "Key": "k_8ff903495db4",
       "Original": "assetPrefix",
-      "Translated": "assetPrefix"
+      "Translated": ""
     },
     {
       "Key": "k_901f4056faa4",
       "Original": "generateStaticParams",
-      "Translated": "generateStaticParams"
+      "Translated": ""
     },
     {
       "Key": "k_902c91d94e0f",
       "Original": "Legal",
-      "Translated": "\u0642\u0627\u0646\u0648\u0646\u06CC (Legal)"
+      "Translated": ""
     },
     {
       "Key": "k_9087e3011f32",
       "Original": "src Directory",
-      "Translated": "src Directory"
+      "Translated": ""
     },
     {
       "Key": "k_91cb6d1538d3",
       "Original": "userAgent",
-      "Translated": "userAgent"
+      "Translated": ""
     },
     {
       "Key": "k_920f8f5815b3",
       "Original": "env",
-      "Translated": "env"
-    },
-    {
-      "Key": "k_9289473eeeda",
-      "Original": "Components",
-      "Translated": "\u06A9\u0627\u0645\u067E\u0648\u0646\u0646\u062A\u200C\u0647\u0627 (Components)"
-    },
-    {
-      "Key": "k_929a28d26142",
-      "Original": "Guides",
-      "Translated": "\u0631\u0627\u0647\u0646\u0645\u0627\u0647\u0627 (Guides)"
+      "Translated": ""
     },
     {
       "Key": "k_92a518c0d73b",
       "Original": "PWAs",
-      "Translated": "PWAs"
+      "Translated": ""
     },
     {
       "Key": "k_93de79fa0605",
       "Original": "Directivesuse cacheuse cache: privateuse cache: remoteuse clientuse server",
-      "Translated": "Directivesuse cacheuse cache: privateuse cache: remoteuse clientuse server"
+      "Translated": ""
     },
     {
       "Key": "k_949e5aa7985b",
       "Original": "Font Optimization",
-      "Translated": "\u0628\u0647\u06CC\u0646\u0647\u200C\u0633\u0627\u0632\u06CC \u0641\u0648\u0646\u062A (Font Optimization)"
+      "Translated": ""
     },
     {
       "Key": "k_94aafb45eaff",
       "Original": "Invoking Entrypoints",
-      "Translated": "\u0641\u0631\u0627\u062E\u0648\u0627\u0646\u06CC \u0646\u0642\u0627\u0637 \u0648\u0631\u0648\u062F (Invoking Entrypoints)"
+      "Translated": ""
     },
     {
       "Key": "k_955cee4493aa",
       "Original": "turbopack.ignoreIssue",
-      "Translated": "turbopack.ignoreIssue"
+      "Translated": ""
     },
     {
       "Key": "k_96015bed3922",
       "Original": "Metadata and OG images",
-      "Translated": "\u0645\u062A\u0627\u062F\u0627\u062A \u0648 \u062A\u0635\u0627\u0648\u06CC\u0631 OG (Metadata and OG images)"
+      "Translated": ""
     },
     {
       "Key": "k_96396de020ff",
       "Original": "updateTag",
-      "Translated": "updateTag"
+      "Translated": ""
     },
     {
       "Key": "k_97a6fab19aed",
       "Original": "Open Source Software",
-      "Translated": "\u0646\u0631\u0645\u200C\u0627\u0641\u0632\u0627\u0631\u0647\u0627\u06CC \u0645\u062A\u0646 \u0628\u0627\u0632 (Open Source Software)"
+      "Translated": ""
     },
     {
       "Key": "k_981e64855127",
       "Original": "Turbopack",
-      "Translated": "Turbopack"
+      "Translated": ""
     },
     {
       "Key": "k_985ed572c06d",
       "Original": "Mutating Data",
-      "Translated": "\u062A\u063A\u06CC\u06CC\u0631 \u062F\u0627\u062F\u0647 (Mutating Data)"
+      "Translated": ""
     },
     {
       "Key": "k_991b411cc600",
       "Original": "sitemap.xml",
-      "Translated": "sitemap.xml"
+      "Translated": ""
     },
     {
       "Key": "k_99c09a674c1a",
       "Original": "trailingSlash",
-      "Translated": "trailingSlash"
+      "Translated": ""
     },
     {
       "Key": "k_9ac42a4bebed",
       "Original": "Revalidating",
-      "Translated": "\u0627\u0639\u062A\u0628\u0627\u0631\u0633\u0646\u062C\u06CC \u0645\u062C\u062F\u062F (Revalidating)"
+      "Translated": ""
     },
     {
       "Key": "k_9c072f24b54a",
       "Original": "MDX",
-      "Translated": "MDX"
+      "Translated": ""
     },
     {
       "Key": "k_9c11fe0a7d4e",
       "Original": "Cookie Preferences",
-      "Translated": "\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u06A9\u0648\u06A9\u06CC (Cookie Preferences)"
-    },
-    {
-      "Key": "k_9c750492014f",
-      "Original": "Metadata Files",
-      "Translated": "Metadata Files"
+      "Translated": ""
     },
     {
       "Key": "k_9d849f7c06de",
       "Original": "CLIcreate-next-appnext CLI",
-      "Translated": "CLIcreate-next-appnext CLI"
+      "Translated": ""
     },
     {
       "Key": "k_9d9f2ff112fd",
       "Original": "unauthorized",
-      "Translated": "unauthorized"
+      "Translated": ""
     },
     {
       "Key": "k_9db108ba6b7f",
       "Original": "Privacy Policy",
-      "Translated": "Privacy Policy"
+      "Translated": ""
     },
     {
       "Key": "k_a0fed5ad9676",
       "Original": "Form Component",
-      "Translated": "Form Component"
+      "Translated": ""
     },
     {
       "Key": "k_a1d8b1686c94",
       "Original": "Create React App",
-      "Translated": "Create React App"
+      "Translated": ""
     },
     {
       "Key": "k_a470a6fb7d31",
       "Original": "Vitest",
-      "Translated": "Vitest"
+      "Translated": ""
     },
     {
       "Key": "k_a5a070b6446a",
       "Original": "unstable_catchError",
-      "Translated": "unstable_catchError"
+      "Translated": ""
     },
     {
       "Key": "k_a64994781105",
       "Original": "crossOrigin",
-      "Translated": "crossOrigin"
+      "Translated": ""
     },
     {
       "Key": "k_a6e78a6bf2b5",
       "Original": "next.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttribution",
-      "Translated": "next.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttribution"
+      "Translated": ""
     },
     {
       "Key": "k_a7dd3a1d8ed5",
       "Original": "Upgrading",
-      "Translated": "\u0627\u0631\u062A\u0642\u0627 (Upgrading)"
+      "Translated": ""
     },
     {
       "Key": "k_aa750b92c5f7",
       "Original": "Parallel Routes",
-      "Translated": "Parallel Routes"
+      "Translated": ""
     },
     {
       "Key": "k_ac70f5e4298c",
       "Original": "bundlePagesRouterDependencies",
-      "Translated": "bundlePagesRouterDependencies"
+      "Translated": ""
+    },
+    {
+      "Key": "k_ad53822d51d9",
+      "Original": "ShowcaseDocsBlogTemplatesEnterprise",
+      "Translated": ""
     },
     {
       "Key": "k_ad63d77e62af",
       "Original": "Testing Adapters",
-      "Translated": "Testing Adapters"
+      "Translated": ""
     },
     {
       "Key": "k_ad874c9770f1",
       "Original": "File-system conventionsinstrumentation.jsProxypublicsrc Directory",
-      "Translated": "File-system conventionsinstrumentation.jsProxypublicsrc Directory"
+      "Translated": ""
     },
     {
       "Key": "k_ad8cee67138e",
       "Original": "fetch",
-      "Translated": "fetch"
+      "Translated": ""
     },
     {
       "Key": "k_adf9c8454f0b",
       "Original": "File-system conventionsdefault.jsDynamic Segmentserror.jsforbidden.jsinstrumentation.jsinstrumentation-client.jsIntercepting Routeslayout.jsloading.jsmdx-components.jsnot-found.jspage.jsParallel Routesproxy.jspublicroute.jsdynamicParamsmaxDurationpreferredRegionruntimeRoute Groupssrctemplate.jsunauthorized.jsMetadata Filesfavicon, icon, and apple-iconmanifest.jsonopengraph-image and twitter-imagerobots.txtsitemap.xmlRoute Segment ConfigdynamicParamsmaxDurationpreferredRegionruntime",
-      "Translated": "File-system conventionsdefault.jsDynamic Segmentserror.jsforbidden.jsinstrumentation.jsinstrumentation-client.jsIntercepting Routeslayout.jsloading.jsmdx-components.jsnot-found.jspage.jsParallel Routesproxy.jspublicroute.jsdynamicParamsmaxDurationpreferredRegionruntimeRoute Groupssrctemplate.jsunauthorized.jsMetadata Filesfavicon, icon, and apple-iconmanifest.jsonopengraph-image and twitter-imagerobots.txtsitemap.xmlRoute Segment ConfigdynamicParamsmaxDurationpreferredRegionruntime"
+      "Translated": ""
     },
     {
       "Key": "k_af05b0f3d097",
       "Original": "useLinkStatus",
-      "Translated": "useLinkStatus"
+      "Translated": ""
     },
     {
       "Key": "k_af0a20eda54c",
       "Original": "optimizePackageImports",
-      "Translated": "optimizePackageImports"
+      "Translated": ""
     },
     {
       "Key": "k_af36386d16f9",
       "Original": "Pages and Layouts",
-      "Translated": "Pages and Layouts"
+      "Translated": ""
     },
     {
       "Key": "k_af54f4118b5e",
       "Original": "appDir",
-      "Translated": "appDir"
-    },
-    {
-      "Key": "k_b040b4179b8b",
-      "Original": "Architecture",
-      "Translated": "\u0645\u0639\u0645\u0627\u0631\u06CC (Architecture)\u201D"
+      "Translated": ""
     },
     {
       "Key": "k_b048378ee8f5",
       "Original": "Learn",
-      "Translated": "\u06CC\u0627\u062F\u06AF\u06CC\u0631\u06CC"
+      "Translated": ""
     },
     {
       "Key": "k_b0e5a04165d7",
       "Original": "urlImports",
-      "Translated": "urlImports"
+      "Translated": ""
     },
     {
       "Key": "k_b18d1e57ecc0",
       "Original": "notFound",
-      "Translated": "notFound"
+      "Translated": ""
     },
     {
       "Key": "k_b276f94cd8d0",
       "Original": "API Reference",
-      "Translated": "\u0645\u0631\u062C\u0639 API (API Reference)"
+      "Translated": ""
     },
     {
       "Key": "k_b29161bdc3f1",
       "Original": "Version 15",
-      "Translated": "\u0648\u0631\u0698\u0646 15"
+      "Translated": ""
     },
     {
       "Key": "k_b33d452df824",
       "Original": "ConfiguringError Handling",
-      "Translated": "ConfiguringError Handling"
+      "Translated": ""
     },
     {
       "Key": "k_b49a4e290ef9",
       "Original": "Supported Browsers",
-      "Translated": "\u0645\u0631\u0648\u0631\u06AF\u0631\u0647\u0627\u06CC \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0634\u062F\u0647 (Supported Browsers)"
-    },
-    {
-      "Key": "k_b4afff317fb1",
-      "Original": "Enterprise",
-      "Translated": "\u0633\u0627\u0632\u0645\u0627\u0646\u06CC "
+      "Translated": ""
     },
     {
       "Key": "k_b5de65f84eb0",
       "Original": "Output Types",
-      "Translated": "Output Types"
+      "Translated": ""
     },
     {
       "Key": "k_b684e83e72a2",
       "Original": "GuidesAI Coding AgentsAnalyticsAuthenticationBackend for FrontendCaching (Previous Model)CDN CachingCI Build CachingContent Security PolicyCSS-in-JSCustom ServerData SecurityDebuggingDeploying to PlatformsDraft ModeEnvironment VariablesFormsHow Revalidation WorksISRInstrumentationInternationalizationJSON-LDLazy LoadingDevelopment EnvironmentNext.js MCP ServerMDXMemory UsageMigratingApp RouterCreate React AppViteMigrating to Cache ComponentsMulti-tenantMulti-zonesOpenTelemetryPackage BundlingPPR Platform GuidePrefetchingPreserving UI stateProductionPWAsPublic pagesRedirectingRendering PhilosophySassScriptsSelf-HostingSPAsStatic ExportsStreamingTailwind CSS v3TestingCypressJestPlaywrightVitestThird Party LibrariesUpgradingCodemodsVersion 14Version 15Version 16VideosView transitions",
-      "Translated": "GuidesAI Coding AgentsAnalyticsAuthenticationBackend for FrontendCaching (Previous Model)CDN CachingCI Build CachingContent Security PolicyCSS-in-JSCustom ServerData SecurityDebuggingDeploying to PlatformsDraft ModeEnvironment VariablesFormsHow Revalidation WorksISRInstrumentationInternationalizationJSON-LDLazy LoadingDevelopment EnvironmentNext.js MCP ServerMDXMemory UsageMigratingApp RouterCreate React AppViteMigrating to Cache ComponentsMulti-tenantMulti-zonesOpenTelemetryPackage BundlingPPR Platform GuidePrefetchingPreserving UI stateProductionPWAsPublic pagesRedirectingRendering PhilosophySassScriptsSelf-HostingSPAsStatic ExportsStreamingTailwind CSS v3TestingCypressJestPlaywrightVitestThird Party LibrariesUpgradingCodemodsVersion 14Version 15Version 16VideosView transitions"
+      "Translated": ""
     },
     {
       "Key": "k_b6eeeb3abd2a",
       "Original": "Sass",
-      "Translated": "Sass"
+      "Translated": ""
     },
     {
       "Key": "k_b702cd0d856c",
       "Original": "Configurationnext.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttributionTypeScriptESLint",
-      "Translated": "Configurationnext.config.jsadapterPathallowedDevOriginsappDirassetPrefixauthInterruptsbasePathcacheComponentscacheHandlerscacheLifecompresscrossOrigincssChunkingdeploymentIddevIndicatorsdistDirenvexpireTimeexportPathMapgenerateBuildIdgenerateEtagsheadershtmlLimitedBotshttpAgentOptionsimagescacheHandlerinlineCssloggingmdxRsonDemandEntriesoptimizePackageImportsoutputpageExtensionspoweredByHeaderproductionBrowserSourceMapsproxyClientMaxBodySizereactCompilerreactMaxHeadersLengthreactStrictModeredirectsrewritessassOptionsserverActionsserverComponentsHmrCacheserverExternalPackagesstaleTimesstaticGeneration*tainttrailingSlashtranspilePackagesturbopackturbopackFileSystemCacheturbopack.ignoreIssuetypedRoutestypescripturlImportsuseLightningcssviewTransitionwebpackwebVitalsAttributionTypeScriptESLint"
+      "Translated": ""
     },
     {
       "Key": "k_b781df54c263",
       "Original": "Backend for Frontend",
-      "Translated": "Backend for Frontend"
+      "Translated": ""
     },
     {
       "Key": "k_b97c4d4cddf2",
       "Original": "Font",
-      "Translated": "\u0641\u0648\u0646\u062A (Font)"
+      "Translated": ""
     },
     {
       "Key": "k_b98ef172f56f",
       "Original": "reactMaxHeadersLength",
-      "Translated": "reactMaxHeadersLength"
+      "Translated": ""
+    },
+    {
+      "Key": "k_ba3c9627f625",
+      "Original": "Search documentation...CtrlKSearch...\u2318KFeedbackLearn",
+      "Translated": ""
     },
     {
       "Key": "k_baa9ccfe8765",
       "Original": "Multi-zones",
-      "Translated": "Multi-zones"
+      "Translated": ""
     },
     {
       "Key": "k_baba4d96a9d4",
@@ -1274,7 +1179,7 @@
     {
       "Key": "k_bb8aae68d92c",
       "Original": "use cache: private",
-      "Translated": "use cache: private"
+      "Translated": ""
     },
     {
       "Key": "k_bc093cb0672b",
@@ -1284,12 +1189,12 @@
     {
       "Key": "k_bea1fc41988c",
       "Original": "Rspack",
-      "Translated": "Rspack"
+      "Translated": ""
     },
     {
       "Key": "k_beb86d56202c",
       "Original": "Previews",
-      "Translated": "\u067E\u06CC\u0634\u200C\u0646\u0645\u0627\u06CC\u0634\u200C\u0647\u0627 "
+      "Translated": ""
     },
     {
       "Key": "k_bf819e403eda",
@@ -1299,7 +1204,7 @@
     {
       "Key": "k_bfd58ee3a270",
       "Original": "Community",
-      "Translated": "\u0627\u0646\u062C\u0645\u0646 (Community)"
+      "Translated": ""
     },
     {
       "Key": "k_c00eeeef5e48",
@@ -1339,11 +1244,6 @@
     {
       "Key": "k_c3198b400a33",
       "Original": "CDN Caching",
-      "Translated": "CDN Caching"
-    },
-    {
-      "Key": "k_c31aee5a4977",
-      "Original": "Features available in /app",
       "Translated": ""
     },
     {
@@ -1389,21 +1289,11 @@
     {
       "Key": "k_c81b79df3c64",
       "Original": "Installation",
-      "Translated": "\u0646\u0635\u0628 (Installation)"
-    },
-    {
-      "Key": "k_c8d7677e1949",
-      "Original": "Feedback",
       "Translated": ""
     },
     {
       "Key": "k_ca2809d878b3",
       "Original": "use client",
-      "Translated": "use client"
-    },
-    {
-      "Key": "k_ca29f51c29d1",
-      "Original": "route.js",
       "Translated": ""
     },
     {
@@ -1434,11 +1324,6 @@
     {
       "Key": "k_cb683f9b7920",
       "Original": "FunctionsaftercacheLifecacheTagunstable_catchErrorconnectioncookiesdraftModefetchforbiddengenerateImageMetadatagenerateMetadatagenerateSitemapsgenerateStaticParamsgenerateViewportheadersImageResponseNextRequestNextResponsenotFoundpermanentRedirectredirectrefreshrevalidatePathrevalidateTagunauthorizedunstable_cacheunstable_noStoreunstable_rethrowupdateTaguseLinkStatususeParamsusePathnameuseReportWebVitalsuseRouteruseSearchParamsuseSelectedLayoutSegmentuseSelectedLayoutSegmentsuserAgent",
-      "Translated": ""
-    },
-    {
-      "Key": "k_cb8b83b3774c",
-      "Original": "Search documentation...CtrlK",
       "Translated": ""
     },
     {
@@ -1514,7 +1399,7 @@
     {
       "Key": "k_d1cea344353e",
       "Original": "Proxy",
-      "Translated": "\u067E\u0631\u0627\u06A9\u0633\u06CC (Proxy)"
+      "Translated": ""
     },
     {
       "Key": "k_d2bd354967d6",
@@ -1544,7 +1429,7 @@
     {
       "Key": "k_d660049bc1f2",
       "Original": "Accessibility",
-      "Translated": "\u062F\u0633\u062A\u0631\u0633\u06CC\u200C\u067E\u0630\u06CC\u0631\u06CC (Accessibility)"
+      "Translated": ""
     },
     {
       "Key": "k_d6981f74767d",
@@ -1592,16 +1477,6 @@
       "Translated": ""
     },
     {
-      "Key": "k_e066e80468f5",
-      "Original": "Rendering",
-      "Translated": ""
-    },
-    {
-      "Key": "k_e07a4acdd5cd",
-      "Original": "Adapters",
-      "Translated": "Adapters"
-    },
-    {
       "Key": "k_e1cf62dbf03e",
       "Original": "reactStrictMode",
       "Translated": ""
@@ -1644,7 +1519,7 @@
     {
       "Key": "k_e4e9b011ec91",
       "Original": "use server",
-      "Translated": "\u201Cuse server\u201D"
+      "Translated": ""
     },
     {
       "Key": "k_e55e4e50eec9",
@@ -1659,7 +1534,7 @@
     {
       "Key": "k_e737a090242c",
       "Original": "Deploying",
-      "Translated": "\u0627\u0633\u062A\u0642\u0631\u0627\u0631 (Deploying)"
+      "Translated": ""
     },
     {
       "Key": "k_e85ccb21ee5f",
@@ -1694,7 +1569,7 @@
     {
       "Key": "k_ed36013032b1",
       "Original": "Edge Runtime",
-      "Translated": "Edge Runtime"
+      "Translated": ""
     },
     {
       "Key": "k_ed749e9c1f17",
@@ -1745,11 +1620,6 @@
       "Key": "k_f1e14133adae",
       "Original": "redirects",
       "Translated": ""
-    },
-    {
-      "Key": "k_f25b700ed9f0",
-      "Original": "Templates",
-      "Translated": "\u0642\u0627\u0644\u0628\u200C\u0647\u0627 "
     },
     {
       "Key": "k_f27fede2220b",

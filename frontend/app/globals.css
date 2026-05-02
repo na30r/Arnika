@@ -467,6 +467,381 @@ iframe {
   background: #fff;
 }
 
+/* —— Block JSON exchange (admin) —— */
+.block-exchange-page {
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.block-exchange-hero {
+  padding: 1.35rem 1.5rem 1.5rem;
+  border: 1px solid #dbe4f7;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f7ff 42%, #fafcff 100%);
+  box-shadow: 0 10px 40px rgba(27, 42, 74, 0.07);
+}
+
+.block-exchange-hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.block-exchange-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3f6fff;
+  background: rgba(63, 111, 255, 0.12);
+  border: 1px solid rgba(63, 111, 255, 0.28);
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  margin-top: 0.2rem;
+}
+
+.block-exchange-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1b2a4a;
+  letter-spacing: -0.02em;
+}
+
+.block-exchange-lede {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 52rem;
+}
+
+.block-exchange-lede code {
+  font-size: 0.88em;
+}
+
+.block-exchange-source {
+  padding-top: 0.25rem;
+  border-top: 1px solid #e8edf7;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.block-exchange-segment {
+  display: inline-flex;
+  padding: 3px;
+  background: #e8eef9;
+  border-radius: 10px;
+  border: 1px solid #d5dff0;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.block-exchange-segment-btn {
+  border: none;
+  background: transparent;
+  color: #3d4d6f;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.block-exchange-segment-btn:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.65);
+  color: #1b2a4a;
+}
+
+.block-exchange-segment-btn.is-active {
+  background: #fff;
+  color: #1b2a4a;
+  box-shadow: 0 2px 8px rgba(27, 42, 74, 0.1);
+}
+
+.block-exchange-fields-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.block-exchange-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.block-exchange-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4b5565;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.block-exchange-dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.65rem 1rem;
+  border: 1px dashed #a8b8d8;
+  border-radius: 10px;
+  background: #f8faff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.block-exchange-dropzone:hover {
+  border-color: #3f6fff;
+  background: #f0f4ff;
+}
+
+.block-exchange-dropzone--compact {
+  min-height: 2.75rem;
+}
+
+.block-exchange-dropzone-text {
+  font-size: 0.88rem;
+  color: #4b5565;
+  text-align: center;
+}
+
+.block-exchange-file-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.block-exchange-dropzone:focus-within {
+  outline: 2px solid #3f6fff;
+  outline-offset: 2px;
+}
+
+.block-exchange-mono,
+.block-exchange-pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.block-exchange-mono {
+  background: #fbfcff;
+  border: 1px solid #d5dbe5;
+}
+
+.block-exchange-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.block-exchange-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e0e8f4;
+  box-shadow: 0 8px 28px rgba(27, 42, 74, 0.06);
+}
+
+.block-exchange-card-head {
+  padding: 1.1rem 1.2rem 1rem;
+  border-bottom: 1px solid #eef1f7;
+}
+
+.block-exchange-card-head--merge {
+  background: linear-gradient(90deg, rgba(63, 111, 255, 0.09) 0%, transparent 70%);
+  border-left: 4px solid #3f6fff;
+}
+
+.block-exchange-card-head--flat {
+  background: linear-gradient(90deg, rgba(46, 160, 130, 0.1) 0%, transparent 70%);
+  border-left: 4px solid #2ea082;
+}
+
+.block-exchange-card-head h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1b2a4a;
+}
+
+.block-exchange-card-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #5a6578;
+  line-height: 1.45;
+}
+
+.block-exchange-form {
+  padding: 1.1rem 1.2rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.block-exchange-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: #3d4d6f;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.block-exchange-check input {
+  margin-top: 0.2rem;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.block-exchange-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.block-exchange-actions--split {
+  justify-content: flex-start;
+}
+
+.block-exchange-btn-primary {
+  border: 1px solid #2f5fe6;
+  background: linear-gradient(180deg, #4d7fff 0%, #3f6fff 100%);
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 6px rgba(63, 111, 255, 0.35);
+}
+
+.block-exchange-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.block-exchange-btn-secondary {
+  border: 1px solid #c8d4ea;
+  background: #fff;
+  color: #1b2a4a;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.block-exchange-btn-secondary:hover {
+  background: #f5f8ff;
+  border-color: #3f6fff;
+}
+
+.block-exchange-result {
+  padding: 0 1.2rem 1.15rem;
+  border-top: 1px solid #eef1f7;
+  background: linear-gradient(180deg, #fbfcff 0%, #fff 100%);
+}
+
+.block-exchange-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+.block-exchange-chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #2a4a9a;
+  border: 1px solid #c8daf8;
+}
+
+.block-exchange-chip--warn {
+  background: #fff4e5;
+  color: #8a5a00;
+  border-color: #f0d4a8;
+}
+
+.block-exchange-hint {
+  font-size: 0.82rem;
+  margin: 0 0 0.5rem;
+  line-height: 1.45;
+}
+
+.block-exchange-code-inline {
+  font-size: 0.8em;
+  word-break: break-all;
+}
+
+.block-exchange-alert {
+  margin: 0 1.2rem 0.75rem;
+}
+
+.block-exchange-details {
+  margin-top: 0.65rem;
+  border: 1px solid #e4eaf5;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.block-exchange-details summary {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1b2a4a;
+  cursor: pointer;
+  list-style: none;
+  background: #f7f9fc;
+  border-bottom: 1px solid #eef1f7;
+}
+
+.block-exchange-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.block-exchange-details[open] summary {
+  border-bottom: 1px solid #eef1f7;
+}
+
+.block-exchange-pre {
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+  padding: 0.75rem;
+  background: #1a2332;
+  color: #e8ecf4;
+  border-radius: 0 0 9px 9px;
+}
+
+@media (max-width: 900px) {
+  .block-exchange-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .block-exchange-fields-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .block-exchange-hero-top {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 820px) {
   .admin-layout {
     grid-template-columns: 1fr;

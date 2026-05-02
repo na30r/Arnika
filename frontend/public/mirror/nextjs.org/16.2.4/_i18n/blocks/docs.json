@@ -8,142 +8,270 @@
       "Heading": "",
       "Blocks": [
         {
-          "Id": "b_c92e394e88d5",
+          "Id": "b_1e85c56f5bc6",
+          "Type": "paragraph",
+          "Original": "This site uses tracking technologies. You may opt in or opt out of the use of these technologies.",
+          "Translated": "\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_65086784dcd3",
+          "Type": "paragraph",
+          "Original": "EssentialOnEssential cookies and services are used to enable core website features, such as ensuring the security of the website. MarketingOffMarketing cookies and services are used to deliver personalized advertisements, promotions, and offers. These technologies enable targeted advertising and marketing campaigns by collecting information about users\u0027 interests, preferences, and online activities. AnalyticsOffAnalytics cookies and services are used for collecting statistical information about how visitors interact with a website. These technologies provide insights into website usage, visitor behavior, and site performance to understand and improve the site and enhance user experience.FunctionalOffFunctional cookies and services are used to offer enhanced and personalized functionalities. These technologies provide additional features and improved user experiences, such as remembering your language preferences, font sizes, region selections, and customized layouts. Opting out of these cookies may render certain services or functionality of the website unavailable.",
+          "Translated": "Essential: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0636\u0631\u0648\u0631\u06CC (Essential cookies and services) \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0633\u0627\u0632\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0645\u0627\u0646\u0646\u062F \u062D\u0641\u0638 \u0627\u0645\u0646\u06CC\u062A \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. Marketing: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC (Marketing cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u060C \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u0627\u062A \u0648 \u062A\u062E\u0641\u06CC\u0641\u200C\u0647\u0627\u06CC \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u0627 \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u062F\u0631\u0628\u0627\u0631\u0647 \u0639\u0644\u0627\u06CC\u0642\u060C \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0648 \u0641\u0639\u0627\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0622\u0646\u0644\u0627\u06CC\u0646 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646\u060C \u06A9\u0645\u067E\u06CC\u0646\u200C\u0647\u0627\u06CC \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC \u0648 \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC \u0647\u062F\u0641\u0645\u0646\u062F \u0631\u0627 \u0627\u0645\u06A9\u0627\u0646\u200C\u067E\u0630\u06CC\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0646\u062F. Analytics: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u06CC (Analytics cookies and services) \u0628\u0631\u0627\u06CC \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u0622\u0645\u0627\u0631\u06CC \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u062A\u0639\u0627\u0645\u0644 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0628\u0627 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u06CC\u0646\u0634\u200C\u0647\u0627\u06CC\u06CC (insights) \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0631\u0641\u062A\u0627\u0631 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0648 \u0639\u0645\u0644\u06A9\u0631\u062F \u0633\u0627\u06CC\u062A \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F \u062A\u0627 \u062F\u0631\u06A9 \u0648 \u0628\u0647\u0628\u0648\u062F \u0633\u0627\u06CC\u062A \u0648 \u0627\u0641\u0632\u0627\u06CC\u0634 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC (user experience) \u0645\u06CC\u0633\u0631 \u0634\u0648\u062F. Functional: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0639\u0645\u0644\u06A9\u0631\u062F\u06CC (Functional cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u067E\u06CC\u0634\u0631\u0641\u062A\u0647 \u0648 \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0636\u0627\u0641\u06CC \u0648 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC \u0628\u0647\u0628\u0648\u062F\u06CC\u0627\u0641\u062A\u0647 \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F\u060C \u0645\u0627\u0646\u0646\u062F \u0628\u0647 \u062E\u0627\u0637\u0631 \u0633\u067E\u0631\u062F\u0646 \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0632\u0628\u0627\u0646\u060C \u0627\u0646\u062F\u0627\u0632\u0647 \u0641\u0648\u0646\u062A\u060C \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u0646\u0637\u0642\u0647 \u0648 \u0686\u06CC\u062F\u0645\u0627\u0646\u200C\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC (customized layouts). \u0631\u062F \u06A9\u0631\u062F\u0646 (Opting out of) \u0627\u06CC\u0646 \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0645\u0645\u06A9\u0646 \u0627\u0633\u062A \u0628\u0631\u062E\u06CC \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627 \u06CC\u0627 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0631\u0627 \u062F\u0631 \u062F\u0633\u062A\u0631\u0633 \u0642\u0631\u0627\u0631 \u0646\u062F\u0647\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_955a3c345b69",
+          "Type": "paragraph",
+          "Original": "EssentialOnEssential cookies and services are used to enable core website features, such as ensuring the security of the website.",
+          "Translated": "Essential: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0636\u0631\u0648\u0631\u06CC (Essential cookies and services) \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0633\u0627\u0632\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0645\u0627\u0646\u0646\u062F \u062D\u0641\u0638 \u0627\u0645\u0646\u06CC\u062A \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_06c06391e755",
+          "Type": "paragraph",
+          "Original": "EssentialOnEssential cookies and services are used to enable core website features, such as ensuring the security of the website.",
+          "Translated": "Essential: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0636\u0631\u0648\u0631\u06CC (Essential cookies and services) \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0633\u0627\u0632\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0645\u0627\u0646\u0646\u062F \u062D\u0641\u0638 \u0627\u0645\u0646\u06CC\u062A \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_80f7735c4822",
+          "Type": "paragraph",
+          "Original": "Essential cookies and services are used to enable core website features, such as ensuring the security of the website.",
+          "Translated": "\u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0636\u0631\u0648\u0631\u06CC (Essential cookies and services) \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0633\u0627\u0632\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0645\u0627\u0646\u0646\u062F \u062D\u0641\u0638 \u0627\u0645\u0646\u06CC\u062A \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_b7c2d176d8e2",
+          "Type": "paragraph",
+          "Original": "MarketingOffMarketing cookies and services are used to deliver personalized advertisements, promotions, and offers. These technologies enable targeted advertising and marketing campaigns by collecting information about users\u0027 interests, preferences, and online activities.",
+          "Translated": "Marketing: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC (Marketing cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u060C \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u0627\u062A \u0648 \u062A\u062E\u0641\u06CC\u0641\u200C\u0647\u0627\u06CC \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u0627 \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u062F\u0631\u0628\u0627\u0631\u0647 \u0639\u0644\u0627\u06CC\u0642\u060C \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0648 \u0641\u0639\u0627\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0622\u0646\u0644\u0627\u06CC\u0646 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646\u060C \u06A9\u0645\u067E\u06CC\u0646\u200C\u0647\u0627\u06CC \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC \u0648 \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC \u0647\u062F\u0641\u0645\u0646\u062F \u0631\u0627 \u0627\u0645\u06A9\u0627\u0646\u200C\u067E\u0630\u06CC\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_8441aac4a812",
+          "Type": "paragraph",
+          "Original": "MarketingOffMarketing cookies and services are used to deliver personalized advertisements, promotions, and offers. These technologies enable targeted advertising and marketing campaigns by collecting information about users\u0027 interests, preferences, and online activities.",
+          "Translated": "Marketing: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC (Marketing cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u060C \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u0627\u062A \u0648 \u062A\u062E\u0641\u06CC\u0641\u200C\u0647\u0627\u06CC \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u0627 \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u062F\u0631\u0628\u0627\u0631\u0647 \u0639\u0644\u0627\u06CC\u0642\u060C \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0648 \u0641\u0639\u0627\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0622\u0646\u0644\u0627\u06CC\u0646 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646\u060C \u06A9\u0645\u067E\u06CC\u0646\u200C\u0647\u0627\u06CC \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC \u0648 \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC \u0647\u062F\u0641\u0645\u0646\u062F \u0631\u0627 \u0627\u0645\u06A9\u0627\u0646\u200C\u067E\u0630\u06CC\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_d2def29dd565",
+          "Type": "paragraph",
+          "Original": "Marketing cookies and services are used to deliver personalized advertisements, promotions, and offers. These technologies enable targeted advertising and marketing campaigns by collecting information about users\u0027 interests, preferences, and online activities.",
+          "Translated": "\u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC (Marketing cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u060C \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u0627\u062A \u0648 \u062A\u062E\u0641\u06CC\u0641\u200C\u0647\u0627\u06CC \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u0627 \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u062F\u0631\u0628\u0627\u0631\u0647 \u0639\u0644\u0627\u06CC\u0642\u060C \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0648 \u0641\u0639\u0627\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0622\u0646\u0644\u0627\u06CC\u0646 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646\u060C \u06A9\u0645\u067E\u06CC\u0646\u200C\u0647\u0627\u06CC \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC \u0648 \u0628\u0627\u0632\u0627\u0631\u06CC\u0627\u0628\u06CC \u0647\u062F\u0641\u0645\u0646\u062F \u0631\u0627 \u0627\u0645\u06A9\u0627\u0646\u200C\u067E\u0630\u06CC\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0646\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_9ceb254854fa",
+          "Type": "paragraph",
+          "Original": "AnalyticsOffAnalytics cookies and services are used for collecting statistical information about how visitors interact with a website. These technologies provide insights into website usage, visitor behavior, and site performance to understand and improve the site and enhance user experience.",
+          "Translated": "Analytics: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u06CC (Analytics cookies and services) \u0628\u0631\u0627\u06CC \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u0622\u0645\u0627\u0631\u06CC \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u062A\u0639\u0627\u0645\u0644 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0628\u0627 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u06CC\u0646\u0634\u200C\u0647\u0627\u06CC\u06CC (insights) \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0631\u0641\u062A\u0627\u0631 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0648 \u0639\u0645\u0644\u06A9\u0631\u062F \u0633\u0627\u06CC\u062A \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F \u062A\u0627 \u062F\u0631\u06A9 \u0648 \u0628\u0647\u0628\u0648\u062F \u0633\u0627\u06CC\u062A \u0648 \u0627\u0641\u0632\u0627\u06CC\u0634 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC (user experience) \u0645\u06CC\u0633\u0631 \u0634\u0648\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_6a94048bc0a6",
+          "Type": "paragraph",
+          "Original": "AnalyticsOffAnalytics cookies and services are used for collecting statistical information about how visitors interact with a website. These technologies provide insights into website usage, visitor behavior, and site performance to understand and improve the site and enhance user experience.",
+          "Translated": "Analytics: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u06CC (Analytics cookies and services) \u0628\u0631\u0627\u06CC \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u0622\u0645\u0627\u0631\u06CC \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u062A\u0639\u0627\u0645\u0644 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0628\u0627 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u06CC\u0646\u0634\u200C\u0647\u0627\u06CC\u06CC (insights) \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0631\u0641\u062A\u0627\u0631 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0648 \u0639\u0645\u0644\u06A9\u0631\u062F \u0633\u0627\u06CC\u062A \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F \u062A\u0627 \u062F\u0631\u06A9 \u0648 \u0628\u0647\u0628\u0648\u062F \u0633\u0627\u06CC\u062A \u0648 \u0627\u0641\u0632\u0627\u06CC\u0634 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC (user experience) \u0645\u06CC\u0633\u0631 \u0634\u0648\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_fc30c3c52f36",
+          "Type": "paragraph",
+          "Original": "Analytics cookies and services are used for collecting statistical information about how visitors interact with a website. These technologies provide insights into website usage, visitor behavior, and site performance to understand and improve the site and enhance user experience.",
+          "Translated": "\u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u06CC (Analytics cookies and services) \u0628\u0631\u0627\u06CC \u062C\u0645\u0639\u200C\u0622\u0648\u0631\u06CC \u0627\u0637\u0644\u0627\u0639\u0627\u062A \u0622\u0645\u0627\u0631\u06CC \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u062A\u0639\u0627\u0645\u0644 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0628\u0627 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0628\u06CC\u0646\u0634\u200C\u0647\u0627\u06CC\u06CC (insights) \u062F\u0631\u0628\u0627\u0631\u0647 \u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0648\u0628\u200C\u0633\u0627\u06CC\u062A\u060C \u0631\u0641\u062A\u0627\u0631 \u0628\u0627\u0632\u062F\u06CC\u062F\u06A9\u0646\u0646\u062F\u06AF\u0627\u0646 \u0648 \u0639\u0645\u0644\u06A9\u0631\u062F \u0633\u0627\u06CC\u062A \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F \u062A\u0627 \u062F\u0631\u06A9 \u0648 \u0628\u0647\u0628\u0648\u062F \u0633\u0627\u06CC\u062A \u0648 \u0627\u0641\u0632\u0627\u06CC\u0634 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC (user experience) \u0645\u06CC\u0633\u0631 \u0634\u0648\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_f036fa162664",
+          "Type": "paragraph",
+          "Original": "FunctionalOffFunctional cookies and services are used to offer enhanced and personalized functionalities. These technologies provide additional features and improved user experiences, such as remembering your language preferences, font sizes, region selections, and customized layouts. Opting out of these cookies may render certain services or functionality of the website unavailable.",
+          "Translated": "Functional: \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0639\u0645\u0644\u06A9\u0631\u062F\u06CC (Functional cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u067E\u06CC\u0634\u0631\u0641\u062A\u0647 \u0648 \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0636\u0627\u0641\u06CC \u0648 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC \u0628\u0647\u0628\u0648\u062F\u06CC\u0627\u0641\u062A\u0647 \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F\u060C \u0645\u0627\u0646\u0646\u062F \u0628\u0647 \u062E\u0627\u0637\u0631 \u0633\u067E\u0631\u062F\u0646 \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0632\u0628\u0627\u0646\u060C \u0627\u0646\u062F\u0627\u0632\u0647 \u0641\u0648\u0646\u062A\u060C \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u0646\u0637\u0642\u0647 \u0648 \u0686\u06CC\u062F\u0645\u0627\u0646\u200C\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC (customized layouts). \u0631\u062F \u06A9\u0631\u062F\u0646 (Opting out of) \u0627\u06CC\u0646 \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0645\u0645\u06A9\u0646 \u0627\u0633\u062A \u0628\u0631\u062E\u06CC \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627 \u06CC\u0627 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0631\u0627 \u062F\u0631 \u062F\u0633\u062A\u0631\u0633 \u0642\u0631\u0627\u0631 \u0646\u062F\u0647\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_2c68e77a5525",
+          "Type": "paragraph",
+          "Original": "Functional cookies and services are used to offer enhanced and personalized functionalities. These technologies provide additional features and improved user experiences, such as remembering your language preferences, font sizes, region selections, and customized layouts. Opting out of these cookies may render certain services or functionality of the website unavailable.",
+          "Translated": "\u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0648 \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627\u06CC \u0639\u0645\u0644\u06A9\u0631\u062F\u06CC (Functional cookies and services) \u0628\u0631\u0627\u06CC \u0627\u0631\u0627\u0626\u0647 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u067E\u06CC\u0634\u0631\u0641\u062A\u0647 \u0648 \u0634\u062E\u0635\u06CC\u200C\u0633\u0627\u0632\u06CC\u200C\u0634\u062F\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0636\u0627\u0641\u06CC \u0648 \u062A\u062C\u0631\u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u06CC \u0628\u0647\u0628\u0648\u062F\u06CC\u0627\u0641\u062A\u0647 \u0627\u0631\u0627\u0626\u0647 \u0645\u06CC\u200C\u062F\u0647\u0646\u062F\u060C \u0645\u0627\u0646\u0646\u062F \u0628\u0647 \u062E\u0627\u0637\u0631 \u0633\u067E\u0631\u062F\u0646 \u062A\u0631\u062C\u06CC\u062D\u0627\u062A \u0632\u0628\u0627\u0646\u060C \u0627\u0646\u062F\u0627\u0632\u0647 \u0641\u0648\u0646\u062A\u060C \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u0646\u0637\u0642\u0647 \u0648 \u0686\u06CC\u062F\u0645\u0627\u0646\u200C\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC (customized layouts). \u0631\u062F \u06A9\u0631\u062F\u0646 (Opting out of) \u0627\u06CC\u0646 \u06A9\u0648\u06A9\u06CC\u200C\u0647\u0627 \u0645\u0645\u06A9\u0646 \u0627\u0633\u062A \u0628\u0631\u062E\u06CC \u0633\u0631\u0648\u06CC\u0633\u200C\u0647\u0627 \u06CC\u0627 \u0642\u0627\u0628\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u0648\u0628\u200C\u0633\u0627\u06CC\u062A \u0631\u0627 \u062F\u0631 \u062F\u0633\u062A\u0631\u0633 \u0642\u0631\u0627\u0631 \u0646\u062F\u0647\u062F.",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_61b94bc6c1f1",
           "Type": "rich_text",
           "Original": "SaveDenyAccept allPrivacy Policy",
-          "Translated": "SaveDenyAccept all[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u0630\u062E\u06CC\u0631\u0647 (Save)\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_1dc9f36c9f90",
+          "Id": "b_cfdc824a2522",
           "Type": "rich_text",
           "Original": "SaveDenyAccept allPrivacy Policy",
-          "Translated": "SaveDenyAccept all[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u0630\u062E\u06CC\u0631\u0647 (Save)\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_91b4874fd053",
+          "Id": "b_a15bab12c780",
           "Type": "rich_text",
           "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
-          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0634\u0645\u0627 (Your Privacy)\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0631\u0636\u0627\u06CC\u062A (Consent Settings)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_4d66791e087b",
+          "Id": "b_983def3bd7a9",
           "Type": "rich_text",
           "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
-          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0634\u0645\u0627 (Your Privacy)\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0631\u0636\u0627\u06CC\u062A (Consent Settings)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_3ab9839355bc",
+          "Id": "b_6530ea687443",
           "Type": "rich_text",
           "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent SettingsPrivacy Policy",
-          "Translated": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0634\u0645\u0627 (Your Privacy)\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0631\u0636\u0627\u06CC\u062A (Consent Settings)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_e5bcc8a1434f",
+          "Id": "b_77942dc828ef",
+          "Type": "paragraph",
+          "Original": "Your PrivacyThis site uses tracking technologies. You may opt in or opt out of the use of these technologies.",
+          "Translated": "\u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0634\u0645\u0627 (Your Privacy)\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_c1bf196ce2ee",
+          "Type": "paragraph",
+          "Original": "This site uses tracking technologies. You may opt in or opt out of the use of these technologies.",
+          "Translated": "\u0627\u06CC\u0646 \u0633\u0627\u06CC\u062A \u0627\u0632 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627\u06CC \u0631\u062F\u06CC\u0627\u0628\u06CC (tracking technologies) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0627\u06CC\u0646 \u0641\u0646\u0627\u0648\u0631\u06CC\u200C\u0647\u0627 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F (opt in) \u06CC\u0627 \u0631\u062F \u06A9\u0646\u06CC\u062F (opt out).",
+          "GroupId": "g_8911e5274537"
+        },
+        {
+          "Id": "b_1d775c588848",
           "Type": "rich_text",
           "Original": "DenyAccept allConsent SettingsPrivacy Policy",
-          "Translated": "DenyAccept allConsent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u0631\u062F (Deny)\u067E\u0630\u06CC\u0631\u0634 \u0647\u0645\u0647 (Accept all)\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0631\u0636\u0627\u06CC\u062A (Consent Settings)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_908d6d3696f8",
+          "Id": "b_3c6898674e04",
           "Type": "rich_text",
           "Original": "Consent SettingsPrivacy Policy",
-          "Translated": "Consent Settings[Privacy Policy](https://vercel.com/legal/privacy-policy)"
+          "Translated": "\u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0631\u0636\u0627\u06CC\u062A (Consent Settings)[\u0633\u06CC\u0627\u0633\u062A \u062D\u0641\u0638 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC (Privacy Policy)](https://vercel.com/legal/privacy-policy)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_7cdf60947058",
+          "Id": "b_cc231aa00bd2",
           "Type": "paragraph",
           "Original": "Using App Router",
-          "Translated": "Using App Router"
+          "Translated": "\u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 App Router",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_d59c121b11cb",
+          "Id": "b_cdb9cec41da8",
           "Type": "paragraph",
           "Original": "Features available in /app",
-          "Translated": "Features available in /app"
+          "Translated": "\u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0645\u0648\u062C\u0648\u062F \u062F\u0631 \u0645\u0633\u06CC\u0631 /app",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_2c3551d0093f",
+          "Id": "b_ecfa0e941205",
           "Type": "paragraph",
           "Original": "Latest Version",
-          "Translated": "Latest Version"
+          "Translated": "\u0622\u062E\u0631\u06CC\u0646 \u0646\u0633\u062E\u0647",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_7769829451f8",
+          "Id": "b_ddd881748ecf",
           "Type": "paragraph",
           "Original": "16.2.4",
-          "Translated": "16.2.4"
+          "Translated": "\u06F1\u06F6.\u06F2.\u06F4",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_0ffe195f5440",
+          "Id": "b_c2863ad21036",
           "Type": "paragraph",
           "Original": "Using App Router",
-          "Translated": "Using App Router"
+          "Translated": "\u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 App Router",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_5f642361d58b",
+          "Id": "b_615373fefd79",
           "Type": "paragraph",
           "Original": "Features available in /app",
-          "Translated": "Features available in /app"
+          "Translated": "\u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0645\u0648\u062C\u0648\u062F \u062F\u0631 \u0645\u0633\u06CC\u0631 /app",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_ce3b2c2b0414",
+          "Id": "b_b619b7b7dcf8",
           "Type": "paragraph",
           "Original": "Latest Version",
-          "Translated": "Latest Version"
+          "Translated": "\u0622\u062E\u0631\u06CC\u0646 \u0646\u0633\u062E\u0647",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_a5cdc96b9d4a",
+          "Id": "b_9114621972c2",
           "Type": "paragraph",
           "Original": "16.2.4",
-          "Translated": "16.2.4"
+          "Translated": "\u06F1\u06F6.\u06F2.\u06F4",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_1822f856288b",
+          "Id": "b_db3411c3127f",
           "Type": "list_item",
           "Original": "What is Next.js?",
-          "Translated": "[What is Next.js?](#what-is-nextjs)"
+          "Translated": "Next.js \u0686\u06CC\u0633\u062A\u061F",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_d5d6d6da53fa",
+          "Id": "b_25c8e3784a69",
           "Type": "list_item",
           "Original": "How to use the docs",
-          "Translated": "[How to use the docs](#how-to-use-the-docs)"
+          "Translated": "\u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0645\u0633\u062A\u0646\u062F\u0627\u062A",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_f963f636cf47",
+          "Id": "b_e50bc89fe879",
           "Type": "list_item",
           "Original": "App Router and Pages Router",
-          "Translated": "[App Router and Pages Router](#app-router-and-pages-router)"
+          "Translated": "App Router \u0648 Pages Router",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_f5b1e597e187",
+          "Id": "b_53559991ca82",
           "Type": "list_item",
           "Original": "React version handling",
-          "Translated": "[React version handling](#react-version-handling)"
+          "Translated": "\u0645\u062F\u06CC\u0631\u06CC\u062A \u0646\u0633\u062E\u0647 React",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_3acd537cd406",
+          "Id": "b_5f3b34e95f0f",
           "Type": "list_item",
           "Original": "Pre-requisite knowledge",
-          "Translated": "[Pre-requisite knowledge](#pre-requisite-knowledge)"
+          "Translated": "\u067E\u06CC\u0634\u200C\u0646\u06CC\u0627\u0632\u0647\u0627\u06CC \u062F\u0627\u0646\u0634\u06CC",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_cdc63efae172",
+          "Id": "b_94a4d6755ac1",
           "Type": "list_item",
           "Original": "Accessibility",
-          "Translated": "[Accessibility](#accessibility)"
+          "Translated": "\u062F\u0633\u062A\u0631\u0633\u200C\u067E\u0630\u06CC\u0631\u06CC (Accessibility)",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_937a3a10319f",
+          "Id": "b_123698904178",
           "Type": "list_item",
           "Original": "Join our Community",
-          "Translated": "[Join our Community](#join-our-community)"
+          "Translated": "\u0628\u0647 \u062C\u0627\u0645\u0639\u0647 \u0645\u0627 \u0628\u067E\u06CC\u0648\u0646\u062F\u06CC\u062F",
+          "GroupId": "g_8911e5274537"
         },
         {
-          "Id": "b_fed9d6480dc8",
+          "Id": "b_c9d76931de14",
           "Type": "list_item",
           "Original": "Next Steps",
-          "Translated": "[Next Steps](#next-steps)"
+          "Translated": "\u0645\u0631\u0627\u062D\u0644 \u0628\u0639\u062F\u06CC",
+          "GroupId": "g_8911e5274537"
         }
       ]
     },
@@ -153,16 +281,18 @@
       "Heading": "Next.js Docs",
       "Blocks": [
         {
-          "Id": "b_2812532a3764",
+          "Id": "b_4c79d8ae681e",
           "Type": "heading",
           "Original": "Next.js Docs",
-          "Translated": "Next.js Docs"
+          "Translated": "\u0645\u0633\u062A\u0646\u062F\u0627\u062A Next.js",
+          "GroupId": "g_812a926df39c"
         },
         {
-          "Id": "b_f8210db73549",
+          "Id": "b_88448aa17638",
           "Type": "paragraph",
           "Original": "Welcome to the Next.js documentation!",
-          "Translated": "Welcome to the Next.js documentation!"
+          "Translated": "\u0628\u0647 \u0645\u0633\u062A\u0646\u062F\u0627\u062A Next.js \u062E\u0648\u0634 \u0622\u0645\u062F\u06CC\u062F!",
+          "GroupId": "g_812a926df39c"
         }
       ]
     },
@@ -172,28 +302,32 @@
       "Heading": "What is Next.js?",
       "Blocks": [
         {
-          "Id": "b_a147e47b5f99",
+          "Id": "b_cd8b680b35e6",
           "Type": "heading",
           "Original": "What is Next.js?",
-          "Translated": "What is Next.js?"
+          "Translated": "Next.js \u0686\u06CC\u0633\u062A\u061F",
+          "GroupId": "g_e4e64c7044a0"
         },
         {
-          "Id": "b_ae951fdcfa91",
+          "Id": "b_6e083839c227",
           "Type": "paragraph",
           "Original": "Next.js is a React framework for building full-stack web applications. You use React Components to build user interfaces, and Next.js for additional features and optimizations.",
-          "Translated": "Next.js is a React framework for building full-stack web applications. You use React Components to build user interfaces, and Next.js for additional features and optimizations."
+          "Translated": "Next.js \u06CC\u06A9 \u0641\u0631\u06CC\u0645\u0648\u0631\u06A9 (framework) React \u0628\u0631\u0627\u06CC \u0633\u0627\u062E\u062A \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u0648\u0628 full-stack \u0627\u0633\u062A. \u0634\u0645\u0627 \u0627\u0632 \u06A9\u0627\u0645\u067E\u0648\u0646\u0646\u062A\u200C\u0647\u0627\u06CC (Components) React \u0628\u0631\u0627\u06CC \u0633\u0627\u062E\u062A \u0631\u0627\u0628\u0637\u200C\u0647\u0627\u06CC \u06A9\u0627\u0631\u0628\u0631\u06CC (user interfaces) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u06CC\u062F\u060C \u0648 \u0627\u0632 Next.js \u0628\u0631\u0627\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627 \u0648 \u0628\u0647\u06CC\u0646\u0647\u200C\u0633\u0627\u0632\u06CC\u200C\u0647\u0627\u06CC \u0627\u0636\u0627\u0641\u06CC.",
+          "GroupId": "g_e4e64c7044a0"
         },
         {
-          "Id": "b_e361b275a6ad",
+          "Id": "b_19bf5dad78d4",
           "Type": "paragraph",
           "Original": "It also automatically configures lower-level tools like bundlers and compilers. You can instead focus on building your product and shipping quickly.",
-          "Translated": "It also automatically configures lower-level tools like bundlers and compilers. You can instead focus on building your product and shipping quickly."
+          "Translated": "\u0647\u0645\u0686\u0646\u06CC\u0646 \u0628\u0647 \u0637\u0648\u0631 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u0628\u0632\u0627\u0631\u0647\u0627\u06CC \u0633\u0637\u062D \u067E\u0627\u06CC\u06CC\u0646\u200C\u062A\u0631 \u0645\u0627\u0646\u0646\u062F bundler\u0647\u0627 \u0648 \u06A9\u0627\u0645\u067E\u0627\u06CC\u0644\u0631\u0647\u0627 (compilers) \u0631\u0627 \u067E\u06CC\u06A9\u0631\u0628\u0646\u062F\u06CC \u0645\u06CC\u200C\u06A9\u0646\u062F. \u062F\u0631 \u0639\u0648\u0636 \u0634\u0645\u0627 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0631\u0648\u06CC \u0633\u0627\u062E\u062A \u0645\u062D\u0635\u0648\u0644 \u062E\u0648\u062F \u0648 \u0627\u0631\u0627\u0626\u0647 \u0633\u0631\u06CC\u0639 \u0622\u0646 \u062A\u0645\u0631\u06A9\u0632 \u06A9\u0646\u06CC\u062F.",
+          "GroupId": "g_e4e64c7044a0"
         },
         {
-          "Id": "b_4af746360a87",
+          "Id": "b_274fb0078314",
           "Type": "paragraph",
           "Original": "Whether you\u0027re an individual developer or part of a larger team, Next.js can help you build interactive, dynamic, and fast React applications.",
-          "Translated": "Whether you\u0027re an individual developer or part of a larger team, Next.js can help you build interactive, dynamic, and fast React applications."
+          "Translated": "\u0686\u0647 \u06CC\u06A9 \u062A\u0648\u0633\u0639\u0647\u200C\u062F\u0647\u0646\u062F\u0647 \u0645\u0633\u062A\u0642\u0644 \u0628\u0627\u0634\u06CC\u062F \u06CC\u0627 \u0628\u062E\u0634\u06CC \u0627\u0632 \u06CC\u06A9 \u062A\u06CC\u0645 \u0628\u0632\u0631\u06AF\u200C\u062A\u0631\u060C Next.js \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u062F \u0628\u0647 \u0634\u0645\u0627 \u062F\u0631 \u0633\u0627\u062E\u062A \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC React \u062A\u0639\u0627\u0645\u0644\u06CC\u060C \u067E\u0648\u06CC\u0627 \u0648 \u0633\u0631\u06CC\u0639 \u06A9\u0645\u06A9 \u06A9\u0646\u062F.",
+          "GroupId": "g_e4e64c7044a0"
         }
       ]
     },
@@ -203,40 +337,46 @@
       "Heading": "How to use the docs",
       "Blocks": [
         {
-          "Id": "b_8b05e28af6bf",
+          "Id": "b_b2748bc7fe5a",
           "Type": "heading",
           "Original": "How to use the docs",
-          "Translated": "How to use the docs"
+          "Translated": "\u0646\u062D\u0648\u0647 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0645\u0633\u062A\u0646\u062F\u0627\u062A",
+          "GroupId": "g_4405174570d7"
         },
         {
-          "Id": "b_7fbb10da6057",
+          "Id": "b_07ebe21c454f",
           "Type": "paragraph",
           "Original": "The docs are organized into 3 sections:",
-          "Translated": "The docs are organized into 3 sections:"
+          "Translated": "\u0645\u0633\u062A\u0646\u062F\u0627\u062A \u0628\u0647 \u06F3 \u0628\u062E\u0634 \u0633\u0627\u0632\u0645\u0627\u0646\u062F\u0647\u06CC \u0634\u062F\u0647 \u0627\u0633\u062A:",
+          "GroupId": "g_4405174570d7"
         },
         {
-          "Id": "b_62a759352598",
+          "Id": "b_42e31e631b16",
           "Type": "list_item",
           "Original": "Getting Started: Step-by-step tutorials to help you create a new application and learn the core Next.js features.",
-          "Translated": "[Getting Started](docs/app/getting-started.html): Step-by-step tutorials to help you create a new application and learn the core Next.js features."
+          "Translated": "[\u0634\u0631\u0648\u0639 \u0633\u0631\u06CC\u0639 (Getting Started)](docs/app/getting-started.html): \u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627\u06CC \u06AF\u0627\u0645\u200C\u0628\u0647\u200C\u06AF\u0627\u0645 \u0628\u0631\u0627\u06CC \u06A9\u0645\u06A9 \u0628\u0647 \u0627\u06CC\u062C\u0627\u062F \u06CC\u06A9 \u0628\u0631\u0646\u0627\u0645\u0647 \u062C\u062F\u06CC\u062F \u0648 \u06CC\u0627\u062F\u06AF\u06CC\u0631\u06CC \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC Next.js.",
+          "GroupId": "g_4405174570d7"
         },
         {
-          "Id": "b_db9b775b9368",
+          "Id": "b_df9e8cf4385d",
           "Type": "list_item",
           "Original": "Guides: Tutorials on specific use cases, choose what\u0027s relevant to you.",
-          "Translated": "[Guides](docs/app/guides.html): Tutorials on specific use cases, choose what\u0027s relevant to you."
+          "Translated": "[\u0631\u0627\u0647\u0646\u0645\u0627\u0647\u0627 (Guides)](docs/app/guides.html): \u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627\u06CC\u06CC \u062F\u0631\u0628\u0627\u0631\u0647 \u0645\u0648\u0627\u0631\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u062E\u0627\u0635\u060C \u0622\u0646\u0686\u0647 \u0628\u0647 \u0634\u0645\u0627 \u0645\u0631\u062A\u0628\u0637 \u0627\u0633\u062A \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F.",
+          "GroupId": "g_4405174570d7"
         },
         {
-          "Id": "b_d60e1d5464e4",
+          "Id": "b_f417ff2e54ea",
           "Type": "list_item",
           "Original": "API Reference: Detailed technical reference for every feature.",
-          "Translated": "[API Reference](docs/app/api-reference.html): Detailed technical reference for every feature."
+          "Translated": "[\u0645\u0631\u062C\u0639 API (API Reference)](docs/app/api-reference.html): \u0645\u0631\u062C\u0639 \u0641\u0646\u06CC \u062F\u0642\u06CC\u0642 \u0628\u0631\u0627\u06CC \u0647\u0631 \u0648\u06CC\u0698\u06AF\u06CC.",
+          "GroupId": "g_4405174570d7"
         },
         {
-          "Id": "b_57f42ecaedd9",
+          "Id": "b_424ec67cc14e",
           "Type": "paragraph",
           "Original": "Use the sidebar to navigate through the sections, or search (Ctrl\u002BK or Cmd\u002BK) to quickly find a page.",
-          "Translated": "Use the sidebar to navigate through the sections, or search (Ctrl\u002BK or Cmd\u002BK) to quickly find a page."
+          "Translated": "\u0627\u0632 \u0646\u0648\u0627\u0631 \u06A9\u0646\u0627\u0631\u06CC (sidebar) \u0628\u0631\u0627\u06CC \u062D\u0631\u06A9\u062A \u062F\u0631 \u0628\u062E\u0634\u200C\u0647\u0627 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u06A9\u0646\u06CC\u062F\u060C \u06CC\u0627 \u062C\u0633\u062A\u062C\u0648 \u06A9\u0646\u06CC\u062F (Ctrl\u002BK \u06CC\u0627 Cmd\u002BK) \u062A\u0627 \u0633\u0631\u06CC\u0639\u0627\u064B \u0635\u0641\u062D\u0647\u200C\u0627\u06CC \u0631\u0627 \u067E\u06CC\u062F\u0627 \u06A9\u0646\u06CC\u062F.",
+          "GroupId": "g_4405174570d7"
         }
       ]
     },
@@ -246,34 +386,39 @@
       "Heading": "App Router and Pages Router",
       "Blocks": [
         {
-          "Id": "b_a66c7b9cb7a6",
+          "Id": "b_b8d37c201d57",
           "Type": "heading",
           "Original": "App Router and Pages Router",
-          "Translated": "App Router and Pages Router"
+          "Translated": "App Router \u0648 Pages Router",
+          "GroupId": "g_f53704d9ddb2"
         },
         {
-          "Id": "b_72823a4c3a7f",
+          "Id": "b_fd517be60f7b",
           "Type": "paragraph",
           "Original": "Next.js has two different routers:",
-          "Translated": "Next.js has two different routers:"
+          "Translated": "Next.js \u062F\u0648 \u0645\u0633\u06CC\u0631\u06CC\u0627\u0628 (router) \u0645\u062A\u0641\u0627\u0648\u062A \u062F\u0627\u0631\u062F:",
+          "GroupId": "g_f53704d9ddb2"
         },
         {
-          "Id": "b_f44a757d9db8",
+          "Id": "b_ec446485f0b9",
           "Type": "list_item",
           "Original": "App Router: The newer router that supports new React features like Server Components.",
-          "Translated": "App Router: The newer router that supports new React features like Server Components."
+          "Translated": "App Router: \u0645\u0633\u06CC\u0631\u06CC\u0627\u0628 \u062C\u062F\u06CC\u062F\u062A\u0631 \u06A9\u0647 \u0627\u0632 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u062C\u062F\u06CC\u062F React \u0645\u0627\u0646\u0646\u062F Server Components \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0645\u06CC\u200C\u06A9\u0646\u062F.",
+          "GroupId": "g_f53704d9ddb2"
         },
         {
-          "Id": "b_83ba7868ff69",
+          "Id": "b_7aea1d47bd3c",
           "Type": "list_item",
           "Original": "Pages Router: The original router, still supported and being improved.",
-          "Translated": "Pages Router: The original router, still supported and being improved."
+          "Translated": "Pages Router: \u0645\u0633\u06CC\u0631\u06CC\u0627\u0628 \u0627\u0635\u0644\u06CC\u060C \u06A9\u0647 \u0647\u0645\u0686\u0646\u0627\u0646 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0645\u06CC\u200C\u0634\u0648\u062F \u0648 \u062F\u0631 \u062D\u0627\u0644 \u0628\u0647\u0628\u0648\u062F \u0627\u0633\u062A.",
+          "GroupId": "g_f53704d9ddb2"
         },
         {
-          "Id": "b_bc41e4631dd9",
+          "Id": "b_34ef66ca9732",
           "Type": "paragraph",
           "Original": "At the top of the sidebar, you\u0027ll notice a dropdown menu that allows you to switch between the App Router and the Pages Router docs.",
-          "Translated": "At the top of the sidebar, you\u0027ll notice a dropdown menu that allows you to switch between the [App Router](docs/app.html) and the [Pages Router](docs/pages.html) docs."
+          "Translated": "\u062F\u0631 \u0628\u0627\u0644\u0627\u06CC \u0646\u0648\u0627\u0631 \u06A9\u0646\u0627\u0631\u06CC\u060C \u06CC\u06A9 \u0645\u0646\u0648\u06CC \u06A9\u0634\u0648\u06CC\u06CC (dropdown menu) \u0645\u0634\u0627\u0647\u062F\u0647 \u062E\u0648\u0627\u0647\u06CC\u062F \u06A9\u0631\u062F \u06A9\u0647 \u0628\u0647 \u0634\u0645\u0627 \u0627\u0645\u06A9\u0627\u0646 \u0645\u06CC\u200C\u062F\u0647\u062F \u0628\u06CC\u0646 \u0645\u0633\u062A\u0646\u062F\u0627\u062A [App Router](docs/app.html) \u0648 [Pages Router](docs/pages.html) \u062C\u0627\u0628\u062C\u0627 \u0634\u0648\u06CC\u062F.",
+          "GroupId": "g_f53704d9ddb2"
         }
       ]
     },
@@ -283,34 +428,39 @@
       "Heading": "React version handling",
       "Blocks": [
         {
-          "Id": "b_e25aaf56ae1f",
+          "Id": "b_32eee49dc7bb",
           "Type": "heading",
           "Original": "React version handling",
-          "Translated": "\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+          "Translated": "\u0645\u062F\u06CC\u0631\u06CC\u062A \u0646\u0633\u062E\u0647 React",
+          "GroupId": "g_1d68ae819168"
         },
         {
-          "Id": "b_6e83517cfbfd",
+          "Id": "b_e394290023f6",
           "Type": "paragraph",
           "Original": "The App Router and Pages Router handle React versions differently:",
-          "Translated": "The App Router and Pages Router handle React versions differently:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+          "Translated": "App Router \u0648 Pages Router \u0646\u0633\u062E\u0647\u200C\u0647\u0627\u06CC React \u0631\u0627 \u0645\u062A\u0641\u0627\u0648\u062A \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u06CC\u200C\u06A9\u0646\u0646\u062F:",
+          "GroupId": "g_1d68ae819168"
         },
         {
-          "Id": "b_7dda6fa893c1",
+          "Id": "b_c602b715cb68",
           "Type": "list_item",
           "Original": "App Router: Uses React canary releases built-in, which include all the stable React 19 changes, as well as newer features being validated in frameworks, prior to a new React release.",
-          "Translated": "App Router: Uses [React canary releases](https://react.dev/blog/2023/05/03/react-canaries) built-in, which include all the stable React 19 changes, as well as newer features being validated in frameworks, prior to a new React release.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+          "Translated": "App Router: \u0627\u0632 [\u0646\u0633\u062E\u0647\u200C\u0647\u0627\u06CC canary React](https://react.dev/blog/2023/05/03/react-canaries) \u0628\u0647 \u0635\u0648\u0631\u062A \u062A\u0648\u06A9\u0627\u0631 (built-in) \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F\u060C \u06A9\u0647 \u0634\u0627\u0645\u0644 \u062A\u0645\u0627\u0645 \u062A\u063A\u06CC\u06CC\u0631\u0627\u062A \u067E\u0627\u06CC\u062F\u0627\u0631 React 19 \u0648 \u0647\u0645\u0686\u0646\u06CC\u0646 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u062C\u062F\u06CC\u062F\u062A\u0631\u06CC \u06A9\u0647 \u062F\u0631 \u0641\u0631\u06CC\u0645\u0648\u0631\u06A9\u200C\u0647\u0627 \u062F\u0631 \u062D\u0627\u0644 \u0627\u0639\u062A\u0628\u0627\u0631\u0633\u0646\u062C\u06CC \u0647\u0633\u062A\u0646\u062F\u060C \u067E\u06CC\u0634 \u0627\u0632 \u0627\u0646\u062A\u0634\u0627\u0631 \u062C\u062F\u06CC\u062F React \u0645\u06CC\u200C\u0634\u0648\u062F.",
+          "GroupId": "g_1d68ae819168"
         },
         {
-          "Id": "b_91f70d1295fc",
+          "Id": "b_820e8c592ee3",
           "Type": "list_item",
           "Original": "Pages Router: Uses the React version installed in your project\u0027s package.json.",
-          "Translated": "Pages Router: Uses the React version installed in your project\u0027s package.json.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+          "Translated": "Pages Router: \u0627\u0632 \u0646\u0633\u062E\u0647 React \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u062F\u0631 package.json \u067E\u0631\u0648\u0698\u0647 \u0634\u0645\u0627 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u06A9\u0646\u062F.",
+          "GroupId": "g_1d68ae819168"
         },
         {
-          "Id": "b_80aebe1034f9",
+          "Id": "b_ea60b01caf1f",
           "Type": "paragraph",
           "Original": "This approach ensures new React features work reliably in the App Router while maintaining backwards compatibility for existing Pages Router applications.",
-          "Translated": "This approach ensures new React features work reliably in the App Router while maintaining backwards compatibility for existing Pages Router applications.:\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634\u0634"
+          "Translated": "\u0627\u06CC\u0646 \u0631\u0648\u06CC\u06A9\u0631\u062F \u062A\u0636\u0645\u06CC\u0646 \u0645\u06CC\u200C\u06A9\u0646\u062F \u06A9\u0647 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u062C\u062F\u06CC\u062F React \u0628\u0647 \u0637\u0648\u0631 \u0642\u0627\u0628\u0644 \u0627\u0639\u062A\u0645\u0627\u062F\u06CC \u062F\u0631 App Router \u06A9\u0627\u0631 \u06A9\u0646\u0646\u062F \u0648 \u062F\u0631 \u0639\u06CC\u0646 \u062D\u0627\u0644 \u0633\u0627\u0632\u06AF\u0627\u0631\u06CC \u0639\u0642\u0628\u0631\u0648 (backwards compatibility) \u0628\u0631\u0627\u06CC \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC Pages Router \u0645\u0648\u062C\u0648\u062F \u062D\u0641\u0638 \u0634\u0648\u062F.",
+          "GroupId": "g_1d68ae819168"
         }
       ]
     },
@@ -320,46 +470,53 @@
       "Heading": "Pre-requisite knowledge",
       "Blocks": [
         {
-          "Id": "b_999e36b2f3d9",
+          "Id": "b_cc41a983d4c0",
           "Type": "heading",
           "Original": "Pre-requisite knowledge",
-          "Translated": "Pre-requisite knowledge"
+          "Translated": "\u067E\u06CC\u0634\u200C\u0646\u06CC\u0627\u0632\u0647\u0627\u06CC \u062F\u0627\u0646\u0634\u06CC",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_0bdab8b399b9",
+          "Id": "b_42ae08618c2c",
           "Type": "paragraph",
           "Original": "Our documentation assumes some familiarity with web development. Before getting started, it\u0027ll help if you\u0027re comfortable with:",
-          "Translated": "Our documentation assumes some familiarity with web development. Before getting started, it\u0027ll help if you\u0027re comfortable with:"
+          "Translated": "\u0645\u0633\u062A\u0646\u062F\u0627\u062A \u0645\u0627 \u0622\u0634\u0646\u0627\u06CC\u06CC \u0645\u0642\u062F\u0645\u0627\u062A\u06CC \u0628\u0627 \u062A\u0648\u0633\u0639\u0647 \u0648\u0628 \u0631\u0627 \u0641\u0631\u0636 \u0645\u06CC\u200C\u06A9\u0646\u062F. \u0642\u0628\u0644 \u0627\u0632 \u0634\u0631\u0648\u0639\u060C \u0627\u06AF\u0631 \u0628\u0627 \u0645\u0648\u0627\u0631\u062F \u0632\u06CC\u0631 \u0631\u0627\u062D\u062A \u0628\u0627\u0634\u06CC\u062F \u0645\u0641\u06CC\u062F \u062E\u0648\u0627\u0647\u062F \u0628\u0648\u062F:",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_f81077b19fd1",
+          "Id": "b_18758b30dc00",
           "Type": "list_item",
           "Original": "HTML",
-          "Translated": "HTML"
+          "Translated": "HTML",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_ecf7276e630a",
+          "Id": "b_471f012e219e",
           "Type": "list_item",
           "Original": "CSS",
-          "Translated": "CSS"
+          "Translated": "CSS",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_c84a293614f4",
+          "Id": "b_ec14c01aebdd",
           "Type": "list_item",
           "Original": "JavaScript",
-          "Translated": "JavaScript"
+          "Translated": "JavaScript",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_f02f4f18313b",
+          "Id": "b_7afb47a8303b",
           "Type": "list_item",
           "Original": "React",
-          "Translated": "React"
+          "Translated": "React",
+          "GroupId": "g_5c2fef6d053c"
         },
         {
-          "Id": "b_43efc1715472",
+          "Id": "b_0be88b3bc23d",
           "Type": "paragraph",
           "Original": "If you\u0027re new to React or need a refresher, we recommend starting with our React Foundations course, and the Next.js Foundations course that has you building an application as you learn.",
-          "Translated": "If you\u0027re new to React or need a refresher, we recommend starting with our [React Foundations course](learn/react-foundations.html), and the [Next.js Foundations course](learn/dashboard-app.html) that has you building an application as you learn."
+          "Translated": "\u0627\u06AF\u0631 \u062F\u0631 React \u062A\u0627\u0632\u0647\u200C\u06A9\u0627\u0631 \u0647\u0633\u062A\u06CC\u062F \u06CC\u0627 \u0646\u06CC\u0627\u0632 \u0628\u0647 \u0645\u0631\u0648\u0631 \u062F\u0627\u0631\u06CC\u062F\u060C \u062A\u0648\u0635\u06CC\u0647 \u0645\u06CC\u200C\u06A9\u0646\u06CC\u0645 \u0628\u0627 [\u062F\u0648\u0631\u0647 \u0645\u0628\u0627\u0646\u06CC React (React Foundations course)](learn/react-foundations.html) \u0648 [\u062F\u0648\u0631\u0647 \u0645\u0628\u0627\u0646\u06CC Next.js (Next.js Foundations course)](learn/dashboard-app.html) \u06A9\u0647 \u0647\u0645\u0632\u0645\u0627\u0646 \u0628\u0627 \u06CC\u0627\u062F\u06AF\u06CC\u0631\u06CC\u060C \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0627\u06CC \u0645\u06CC\u200C\u0633\u0627\u0632\u06CC\u062F\u060C \u0634\u0631\u0648\u0639 \u06A9\u0646\u06CC\u062F.",
+          "GroupId": "g_5c2fef6d053c"
         }
       ]
     },
@@ -369,16 +526,18 @@
       "Heading": "Accessibility",
       "Blocks": [
         {
-          "Id": "b_8ffbf49fcdd0",
+          "Id": "b_d3b518a31768",
           "Type": "heading",
           "Original": "Accessibility",
-          "Translated": "Accessibility"
+          "Translated": "\u062F\u0633\u062A\u0631\u0633\u200C\u067E\u0630\u06CC\u0631\u06CC (Accessibility)",
+          "GroupId": "g_7ad31f396334"
         },
         {
-          "Id": "b_95552bd4fa27",
+          "Id": "b_1bd23577cd73",
           "Type": "paragraph",
           "Original": "For the best experience when using a screen reader, we recommend using Firefox and NVDA, or Safari and VoiceOver.",
-          "Translated": "For the best experience when using a screen reader, we recommend using Firefox and NVDA, or Safari and VoiceOver."
+          "Translated": "\u0628\u0631\u0627\u06CC \u0628\u0647\u062A\u0631\u06CC\u0646 \u062A\u062C\u0631\u0628\u0647 \u0647\u0646\u06AF\u0627\u0645 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 \u0635\u0641\u062D\u0647\u200C\u062E\u0648\u0627\u0646 (screen reader)\u060C \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0627\u0632 Firefox \u0648 NVDA\u060C \u06CC\u0627 Safari \u0648 VoiceOver \u0631\u0627 \u062A\u0648\u0635\u06CC\u0647 \u0645\u06CC\u200C\u06A9\u0646\u06CC\u0645.",
+          "GroupId": "g_7ad31f396334"
         }
       ]
     },
@@ -388,16 +547,18 @@
       "Heading": "Join our Community",
       "Blocks": [
         {
-          "Id": "b_16a5c94f8532",
+          "Id": "b_1d29a9c50159",
           "Type": "heading",
           "Original": "Join our Community",
-          "Translated": "Join our Community"
+          "Translated": "\u0628\u0647 \u062C\u0627\u0645\u0639\u0647 \u0645\u0627 \u0628\u067E\u06CC\u0648\u0646\u062F\u06CC\u062F",
+          "GroupId": "g_1a30b4a9bdc0"
         },
         {
-          "Id": "b_933dc68c9e6b",
+          "Id": "b_f7982211487a",
           "Type": "paragraph",
           "Original": "If you have questions about anything related to Next.js, you\u0027re always welcome to ask our community on GitHub Discussions, Discord, X (Twitter), and Reddit.",
-          "Translated": "If you have questions about anything related to Next.js, you\u0027re always welcome to ask our community on [GitHub Discussions](https://github.com/vercel/next.js/discussions), [Discord](https://discord.com/invite/bUG2bvbtHy), [X (Twitter)](https://x.com/nextjs), and [Reddit](https://www.reddit.com/r/nextjs)."
+          "Translated": "\u0627\u06AF\u0631 \u062F\u0631 \u0645\u0648\u0631\u062F \u0647\u0631 \u0686\u06CC\u0632\u06CC \u0645\u0631\u062A\u0628\u0637 \u0628\u0627 Next.js \u0633\u0648\u0627\u0644 \u062F\u0627\u0631\u06CC\u062F\u060C \u0647\u0645\u06CC\u0634\u0647 \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u062F \u0627\u0632 \u062C\u0627\u0645\u0639\u0647 \u0645\u0627 \u062F\u0631 [\u0628\u062D\u062B\u200C\u0647\u0627\u06CC GitHub (GitHub Discussions)](https://github.com/vercel/next.js/discussions)\u060C [Discord](https://discord.com/invite/bUG2bvbtHy)\u060C [X (\u062A\u0648\u06CC\u06CC\u062A\u0631)](https://x.com/nextjs) \u0648 [Reddit](https://www.reddit.com/r/nextjs) \u0628\u067E\u0631\u0633\u06CC\u062F.",
+          "GroupId": "g_1a30b4a9bdc0"
         }
       ]
     },
@@ -407,10 +568,18 @@
       "Heading": "Next Steps",
       "Blocks": [
         {
-          "Id": "b_24419f6d096b",
+          "Id": "b_b6ccebcc6186",
           "Type": "heading",
           "Original": "Next Steps",
-          "Translated": "Next Steps"
+          "Translated": "\u0645\u0631\u0627\u062D\u0644 \u0628\u0639\u062F\u06CC",
+          "GroupId": "g_8dddf70fa748"
+        },
+        {
+          "Id": "b_acd0e110b472",
+          "Type": "paragraph",
+          "Original": "Create your first application and learn the core Next.js features.",
+          "Translated": "\u0627\u0648\u0644\u06CC\u0646 \u0628\u0631\u0646\u0627\u0645\u0647 \u062E\u0648\u062F \u0631\u0627 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646\u06CC\u062F \u0648 \u0648\u06CC\u0698\u06AF\u06CC\u200C\u0647\u0627\u06CC \u0627\u0635\u0644\u06CC Next.js \u0631\u0627 \u0628\u06CC\u0627\u0645\u0648\u0632\u06CC\u062F.",
+          "GroupId": "g_8dddf70fa748"
         }
       ]
     },
@@ -420,16 +589,25 @@
       "Heading": "Getting Started",
       "Blocks": [
         {
-          "Id": "b_bad16fe30eac",
+          "Id": "b_7fb7b534d89a",
           "Type": "heading",
           "Original": "Getting Started",
-          "Translated": "Getting Started"
+          "Translated": "\u0634\u0631\u0648\u0639 \u0633\u0631\u06CC\u0639 (Getting Started)",
+          "GroupId": "g_7733c94a79cd"
         },
         {
-          "Id": "b_2f9ffd0bc931",
+          "Id": "b_af66e90d429e",
+          "Type": "paragraph",
+          "Original": "Learn how to create full-stack web applications with the Next.js App Router.",
+          "Translated": "\u0646\u062D\u0648\u0647 \u0627\u06CC\u062C\u0627\u062F \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u0648\u0628 full-stack \u0628\u0627 App Router Next.js \u0631\u0627 \u0628\u06CC\u0627\u0645\u0648\u0632\u06CC\u062F.",
+          "GroupId": "g_7733c94a79cd"
+        },
+        {
+          "Id": "b_2e02b348ff37",
           "Type": "paragraph",
           "Original": "Was this helpful?",
-          "Translated": "Was this helpful?"
+          "Translated": "\u0622\u06CC\u0627 \u0627\u06CC\u0646 \u0645\u0637\u0644\u0628 \u0645\u0641\u06CC\u062F \u0628\u0648\u062F\u061F",
+          "GroupId": "g_7733c94a79cd"
         }
       ]
     }
