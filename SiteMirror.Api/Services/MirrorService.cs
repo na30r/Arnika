@@ -191,7 +191,7 @@ public sealed class MirrorService : ISiteMirrorService
                             var html = await File.ReadAllTextAsync(skipped.EntryFilePath, cancellationToken);
                             return skipped with
                             {
-                                DiscoveredLinks = ExtractCandidateLinks(docUri, html, startUri)
+                                DiscoveredLinks = ExtractCandidateLinks(docUri, html, startUri, request)
                             };
                         }
 
@@ -1454,7 +1454,7 @@ public sealed class MirrorService : ISiteMirrorService
         var entryFilePath = mirror.GetEntryFile(finalUri);
         var relativeEntry = Path.GetRelativePath(siteOutputPath, entryFilePath).Replace('\\', '/');
         var discoveredLinks = collectLinks
-            ? ExtractCandidateLinks(finalUri, renderedHtml, rootUri)
+            ? ExtractCandidateLinks(finalUri, renderedHtml, rootUri, request)
             : [];
 
         await page.CloseAsync();
@@ -1521,7 +1521,7 @@ public sealed class MirrorService : ISiteMirrorService
         return builder.Uri.ToString();
     }
 
-    private static List<Uri> ExtractCandidateLinks(Uri pageUri, string html, Uri rootUri)
+    private static List<Uri> ExtractCandidateLinks(Uri pageUri, string html, Uri rootUri, MirrorRequest request)
     {
         var parser = new HtmlParser();
         var document = parser.ParseDocument(html);
@@ -1550,6 +1550,11 @@ public sealed class MirrorService : ISiteMirrorService
                 continue;
             }
 
+            if (!PassesCrawlUrlFilters(absolute, rootUri, request))
+            {
+                continue;
+            }
+
             var normalized = NormalizeUriForQueue(absolute);
             if (!seen.Add(normalized))
             {
@@ -1560,6 +1565,110 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         return links;
+    }
+
+    private static bool PassesCrawlUrlFilters(Uri absolute, Uri rootUri, MirrorRequest request)
+    {
+        var allow = NormalizeCrawlPrefixList(request.CrawlUrlAllowPrefixes, rootUri);
+        var deny = NormalizeCrawlPrefixList(request.CrawlUrlDenyPrefixes, rootUri);
+        var linkNorm = NormalizeUriForPrefixMatch(absolute);
+
+        foreach (var d in deny)
+        {
+            if (IsUnderOrEqualPrefix(linkNorm, d))
+            {
+                return false;
+            }
+        }
+
+        if (allow.Count > 0)
+        {
+            var matched = false;
+            foreach (var a in allow)
+            {
+                if (IsUnderOrEqualPrefix(linkNorm, a))
+                {
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<string> NormalizeCrawlPrefixList(IEnumerable<string>? raw, Uri rootUri)
+    {
+        var result = new List<string>();
+        if (raw is null)
+        {
+            return result;
+        }
+
+        foreach (var item in raw)
+        {
+            var t = item?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(t))
+            {
+                continue;
+            }
+
+            if (t.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                t.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Uri.TryCreate(t, UriKind.Absolute, out var abs))
+                {
+                    result.Add(NormalizeUriForPrefixMatch(abs));
+                }
+
+                continue;
+            }
+
+            var path = t.StartsWith('/') ? t : "/" + t;
+            if (Uri.TryCreate(rootUri, path, out var combined))
+            {
+                result.Add(NormalizeUriForPrefixMatch(combined));
+            }
+        }
+
+        return result;
+    }
+
+    private static string NormalizeUriForPrefixMatch(Uri uri)
+    {
+        var builder = new UriBuilder(uri) { Fragment = string.Empty };
+        return builder.Uri.AbsoluteUri.TrimEnd('/');
+    }
+
+    private static bool IsUnderOrEqualPrefix(string normalizedLink, string normalizedPrefix)
+    {
+        if (string.IsNullOrEmpty(normalizedPrefix))
+        {
+            return false;
+        }
+
+        if (normalizedLink.Length < normalizedPrefix.Length)
+        {
+            return false;
+        }
+
+        if (!normalizedLink.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (normalizedLink.Length == normalizedPrefix.Length)
+        {
+            return true;
+        }
+
+        var next = normalizedLink[normalizedPrefix.Length];
+        return next is '/' or '?' or '#';
     }
 
     private async Task RunLocalizationPassAsync(

@@ -8,6 +8,17 @@ public sealed class MirrorRequest
 
     public int LinkDrillCount { get; init; } = 0;
 
+    /// <summary>
+    /// When non-empty, only same-site links whose URL is under one of these prefixes are queued for drill.
+    /// Entries may be absolute (https://host/path) or root-relative (/path); fragment ignored when matching.
+    /// </summary>
+    public string[]? CrawlUrlAllowPrefixes { get; init; }
+
+    /// <summary>
+    /// Same-site links under any of these prefixes (and their children) are excluded from the drill queue.
+    /// </summary>
+    public string[]? CrawlUrlDenyPrefixes { get; init; }
+
     public string[]? Languages { get; init; }
 
     public string[]? DoNotTranslateTexts { get; init; }
