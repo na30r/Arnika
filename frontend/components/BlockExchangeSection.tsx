@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { authHeaders } from "../lib/auth";
 
 type MergeFlatResponse = {
@@ -14,6 +14,22 @@ type ToFlatResponse = {
   entriesJson?: string;
 };
 
+type PerPageFlatExportRow = {
+  pagePath: string;
+  ok: boolean;
+  fileName?: string;
+  entryCount?: number;
+  error?: string;
+};
+
+function flatDownloadSlug(pagePath: string): string {
+  return pagePath
+    .replace(/\//g, "_")
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "") || "page";
+}
+
 function downloadText(filename: string, text: string, mime: string) {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -24,10 +40,18 @@ function downloadText(filename: string, text: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { headers: { ...authHeaders() }, cache: "no-store" });
+  const data = (await res.json().catch(() => null)) as T & { message?: string };
+  if (!res.ok) {
+    throw new Error((data as { message?: string })?.message || `Request failed (${res.status}).`);
+  }
+  return data as T;
+}
+
 export function BlockExchangeSection() {
-  const [siteHost, setSiteHost] = useState("nextjs.org");
-  const [version, setVersion] = useState("16.2.4");
-  const [pagePath, setPagePath] = useState("docs");
+  const [siteHost, setSiteHost] = useState("");
+  const [version, setVersion] = useState("");
   const [useMirrorPath, setUseMirrorPath] = useState(true);
   const [blockPageText, setBlockPageText] = useState("");
   const [translationsText, setTranslationsText] = useState('{\n  "What is Next.js?": "نکست جی‌اس چیست؟"\n}');
@@ -39,8 +63,149 @@ export function BlockExchangeSection() {
   const [flatResult, setFlatResult] = useState<ToFlatResponse | null>(null);
   const [flatError, setFlatError] = useState<string | null>(null);
   const [flatBusy, setFlatBusy] = useState(false);
-  /** When true, empty Translated becomes Original in the flat file; when false, values stay "". */
   const [flatFillEmptyWithOriginal, setFlatFillEmptyWithOriginal] = useState(true);
+
+  const [hosts, setHosts] = useState<string[]>([]);
+  const [versions, setVersions] = useState<string[]>([]);
+  const [pages, setPages] = useState<string[]>([]);
+  const [selectedPages, setSelectedPages] = useState<Record<string, boolean>>({});
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  const [perPageFlatResults, setPerPageFlatResults] = useState<PerPageFlatExportRow[] | null>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  const selectedCount = useMemo(
+    () => pages.reduce((n, p) => n + (selectedPages[p] ? 1 : 0), 0),
+    [pages, selectedPages]
+  );
+
+  const loadHosts = useCallback(async () => {
+    setCatalogBusy(true);
+    setCatalogError(null);
+    try {
+      const list = await fetchJson<string[]>("/api/mirror/block-catalog/hosts");
+      setHosts(list);
+      setSiteHost((prev) => {
+        if (prev && list.includes(prev)) return prev;
+        return list[0] ?? "";
+      });
+    } catch (e) {
+      setHosts([]);
+      setCatalogError(e instanceof Error ? e.message : "Failed to load hosts.");
+    } finally {
+      setCatalogBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!useMirrorPath) {
+      return;
+    }
+    void loadHosts();
+  }, [useMirrorPath, loadHosts]);
+
+  useEffect(() => {
+    if (!useMirrorPath || !siteHost.trim()) {
+      setVersions([]);
+      setVersion("");
+      setPages([]);
+      setSelectedPages({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setCatalogBusy(true);
+      setCatalogError(null);
+      try {
+        const list = await fetchJson<string[]>(
+          `/api/mirror/block-catalog/versions?siteHost=${encodeURIComponent(siteHost.trim())}`
+        );
+        if (cancelled) return;
+        setVersions(list);
+        setVersion((prev) => {
+          if (prev && list.includes(prev)) return prev;
+          return list[0] ?? "";
+        });
+      } catch (e) {
+        if (!cancelled) {
+          setVersions([]);
+          setVersion("");
+          setCatalogError(e instanceof Error ? e.message : "Failed to load versions.");
+        }
+      } finally {
+        if (!cancelled) setCatalogBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useMirrorPath, siteHost]);
+
+  useEffect(() => {
+    if (!useMirrorPath || !siteHost.trim() || !version.trim()) {
+      setPages([]);
+      setSelectedPages({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setCatalogBusy(true);
+      setCatalogError(null);
+      try {
+        const list = await fetchJson<string[]>(
+          `/api/mirror/block-catalog/pages?siteHost=${encodeURIComponent(siteHost.trim())}&version=${encodeURIComponent(version.trim())}`
+        );
+        if (cancelled) return;
+        setPages(list);
+        setSelectedPages({});
+      } catch (e) {
+        if (!cancelled) {
+          setPages([]);
+          setSelectedPages({});
+          setCatalogError(e instanceof Error ? e.message : "Failed to load pages.");
+        }
+      } finally {
+        if (!cancelled) setCatalogBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useMirrorPath, siteHost, version]);
+
+  function togglePage(path: string) {
+    setSelectedPages((prev) => ({ ...prev, [path]: !prev[path] }));
+  }
+
+  function selectAllPages() {
+    const next: Record<string, boolean> = {};
+    for (const p of pages) next[p] = true;
+    setSelectedPages(next);
+  }
+
+  function clearPageSelection() {
+    setSelectedPages({});
+  }
+
+  function getExactlyOneSelectedPage(): string {
+    const checked = pages.filter((p) => selectedPages[p]);
+    if (checked.length !== 1) {
+      throw new Error(
+        "For merge or single-page flat export, select exactly one page in the list below (use checkboxes)."
+      );
+    }
+    return checked[0]!;
+  }
+
+  function getMultiSelectedPages(): string[] {
+    return pages.filter((p) => selectedPages[p]);
+  }
 
   async function onMergeSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,12 +228,15 @@ export function BlockExchangeSection() {
         emptyTranslationUsesOriginal: emptyUsesOriginal
       };
       if (useMirrorPath) {
+        if (!siteHost.trim() || !version.trim()) {
+          throw new Error("Choose a site host and version from the lists.");
+        }
         body.siteHost = siteHost.trim();
         body.version = version.trim();
-        body.pagePath = pagePath.trim();
+        body.pagePath = getExactlyOneSelectedPage();
       } else {
         if (!blockPageText.trim()) {
-          throw new Error("Paste block page JSON or enable “Load from mirror path”.");
+          throw new Error("Paste block page JSON or enable “Mirror on disk”.");
         }
         body.blockPageJson = blockPageText;
       }
@@ -103,12 +271,15 @@ export function BlockExchangeSection() {
         useOriginalWhenTranslatedEmpty: flatFillEmptyWithOriginal
       };
       if (useMirrorPath) {
+        if (!siteHost.trim() || !version.trim()) {
+          throw new Error("Choose a site host and version from the lists.");
+        }
         body.siteHost = siteHost.trim();
         body.version = version.trim();
-        body.pagePath = pagePath.trim();
+        body.pagePath = getExactlyOneSelectedPage();
       } else {
         if (!blockPageText.trim()) {
-          throw new Error("Paste block page JSON or enable “Load from mirror path”.");
+          throw new Error("Paste block page JSON or enable “Mirror on disk”.");
         }
         body.blockPageJson = blockPageText;
       }
@@ -130,6 +301,75 @@ export function BlockExchangeSection() {
       setFlatError(err instanceof Error ? err.message : "Export failed.");
     } finally {
       setFlatBusy(false);
+    }
+  }
+
+  async function onPerPageFlatDownloads() {
+    setBatchBusy(true);
+    setBatchError(null);
+    setPerPageFlatResults(null);
+    try {
+      if (!useMirrorPath) {
+        throw new Error("Per-page flat export is only available in “Mirror on disk” mode.");
+      }
+      if (!siteHost.trim() || !version.trim()) {
+        throw new Error("Choose a site host and version.");
+      }
+      const pathList = getMultiSelectedPages();
+      if (pathList.length === 0) {
+        throw new Error("Select one or more page paths (checkboxes).");
+      }
+
+      const hostSlug = siteHost.trim().replace(/\./g, "_");
+      const verSlug = version.trim().replace(/[^\w.-]+/g, "_");
+      const results: PerPageFlatExportRow[] = [];
+
+      for (let i = 0; i < pathList.length; i++) {
+        const pagePath = pathList[i]!;
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, 280));
+        }
+
+        const res = await fetch("/api/mirror/block-exchange/to-flat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders()
+          },
+          body: JSON.stringify({
+            siteHost: siteHost.trim(),
+            version: version.trim(),
+            pagePath,
+            useOriginalWhenTranslatedEmpty: flatFillEmptyWithOriginal
+          })
+        });
+        const data = (await res.json().catch(() => null)) as ToFlatResponse & { message?: string };
+        if (!res.ok) {
+          results.push({
+            pagePath,
+            ok: false,
+            error: data?.message || `HTTP ${res.status}`
+          });
+          continue;
+        }
+
+        const entries = data.entries ?? {};
+        const entryCount = Object.keys(entries).length;
+        const json =
+          data.entriesJson && data.entriesJson.length > 0
+            ? data.entriesJson
+            : JSON.stringify(entries, null, 2);
+        const slug = flatDownloadSlug(pagePath);
+        const fileName = `translations.flat.${hostSlug}.${verSlug}.${slug}.json`;
+        downloadText(fileName, json, "application/json");
+        results.push({ pagePath, ok: true, entryCount, fileName });
+      }
+
+      setPerPageFlatResults(results);
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : "Export failed.");
+    } finally {
+      setBatchBusy(false);
     }
   }
 
@@ -171,30 +411,143 @@ export function BlockExchangeSection() {
           </div>
 
           {useMirrorPath ? (
-            <div className="block-exchange-fields-3">
-              <div className="block-exchange-field">
-                <label className="block-exchange-label" htmlFor="bx-host">
-                  Site host
-                </label>
-                <input id="bx-host" value={siteHost} onChange={(e) => setSiteHost(e.target.value)} />
+            <div className="block-exchange-field">
+              <div className="block-exchange-fields-3">
+                <div className="block-exchange-field">
+                  <label className="block-exchange-label" htmlFor="bx-host">
+                    Site host
+                  </label>
+                  <select
+                    id="bx-host"
+                    className="block-exchange-select"
+                    value={siteHost}
+                    onChange={(e) => {
+                      setSiteHost(e.target.value);
+                      setVersion("");
+                      setPages([]);
+                      setSelectedPages({});
+                    }}
+                    disabled={catalogBusy && hosts.length === 0}
+                  >
+                    {hosts.length === 0 ? <option value="">—</option> : null}
+                    {hosts.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="block-exchange-field">
+                  <label className="block-exchange-label" htmlFor="bx-version">
+                    Version
+                  </label>
+                  <select
+                    id="bx-version"
+                    className="block-exchange-select"
+                    value={version}
+                    onChange={(e) => {
+                      setVersion(e.target.value);
+                      setSelectedPages({});
+                    }}
+                    disabled={!siteHost || versions.length === 0}
+                  >
+                    {versions.length === 0 ? <option value="">—</option> : null}
+                    {versions.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="block-exchange-field">
+                  <label className="block-exchange-label">Mirror path</label>
+                  <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                    <code>
+                      public/mirror/{siteHost || "…"}/{version || "…"}/_i18n/blocks/
+                    </code>
+                  </p>
+                </div>
               </div>
-              <div className="block-exchange-field">
-                <label className="block-exchange-label" htmlFor="bx-version">
-                  Version
-                </label>
-                <input id="bx-version" value={version} onChange={(e) => setVersion(e.target.value)} />
+
+              <label className="block-exchange-label" style={{ marginTop: "0.75rem", display: "block" }}>
+                Block pages (<code>_i18n/blocks/*.json</code>, excluding <code>_common.json</code>)
+              </label>
+              <p className="muted block-exchange-hint" style={{ marginTop: "0.25rem" }}>
+                Merge and <strong>Build flat JSON (one page)</strong> need <strong>exactly one</strong> checked page.
+                <strong> Download flat JSON (each page)</strong> runs one export per checked page and saves a separate
+                file (small delay between downloads so the browser keeps all of them).
+              </p>
+              <div className="block-exchange-page-toolbar">
+                <button type="button" className="block-exchange-btn-secondary" onClick={selectAllPages} disabled={!pages.length}>
+                  Select all
+                </button>
+                <button type="button" className="block-exchange-btn-secondary" onClick={clearPageSelection} disabled={!selectedCount}>
+                  Clear
+                </button>
+                <span className="muted" style={{ fontSize: "0.85rem" }}>
+                  {selectedCount} of {pages.length} selected
+                </span>
               </div>
-              <div className="block-exchange-field">
-                <label className="block-exchange-label" htmlFor="bx-page">
-                  Page path
-                </label>
-                <input
-                  id="bx-page"
-                  value={pagePath}
-                  onChange={(e) => setPagePath(e.target.value)}
-                  placeholder="docs"
-                />
+              <div className="block-exchange-page-panel" role="list">
+                {!siteHost || !version ? (
+                  <p className="muted">Choose host and version.</p>
+                ) : pages.length === 0 ? (
+                  <p className="muted">No block JSON files found for this mirror.</p>
+                ) : (
+                  pages.map((p) => (
+                    <label key={p} className="block-exchange-page-row">
+                      <input type="checkbox" checked={!!selectedPages[p]} onChange={() => togglePage(p)} />
+                      <code>{p}</code>
+                    </label>
+                  ))
+                )}
               </div>
+              <div className="block-exchange-actions" style={{ marginTop: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="block-exchange-btn-primary"
+                  disabled={batchBusy || selectedCount === 0}
+                  onClick={() => void onPerPageFlatDownloads()}
+                >
+                  {batchBusy ? "Downloading…" : "Download flat JSON (each selected page)"}
+                </button>
+              </div>
+              {batchError ? <p className="error block-exchange-alert">{batchError}</p> : null}
+              {perPageFlatResults && perPageFlatResults.length > 0 ? (
+                <div className="block-exchange-result" style={{ marginTop: "0.75rem" }}>
+                  <div className="block-exchange-chips">
+                    <span className="block-exchange-chip">
+                      {perPageFlatResults.filter((r) => r.ok).length} downloaded
+                    </span>
+                    {perPageFlatResults.some((r) => !r.ok) ? (
+                      <span className="block-exchange-chip block-exchange-chip--warn">
+                        {perPageFlatResults.filter((r) => !r.ok).length} failed
+                      </span>
+                    ) : null}
+                  </div>
+                  <details className="block-exchange-details" open>
+                    <summary>Per-page summary</summary>
+                    <ul className="muted" style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", fontSize: "0.88rem" }}>
+                      {perPageFlatResults.map((r) => (
+                        <li key={r.pagePath}>
+                          <code>{r.pagePath}</code>
+                          {r.ok ? (
+                            <>
+                              {" "}
+                              → <code>{r.fileName}</code> ({r.entryCount} entries)
+                            </>
+                          ) : (
+                            <>
+                              {" "}
+                              — <span className="error">{r.error}</span>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="block-exchange-field">
@@ -224,6 +577,7 @@ export function BlockExchangeSection() {
               />
             </div>
           )}
+          {catalogError ? <p className="error block-exchange-alert">{catalogError}</p> : null}
         </div>
       </header>
 
@@ -330,7 +684,9 @@ export function BlockExchangeSection() {
           </div>
           <form onSubmit={onFlatSubmit} className="block-exchange-form">
             <p className="muted block-exchange-hint">
-              Uses the same template source as the card above (mirror path or pasted JSON).
+              Uses the same template source as the card above (mirror path or pasted JSON). In mirror mode, pick{" "}
+              <strong>one</strong> page checkbox here, or use <strong>Download flat JSON (each selected page)</strong> in
+              the header to save one file per checked page.
             </p>
             <label className="block-exchange-check">
               <input
@@ -346,7 +702,7 @@ export function BlockExchangeSection() {
             </label>
             <div className="block-exchange-actions">
               <button type="submit" className="block-exchange-btn-primary" disabled={flatBusy}>
-                {flatBusy ? "Exporting…" : "Build flat JSON"}
+                {flatBusy ? "Exporting…" : "Build flat JSON (one page)"}
               </button>
             </div>
           </form>

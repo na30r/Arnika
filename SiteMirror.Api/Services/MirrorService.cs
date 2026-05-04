@@ -24,6 +24,7 @@ public sealed class MirrorService : ISiteMirrorService
     private readonly ILoggerFactory _loggerFactory;
     private readonly LocalizationGenerator _localizationGenerator;
     private readonly ICrawlRepository _crawlRepository;
+    private readonly MirrorGlobalExecutionGate _mirrorGate;
     private readonly string _contentRootPath;
     private readonly string _dbConnectionString;
     private static readonly System.Text.RegularExpressions.Regex LocalePathSegmentRegex = new(
@@ -47,6 +48,7 @@ public sealed class MirrorService : ISiteMirrorService
         ILogger<MirrorService> logger,
         ILoggerFactory loggerFactory,
         ICrawlRepository crawlRepository,
+        MirrorGlobalExecutionGate mirrorGate,
         IWebHostEnvironment hostEnvironment)
     {
         _settings = options.Value;
@@ -55,6 +57,7 @@ public sealed class MirrorService : ISiteMirrorService
         _loggerFactory = loggerFactory;
         _localizationGenerator = new LocalizationGenerator(_loggerFactory.CreateLogger<LocalizationGenerator>());
         _crawlRepository = crawlRepository;
+        _mirrorGate = mirrorGate;
         _contentRootPath = hostEnvironment.ContentRootPath;
     }
 
@@ -66,6 +69,9 @@ public sealed class MirrorService : ISiteMirrorService
             throw new ArgumentException("Invalid URL. Use an absolute HTTP or HTTPS URL.", nameof(request.Url));
         }
 
+        await _mirrorGate.WaitAsync(cancellationToken);
+        try
+        {
         var normalizedVersion = NormalizeVersion(request.Version);
         var siteHost = MirrorPathHelper.SanitizePathSegment(startUri.Host);
         var waitMs = request.ExtraWaitMs <= 0 ? 4_000 : request.ExtraWaitMs;
@@ -277,6 +283,13 @@ public sealed class MirrorService : ISiteMirrorService
                 cancellationToken);
             _logger.LogInformation("Stage generate-localizations: complete");
 
+            await ArchiveCatalogsAfterMirrorAsync(
+                siteHost,
+                normalizedVersion,
+                siteOutputPath,
+                localizationResult.AvailableLanguages,
+                cancellationToken);
+
             var pageInfos = crawledPages
                 .Select(page => new CrawlPageInfo
                 {
@@ -365,6 +378,11 @@ public sealed class MirrorService : ISiteMirrorService
                 },
                 []);
             throw;
+        }
+        }
+        finally
+        {
+            _mirrorGate.Release();
         }
     }
 
@@ -501,6 +519,31 @@ public sealed class MirrorService : ISiteMirrorService
         };
         var catalogJson = JsonSerializer.Serialize(payload, CatalogJsonOptions);
         await File.WriteAllTextAsync(catalogPath, catalogJson, Encoding.UTF8, cancellationToken);
+
+        var keyToPage = await BuildTranslationKeyToPagePathMapFromI18nAsync(i18nFolder, cancellationToken);
+        var catalogArchiveRows = incomingEntries
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+            .Select(kv =>
+            {
+                var k = kv.Key.Trim();
+                keyToPage.TryGetValue(k, out var page);
+                return new TranslationArchiveRow
+                {
+                    TranslationKey = k,
+                    OriginalText = null,
+                    TranslatedValue = kv.Value ?? string.Empty,
+                    PagePath = page
+                };
+            })
+            .ToList();
+        await TryArchiveTranslationRowsAsync(
+            "catalog",
+            normalizedHost,
+            normalizedVersion,
+            language,
+            pagePath: null,
+            catalogArchiveRows,
+            cancellationToken);
 
         var rebuiltPages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
             siteOutputPath,
@@ -731,6 +774,31 @@ public sealed class MirrorService : ISiteMirrorService
         var updatedJson = JsonSerializer.Serialize(blockDoc, CatalogJsonOptions);
         await File.WriteAllTextAsync(blockPath, updatedJson, Encoding.UTF8, cancellationToken);
 
+        var flatById = FlattenBlockItems(blockDoc)
+            .Where(b => !string.IsNullOrWhiteSpace(b.Id))
+            .ToDictionary(b => b.Id!, StringComparer.Ordinal);
+        var blockArchiveRows = incoming
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+            .Select(kv =>
+            {
+                flatById.TryGetValue(kv.Key, out var block);
+                return new TranslationArchiveRow
+                {
+                    TranslationKey = kv.Key.Trim(),
+                    OriginalText = block?.Original,
+                    TranslatedValue = kv.Value ?? string.Empty
+                };
+            })
+            .ToList();
+        await TryArchiveTranslationRowsAsync(
+            "block",
+            siteHost,
+            version,
+            language,
+            normalizedPagePath,
+            blockArchiveRows,
+            cancellationToken);
+
         // Merge translated block content into language catalog by source text,
         // then rebuild only the requested page for the selected language.
         var languageCatalogPath = Path.Combine(i18nFolder, $"{language}.json");
@@ -820,6 +888,168 @@ public sealed class MirrorService : ISiteMirrorService
         };
     }
 
+    public Task<IReadOnlyList<string>> ListMirrorBlockCatalogHostsAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        if (!Directory.Exists(outputRoot))
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
+
+        var list = Directory.EnumerateDirectories(outputRoot)
+            .Select(static p => Path.GetFileName(p))
+            .Where(static n => !string.IsNullOrEmpty(n) && n[0] != '.')
+            .OrderBy(static n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<string>>(list);
+    }
+
+    public Task<IReadOnlyList<string>> ListMirrorBlockCatalogVersionsAsync(
+        string siteHost,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(siteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(siteHost));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(siteHost.Trim());
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteRoot = Path.Combine(outputRoot, normalizedHost);
+        if (!Directory.Exists(siteRoot))
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
+
+        var list = Directory.EnumerateDirectories(siteRoot)
+            .Select(static p => Path.GetFileName(p))
+            .Where(static n => !string.IsNullOrEmpty(n) && n[0] != '.')
+            .OrderBy(static n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<string>>(list);
+    }
+
+    public Task<IReadOnlyList<string>> ListMirrorBlockCatalogPagePathsAsync(
+        string siteHost,
+        string version,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(siteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(siteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            throw new ArgumentException("Version is required.", nameof(version));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(siteHost.Trim());
+        var normalizedVersion = NormalizeVersion(version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var blocksRoot = Path.Combine(
+            outputRoot,
+            normalizedHost,
+            normalizedVersion,
+            LocalizationGenerator.CatalogRootFolderName,
+            LocalizationGenerator.PerPageBlocksFolderName);
+        if (!Directory.Exists(blocksRoot))
+        {
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        }
+
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in Directory.EnumerateFiles(blocksRoot, "*.json", SearchOption.AllDirectories))
+        {
+            if (string.Equals(Path.GetFileName(file), LocalizationGenerator.CommonBlockFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var rel = Path.GetRelativePath(blocksRoot, file).Replace('\\', '/');
+            var pagePath = NormalizeBlockPagePath(rel);
+            if (!string.IsNullOrWhiteSpace(pagePath))
+            {
+                set.Add(pagePath);
+            }
+        }
+
+        var list = set.OrderBy(static p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        return Task.FromResult<IReadOnlyList<string>>(list);
+    }
+
+    public async Task<BlockPageToFlatBatchResponse> BlockPagesToFlatBatchAsync(
+        BlockPagesToFlatBatchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Version))
+        {
+            throw new ArgumentException("Version is required.", nameof(request.Version));
+        }
+
+        var paths = (request.PagePaths ?? Array.Empty<string>())
+            .Select(NormalizeBlockPagePath)
+            .Where(static p => !string.IsNullOrWhiteSpace(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (paths.Count == 0)
+        {
+            throw new ArgumentException("Select at least one page path.", nameof(request.PagePaths));
+        }
+
+        var merged = new Dictionary<string, string>(StringComparer.Ordinal);
+        var included = new List<string>();
+        var failures = new List<BlockPageToFlatBatchFailure>();
+        foreach (var pagePath in paths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var single = new BlockPageToFlatRequest
+                {
+                    SiteHost = request.SiteHost,
+                    Version = request.Version,
+                    PagePath = pagePath,
+                    UseOriginalWhenTranslatedEmpty = request.UseOriginalWhenTranslatedEmpty
+                };
+                var part = await BlockPageToFlatAsync(single, cancellationToken);
+                foreach (var kv in part.Entries)
+                {
+                    merged[kv.Key] = kv.Value;
+                }
+
+                included.Add(pagePath);
+            }
+            catch (Exception ex)
+            {
+                failures.Add(new BlockPageToFlatBatchFailure
+                {
+                    PagePath = pagePath,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        var ordered = merged.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        var entriesJson = JsonSerializer.Serialize(ordered, CatalogJsonOptions);
+        return new BlockPageToFlatBatchResponse
+        {
+            Entries = ordered,
+            EntriesJson = entriesJson,
+            IncludedPagePaths = included,
+            Failures = failures
+        };
+    }
+
     public async Task<ApplyCommonBlockTranslationsResult> ApplyCommonBlockTranslationsAsync(
         string siteHost,
         string version,
@@ -887,6 +1117,25 @@ public sealed class MirrorService : ISiteMirrorService
         };
         var commonJson = JsonSerializer.Serialize(commonPayload, CatalogJsonOptions);
         await File.WriteAllTextAsync(commonPath, commonJson, Encoding.UTF8, cancellationToken);
+
+        var uploadArchiveRows = incoming
+            .Where(e => !string.IsNullOrWhiteSpace(e.Key))
+            .Select(e => new TranslationArchiveRow
+            {
+                TranslationKey = e.Key,
+                OriginalText = e.Original,
+                TranslatedValue = e.Translated ?? string.Empty,
+                PagePath = "/_common"
+            })
+            .ToList();
+        await TryArchiveTranslationRowsAsync(
+            "common",
+            normalizedHost,
+            normalizedVersion,
+            normalizedLanguage,
+            pagePath: null,
+            uploadArchiveRows,
+            cancellationToken);
 
         var languageCatalogPath = Path.Combine(i18nFolder, $"{normalizedLanguage}.json");
         var mergedLanguageEntries = await LoadLanguageEntriesAsync(languageCatalogPath, cancellationToken);
@@ -967,6 +1216,7 @@ public sealed class MirrorService : ISiteMirrorService
         var commonPath = Path.Combine(blocksFolder, LocalizationGenerator.CommonBlockFileName);
         var existing = await LoadCommonCatalogAsync(commonPath, cancellationToken);
         var merged = new Dictionary<string, CommonBlockEntryPayload>(existing, StringComparer.Ordinal);
+        var touchedCommonKeys = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var pair in request.Entries ?? new Dictionary<string, string>(StringComparer.Ordinal))
         {
@@ -989,7 +1239,7 @@ public sealed class MirrorService : ISiteMirrorService
                 }
                 original = sourceEntries.TryGetValue(key, out var sourceOriginal)
                     ? sourceOriginal
-                    : existingEntry.Original;
+                    : existingEntry!.Original;
             }
             else
             {
@@ -1007,6 +1257,7 @@ public sealed class MirrorService : ISiteMirrorService
                 Original = original,
                 Translated = translated
             };
+            touchedCommonKeys.Add(key);
         }
 
         var commonPayload = new CommonBlockCatalogPayload
@@ -1018,6 +1269,28 @@ public sealed class MirrorService : ISiteMirrorService
         };
         var commonJson = JsonSerializer.Serialize(commonPayload, CatalogJsonOptions);
         await File.WriteAllTextAsync(commonPath, commonJson, Encoding.UTF8, cancellationToken);
+
+        var commonBodyArchiveRows = touchedCommonKeys
+            .Select(k =>
+            {
+                merged.TryGetValue(k, out var e);
+                return new TranslationArchiveRow
+                {
+                    TranslationKey = k,
+                    OriginalText = e?.Original,
+                    TranslatedValue = e?.Translated ?? string.Empty,
+                    PagePath = "/_common"
+                };
+            })
+            .ToList();
+        await TryArchiveTranslationRowsAsync(
+            "common",
+            normalizedHost,
+            normalizedVersion,
+            normalizedLanguage,
+            pagePath: null,
+            commonBodyArchiveRows,
+            cancellationToken);
 
         var languageCatalogPath = Path.Combine(i18nFolder, $"{normalizedLanguage}.json");
         var mergedLanguageEntries = await LoadLanguageEntriesAsync(languageCatalogPath, cancellationToken);
@@ -2735,6 +3008,204 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         return entries;
+    }
+
+    private async Task TryArchiveTranslationRowsAsync(
+        string scope,
+        string siteHost,
+        string version,
+        string language,
+        string? pagePath,
+        IReadOnlyList<TranslationArchiveRow> rows,
+        CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_dbConnectionString))
+        {
+            _logger.LogWarning(
+                "TranslationArchive not written ({RowCount} row(s)): Database connection string is empty. Set Database:ConnectionString in appsettings.",
+                rows.Count);
+            return;
+        }
+
+        try
+        {
+            await _crawlRepository.AppendTranslationArchiveAsync(
+                scope,
+                siteHost,
+                version,
+                language,
+                pagePath,
+                rows,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "TranslationArchive write failed (non-fatal). Scope={Scope}, SiteHost={SiteHost}, Version={Version}",
+                scope,
+                siteHost,
+                version);
+        }
+    }
+
+    /// <summary>
+    /// Maps global catalog keys (<c>k_*</c>) to a route path using per-page block originals and <c>_common.json</c> keys.
+    /// </summary>
+    private async Task<Dictionary<string, string>> BuildTranslationKeyToPagePathMapFromI18nAsync(
+        string i18nFolder,
+        CancellationToken cancellationToken)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        var blocksRoot = Path.Combine(i18nFolder, LocalizationGenerator.PerPageBlocksFolderName);
+        if (!Directory.Exists(blocksRoot))
+        {
+            return map;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(blocksRoot, "*.json", SearchOption.AllDirectories))
+        {
+            if (string.Equals(Path.GetFileName(file), LocalizationGenerator.CommonBlockFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string raw;
+            try
+            {
+                raw = await File.ReadAllTextAsync(file, cancellationToken);
+            }
+            catch
+            {
+                continue;
+            }
+
+            BlockPagePayload doc;
+            try
+            {
+                doc = JsonSerializer.Deserialize<BlockPagePayload>(raw, BlockExchangeReadOptions) ?? new BlockPagePayload();
+            }
+            catch
+            {
+                continue;
+            }
+
+            var page = string.IsNullOrWhiteSpace(doc.Page) ? "/" : doc.Page.Trim();
+            foreach (var item in FlattenBlockItems(doc))
+            {
+                if (string.IsNullOrWhiteSpace(item.Original))
+                {
+                    continue;
+                }
+
+                var key = LocalizationGenerator.BuildGlobalTextKey(item.Original);
+                map[key] = page;
+            }
+        }
+
+        var commonPath = Path.Combine(blocksRoot, LocalizationGenerator.CommonBlockFileName);
+        if (File.Exists(commonPath))
+        {
+            try
+            {
+                var raw = await File.ReadAllTextAsync(commonPath, cancellationToken);
+                var commonDoc = JsonSerializer.Deserialize<CommonBlockCatalogPayload>(raw, BlockExchangeReadOptions);
+                if (commonDoc?.Entries is { Count: > 0 })
+                {
+                    foreach (var e in commonDoc.Entries)
+                    {
+                        if (string.IsNullOrWhiteSpace(e.Key))
+                        {
+                            continue;
+                        }
+
+                        map.TryAdd(e.Key.Trim(), "/_common");
+                    }
+                }
+            }
+            catch
+            {
+                // ignore invalid common file
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>
+    /// Persists each language catalog (<c>_i18n/{lang}.json</c>) to <c>TranslationArchive</c> after a crawl so DB stays in sync with generated files.
+    /// </summary>
+    private async Task ArchiveCatalogsAfterMirrorAsync(
+        string siteHost,
+        string version,
+        string siteOutputPath,
+        IReadOnlyList<string> languages,
+        CancellationToken cancellationToken)
+    {
+        if (languages.Count == 0)
+        {
+            return;
+        }
+
+        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+        if (!Directory.Exists(i18nFolder))
+        {
+            return;
+        }
+
+        var keyToPage = await BuildTranslationKeyToPagePathMapFromI18nAsync(i18nFolder, cancellationToken);
+        const int maxRowsPerLanguage = 12_000;
+        foreach (var language in languages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var lang = language.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(lang))
+            {
+                continue;
+            }
+
+            var catalogPath = Path.Combine(i18nFolder, $"{lang}.json");
+            var entries = await LoadLanguageEntriesAsync(catalogPath, cancellationToken);
+            if (entries.Count == 0)
+            {
+                continue;
+            }
+
+            var rows = entries
+                .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+                .Take(maxRowsPerLanguage)
+                .Select(kv =>
+                {
+                    var k = kv.Key.Trim();
+                    keyToPage.TryGetValue(k, out var page);
+                    return new TranslationArchiveRow
+                    {
+                        TranslationKey = k,
+                        OriginalText = null,
+                        TranslatedValue = kv.Value ?? string.Empty,
+                        PagePath = page
+                    };
+                })
+                .ToList();
+
+            if (rows.Count == 0)
+            {
+                continue;
+            }
+
+            await TryArchiveTranslationRowsAsync("catalog", siteHost, version, lang, null, rows, cancellationToken);
+            _logger.LogInformation(
+                "TranslationArchive: mirrored catalog snapshot {Count} row(s) for {SiteHost}/{Version}/{Language}.",
+                rows.Count,
+                siteHost,
+                version,
+                lang);
+        }
     }
 
     private static List<BlockItemPayload> FlattenBlockItems(BlockPagePayload blockPage)

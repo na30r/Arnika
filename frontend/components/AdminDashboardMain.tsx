@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { authHeaders } from "../lib/auth";
 import { type Locale, t } from "../lib/i18n";
@@ -8,6 +8,9 @@ import { TranslationReviewSection } from "./TranslationReviewSection";
 import { CrawledSitesSection } from "./CrawledSitesSection";
 import { AssetInjectionSection } from "./AssetInjectionSection";
 import { BlockExchangeSection } from "./BlockExchangeSection";
+import { LogsSection } from "./LogsSection";
+import { TranslationDbSection } from "./TranslationDbSection";
+import Link from "next/link";
 
 type MirrorResponse = {
   crawlId?: string;
@@ -33,25 +36,143 @@ type MirrorResponse = {
   skippedPages?: number;
 };
 
+type MirrorQueueItemDto = {
+  itemId?: string;
+  url?: string;
+  status?: string;
+  crawlId?: string | null;
+  errorMessage?: string | null;
+  result?: MirrorResponse | null;
+};
+
+type MirrorQueueBatchPayload = {
+  batchId?: string;
+  items?: MirrorQueueItemDto[];
+  allFinished?: boolean;
+  purgedFromDatabase?: boolean;
+};
+
 const defaultTarget = "https://nextjs.org/docs";
+
+function parseDocumentationUrls(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function batchLabelSuffix(batch: MirrorQueueBatchPayload): string {
+  if (!batch.batchId) {
+    return "";
+  }
+  const tail = batch.purgedFromDatabase ? " — removed from queue table" : "";
+  return `: ${batch.batchId}${tail}`;
+}
 
 export function AdminDashboardMain() {
   const params = useParams();
   const locale = (params?.locale as Locale) || "en";
-  const [url, setUrl] = useState(defaultTarget);
+  const [urlsText, setUrlsText] = useState(defaultTarget);
   const [version, setVersion] = useState("latest");
   const [linkDrillCount, setLinkDrillCount] = useState(0);
-  const [languagesText, setLanguagesText] = useState("en");
+  const [languagesText, setLanguagesText] = useState("en,fa");
   const [doNotTranslateText, setDoNotTranslateText] = useState("");
   const [generalClassesText, setGeneralClassesText] = useState("");
+  const [crawlAllowPrefixesText, setCrawlAllowPrefixesText] = useState("");
+  const [crawlDenyPrefixesText, setCrawlDenyPrefixesText] = useState("");
+  const [siteOrigin, setSiteOrigin] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MirrorResponse | null>(null);
+  const [queueBatchId, setQueueBatchId] = useState<string | null>(null);
+  const [queueBatchSnapshot, setQueueBatchSnapshot] = useState<MirrorQueueBatchPayload | null>(null);
+  const [queuePollActive, setQueuePollActive] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [manualPreviewPath, setManualPreviewPath] = useState("/mirror/nextjs.org/latest/_localized/en/docs.html");
   const [activeSection, setActiveSection] = useState<
-    "crawl" | "translations" | "blockExchange" | "crawledSites" | "assetInjection"
+    "crawl" | "translations" | "blockExchange" | "crawledSites" | "assetInjection" | "logs" | "translationDb"
   >("crawl");
+
+  useEffect(() => {
+    setSiteOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
+
+  useEffect(() => {
+    if (!queueBatchId || !queuePollActive) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function pollOnce() {
+      try {
+        const response = await fetch(`/api/mirror/queue/batch/${encodeURIComponent(queueBatchId!)}`, {
+          headers: { ...authHeaders() },
+          cache: "no-store"
+        });
+        const text = await response.text();
+        let payload: MirrorQueueBatchPayload | null = null;
+        try {
+          payload = text ? (JSON.parse(text) as MirrorQueueBatchPayload) : null;
+        } catch {
+          payload = null;
+        }
+        if (!response.ok) {
+          if (cancelled) return;
+          const hint =
+            response.status === 404
+              ? " If the API is crawling but this says not found, Next.js MIRROR_API_BASE_URL may point at a different server than the one that received the enqueue."
+              : "";
+          setQueueError(
+            ((payload as { message?: string } | null)?.message || `Batch status failed (${response.status}).`) + hint
+          );
+          setQueuePollActive(false);
+          return;
+        }
+        if (cancelled) return;
+        setQueueError(null);
+        setQueueBatchSnapshot(payload);
+        if (payload?.allFinished) {
+          setQueuePollActive(false);
+          const firstOk = payload.items?.find(
+            (i) => i.status === "completed" && i.result?.frontendPreviewPath
+          );
+          if (firstOk?.result) {
+            setResult(firstOk.result);
+            if (firstOk.result.frontendPreviewPath) {
+              setManualPreviewPath(firstOk.result.frontendPreviewPath);
+            }
+            if (firstOk.result.defaultLanguage) {
+              setSelectedLanguage(firstOk.result.defaultLanguage);
+            }
+            if (firstOk.result.availableLanguages?.length) {
+              setLanguagesText(firstOk.result.availableLanguages.join(", "));
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setQueueError("Could not reach batch status API.");
+        }
+      }
+    }
+
+    const interval = window.setInterval(pollOnce, 1000);
+    pollOnce();
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [queueBatchId, queuePollActive]);
+
+  const manualPreviewFullUrl = useMemo(() => {
+    const path = manualPreviewPath.trim();
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    if (!siteOrigin) return path;
+    return `${siteOrigin}${path.startsWith("/") ? path : `/${path}`}`;
+  }, [manualPreviewPath, siteOrigin]);
 
   let iframeSrc = manualPreviewPath.trim();
   if (result?.frontendPreviewPath && result?.siteHost && result?.version) {
@@ -75,6 +196,14 @@ export function AdminDashboardMain() {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    setQueueError(null);
+
+    const docUrls = parseDocumentationUrls(urlsText);
+    if (docUrls.length === 0) {
+      setIsLoading(false);
+      setError("Enter at least one documentation URL.");
+      return;
+    }
 
     try {
       const parsedLanguages = languagesText
@@ -89,6 +218,80 @@ export function AdminDashboardMain() {
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean);
+      const parsedAllowPrefixes = crawlAllowPrefixesText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const parsedDenyPrefixes = crawlDenyPrefixesText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      const mirrorBodyBase = {
+        version,
+        linkDrillCount,
+        languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
+        crawlUrlAllowPrefixes: parsedAllowPrefixes.length > 0 ? parsedAllowPrefixes : undefined,
+        crawlUrlDenyPrefixes: parsedDenyPrefixes.length > 0 ? parsedDenyPrefixes : undefined,
+        doNotTranslateTexts: parsedDoNotTranslateTexts,
+        generalTranslationClasses: parsedGeneralClasses,
+        extraWaitMs: 4000,
+        autoScroll: true,
+        scrollStepPx: 1200,
+        scrollDelayMs: 150,
+        maxScrollRounds: 24
+      };
+
+      if (docUrls.length >= 2) {
+        setQueueBatchId(null);
+        setQueueBatchSnapshot(null);
+        setQueuePollActive(false);
+
+        const response = await fetch("/api/mirror/queue", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders()
+          },
+          body: JSON.stringify({
+            urls: docUrls,
+            ...mirrorBodyBase
+          })
+        });
+
+        const text = await response.text();
+        let payload: { batchId?: string; message?: string } | null = null;
+        try {
+          payload = text ? (JSON.parse(text) as { batchId?: string; message?: string }) : null;
+        } catch {
+          throw new Error(`Mirror queue API error (${response.status}). ${text.slice(0, 200)}`);
+        }
+        if (!response.ok) {
+          throw new Error(payload?.message || `Mirror queue request failed (${response.status}).`);
+        }
+        if (!payload?.batchId) {
+          throw new Error("Queue did not return a batch id.");
+        }
+
+        setQueueBatchId(payload.batchId);
+        setQueueBatchSnapshot({
+          batchId: payload.batchId,
+          items: docUrls.map((urlLine, i) => ({
+            itemId: `pending-${i}`,
+            url: urlLine,
+            status: "pending",
+            crawlId: null,
+            errorMessage: null,
+            result: null
+          })),
+          allFinished: false,
+          purgedFromDatabase: false
+        });
+        setQueuePollActive(true);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/mirror", {
         method: "POST",
         headers: {
@@ -96,17 +299,8 @@ export function AdminDashboardMain() {
           ...authHeaders()
         },
         body: JSON.stringify({
-          url,
-          version,
-          linkDrillCount,
-          languages: parsedLanguages.length > 0 ? parsedLanguages : ["en"],
-          doNotTranslateTexts: parsedDoNotTranslateTexts,
-          generalTranslationClasses: parsedGeneralClasses,
-          extraWaitMs: 4000,
-          autoScroll: true,
-          scrollStepPx: 1200,
-          scrollDelayMs: 150,
-          maxScrollRounds: 24
+          url: docUrls[0],
+          ...mirrorBodyBase
         })
       });
 
@@ -181,6 +375,23 @@ export function AdminDashboardMain() {
         >
           Asset Injection
         </button>
+        <button
+          type="button"
+          className={`sidebar-item ${activeSection === "logs" ? "active" : ""}`}
+          onClick={() => setActiveSection("logs")}
+        >
+          Server logs
+        </button>
+        <button
+          type="button"
+          className={`sidebar-item ${activeSection === "translationDb" ? "active" : ""}`}
+          onClick={() => setActiveSection("translationDb")}
+        >
+          Translation DB
+        </button>
+        <p className="muted small-note" style={{ marginTop: "0.5rem" }}>
+          <Link href={`/${locale}/admin/translation-db`}>Open Translation DB full page →</Link>
+        </p>
       </aside>
 
       <section className="admin-content">
@@ -192,16 +403,22 @@ export function AdminDashboardMain() {
 
         <form onSubmit={handleSubmit} className="form">
           <label htmlFor="url-input">{t("form.url", locale)}</label>
-          <div className="row">
-            <input
-              id="url-input"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://nextjs.org/docs"
-              autoComplete="off"
-              required
-            />
-          </div>
+          <p className="muted small-note">
+            One URL mirrors immediately in the browser request. Two or more lines enqueue jobs in SQL; the API runs
+            them <strong>one after another</strong> (shared disk output cannot be mirrored in parallel on Windows). This
+            page polls for per-URL status. When every URL in the batch has finished, the next status poll returns the
+            final snapshot and rows are deleted from the queue table.
+          </p>
+          <textarea
+            id="url-input"
+            value={urlsText}
+            onChange={(event) => setUrlsText(event.target.value)}
+            placeholder={"https://nextjs.org/docs\nhttps://nextjs.org/docs/app"}
+            autoComplete="off"
+            required
+            rows={5}
+            className="urls-textarea"
+          />
           <label htmlFor="version-input">{t("form.version", locale)}</label>
           <div className="row">
             <input
@@ -227,13 +444,37 @@ export function AdminDashboardMain() {
             />
           </div>
           <p className="muted small-note">{t("form.linkDrillHint", locale)}</p>
+          <label htmlFor="crawl-allow-input">Crawl URL allow prefixes (optional, one per line)</label>
+          <p className="muted small-note">
+            If set, link drill only follows same-site URLs under these prefixes (e.g.{" "}
+            <code>https://nextjs.org/docs</code> or <code>/docs</code>).
+          </p>
+          <textarea
+            id="crawl-allow-input"
+            value={crawlAllowPrefixesText}
+            onChange={(event) => setCrawlAllowPrefixesText(event.target.value)}
+            placeholder={"https://nextjs.org/docs\n/docs/app"}
+            rows={3}
+          />
+          <label htmlFor="crawl-deny-input">Crawl URL deny prefixes (optional, one per line)</label>
+          <p className="muted small-note">
+            Same-site URLs under these paths are skipped (e.g. <code>/blog</code> excludes blog and child
+            pages).
+          </p>
+          <textarea
+            id="crawl-deny-input"
+            value={crawlDenyPrefixesText}
+            onChange={(event) => setCrawlDenyPrefixesText(event.target.value)}
+            placeholder={"/blog\nhttps://nextjs.org/showcase"}
+            rows={3}
+          />
           <label htmlFor="languages-input">{t("form.languages", locale)}</label>
           <div className="row">
             <input
               id="languages-input"
               value={languagesText}
               onChange={(event) => setLanguagesText(event.target.value)}
-              placeholder="en, fa, ar"
+              placeholder="en, fa"
               autoComplete="off"
             />
           </div>
@@ -256,6 +497,68 @@ export function AdminDashboardMain() {
         </form>
 
         {error && <p className="error">{error}</p>}
+        {queueError && <p className="error">{queueError}</p>}
+
+        {queueBatchSnapshot?.items && queueBatchSnapshot.items.length > 0 && (
+          <div className="form queue-batch-panel">
+            <label>Queued mirrors{batchLabelSuffix(queueBatchSnapshot)}</label>
+            <div className="queue-batch-table" role="table">
+              <div className="queue-batch-head" role="row">
+                <span role="columnheader">URL</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader">Result</span>
+              </div>
+              {queueBatchSnapshot.items.map((item, index) => (
+                <div className="queue-batch-row" role="row" key={item.itemId ?? `${item.url}-${index}`}>
+                  <span className="queue-batch-url" role="cell">
+                    {item.url}
+                  </span>
+                  <span role="cell">
+                    <strong>{item.status ?? "-"}</strong>
+                    {item.crawlId ? (
+                      <span className="muted small-note" style={{ display: "block" }}>
+                        <code>{item.crawlId}</code>
+                      </span>
+                    ) : null}
+                    {item.errorMessage ? (
+                      <span className="error small-note" style={{ display: "block" }}>
+                        {item.errorMessage}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span role="cell" className="queue-batch-actions">
+                    {item.result?.frontendPreviewPath ? (
+                      <button
+                        type="button"
+                        className="queue-item"
+                        onClick={() => {
+                          setManualPreviewPath(item.result!.frontendPreviewPath!);
+                          setResult(item.result!);
+                        }}
+                      >
+                        Preview
+                      </button>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                    {item.result?.filesSaved != null ? (
+                      <span className="muted small-note" style={{ display: "block" }}>
+                        {item.result.filesSaved} files
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(queueBatchId || queuePollActive) && (
+          <p className="muted small-note">
+            Queue batch: <code>{queueBatchId ?? "…"}</code>
+            {queuePollActive ? " — polling status every second" : ""}
+          </p>
+        )}
 
         <div className="meta">
           <div>
@@ -310,6 +613,14 @@ export function AdminDashboardMain() {
             placeholder="/mirror/nextjs.org/latest/_localized/en/docs.html"
             autoComplete="off"
           />
+          {manualPreviewFullUrl ? (
+            <p className="manual-preview-full-url">
+              <span className="muted">Full URL: </span>
+              <a href={manualPreviewFullUrl} target="_blank" rel="noreferrer">
+                {manualPreviewFullUrl}
+              </a>
+            </p>
+          ) : null}
         </div>
 
         {result?.pages && result.pages.length > 0 && (
@@ -352,6 +663,10 @@ export function AdminDashboardMain() {
         <BlockExchangeSection />
       ) : activeSection === "crawledSites" ? (
         <CrawledSitesSection />
+      ) : activeSection === "logs" ? (
+        <LogsSection />
+      ) : activeSection === "translationDb" ? (
+        <TranslationDbSection embedded />
       ) : (
         <AssetInjectionSection />
       )}

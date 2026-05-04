@@ -2,10 +2,36 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Events;
+using SiteMirror.Api.Logging;
 using SiteMirror.Api.Models;
 using SiteMirror.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<InMemoryLogBuffer>();
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    var buffer = services.GetRequiredService<InMemoryLogBuffer>();
+    var logDir = Path.Combine(context.HostingEnvironment.ContentRootPath, "logs");
+    Directory.CreateDirectory(logDir);
+    var filePath = Path.Combine(logDir, "sitemirror-.log");
+
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Information)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+        .WriteTo.File(
+            filePath,
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 14,
+            shared: true,
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+        .WriteTo.Sink(new RingBufferSink(buffer));
+});
 
 builder.Services.Configure<MirrorSettings>(builder.Configuration.GetSection(MirrorSettings.SectionName));
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(DatabaseSettings.SectionName));
@@ -42,6 +68,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ICurrentUser, HttpContextCurrentUser>();
 builder.Services.AddSingleton<ICrawlRepository, SqlServerCrawlRepository>();
+builder.Services.AddSingleton<MirrorGlobalExecutionGate>();
+builder.Services.AddHostedService<MirrorQueueBackgroundService>();
 builder.Services.AddSingleton<IUserRepository, SqlUserRepository>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddScoped<ISiteMirrorService, MirrorService>();
@@ -77,8 +105,21 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("SiteMirror API starting ({Environment})", app.Environment.EnvironmentName);
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}

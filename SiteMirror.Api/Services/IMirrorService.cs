@@ -38,4 +38,17 @@ public interface ISiteMirrorService
     Task<BlockPageToFlatResponse> BlockPageToFlatAsync(
         BlockPageToFlatRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> ListMirrorBlockCatalogHostsAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> ListMirrorBlockCatalogVersionsAsync(string siteHost, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> ListMirrorBlockCatalogPagePathsAsync(
+        string siteHost,
+        string version,
+        CancellationToken cancellationToken = default);
+
+    Task<BlockPageToFlatBatchResponse> BlockPagesToFlatBatchAsync(
+        BlockPagesToFlatBatchRequest request,
+        CancellationToken cancellationToken = default);
 }

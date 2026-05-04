@@ -30,4 +30,58 @@ public interface ICrawlRepository
         Guid userId,
         int take,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Append-only log of translation key/values (catalog, common blocks, or per-page blocks). No-op when connection string is empty or rows empty.
+    /// </summary>
+    Task AppendTranslationArchiveAsync(
+        string scope,
+        string siteHost,
+        string version,
+        string language,
+        string? pagePath,
+        IReadOnlyList<TranslationArchiveRow> rows,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TranslationArchiveRecordDto>> QueryTranslationArchiveAsync(
+        string? siteHost,
+        string? version,
+        string? language,
+        string? scope,
+        int take,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Latest <c>TranslatedValue</c> per <c>TranslationKey</c> for scope <c>catalog</c> (by <see cref="TranslationArchiveRecordDto.SavedAtUtc"/>).
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> GetLatestCatalogEntriesFromArchiveAsync(
+        string siteHost,
+        string version,
+        string language,
+        CancellationToken cancellationToken = default);
+
+    Task EnqueueMirrorUrlBatchAsync(
+        string batchId,
+        Guid? userId,
+        IReadOnlyList<string> urls,
+        MirrorQueueTemplate template,
+        CancellationToken cancellationToken = default);
+
+    Task<MirrorQueueClaimedItem?> TryClaimMirrorQueueItemAsync(CancellationToken cancellationToken = default);
+
+    Task CompleteMirrorQueueItemAsync(
+        Guid itemId,
+        string status,
+        string? crawlId,
+        MirrorResult? result,
+        string? errorMessage,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MirrorQueueItemRow>> ListMirrorQueueBatchAsync(
+        string batchId,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteMirrorQueueBatchAsync(
+        string batchId,
+        CancellationToken cancellationToken = default);
 }

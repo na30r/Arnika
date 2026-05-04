@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authHeaders } from "../lib/auth";
 
 type CrawledPage = {
@@ -27,6 +27,11 @@ export function CrawledSitesSection() {
   const [sites, setSites] = useState<CrawledSite[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
 
   async function loadSites() {
     setLoading(true);
@@ -79,17 +84,23 @@ export function CrawledSitesSection() {
                 <div className="form">
                   <label>Preview Pages</label>
                   <div className="queue-list">
-                    {site.pages.map((page) => (
-                      <a
-                        key={page.entryFileRelativePath || page.frontendPreviewPath}
-                        href={page.frontendPreviewPath || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="queue-item"
-                      >
-                        {page.entryFileRelativePath || page.frontendPreviewPath}
-                      </a>
-                    ))}
+                    {site.pages.map((page) => {
+                      const rel = page.frontendPreviewPath || "#";
+                      const full =
+                        origin && rel.startsWith("/") ? `${origin}${rel}` : rel;
+                      return (
+                        <a
+                          key={page.entryFileRelativePath || page.frontendPreviewPath}
+                          href={rel}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="queue-item crawled-page-full-link"
+                          title={full}
+                        >
+                          {full}
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
               )}

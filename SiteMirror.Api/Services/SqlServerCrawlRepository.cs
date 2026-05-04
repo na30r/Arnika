@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
@@ -132,7 +133,46 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 );
             END
 
-    
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'TranslationArchive')
+            BEGIN
+                CREATE TABLE dbo.TranslationArchive
+                (
+                    Id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    Scope NVARCHAR(32) NOT NULL,
+                    SiteHost NVARCHAR(255) NOT NULL,
+                    Version NVARCHAR(128) NOT NULL,
+                    Language NVARCHAR(32) NOT NULL,
+                    PagePath NVARCHAR(2048) NULL,
+                    TranslationKey NVARCHAR(2048) NOT NULL,
+                    OriginalText NVARCHAR(MAX) NULL,
+                    TranslatedValue NVARCHAR(MAX) NOT NULL,
+                    SavedAtUtc DATETIMEOFFSET NOT NULL
+                );
+                CREATE INDEX IX_TranslationArchive_SiteVersionLang
+                    ON dbo.TranslationArchive (SiteHost, Version, Language, Scope, SavedAtUtc DESC);
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MirrorUrlQueueItems')
+            BEGIN
+                CREATE TABLE dbo.MirrorUrlQueueItems
+                (
+                    ItemId UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    BatchId NVARCHAR(64) NOT NULL,
+                    UserId UNIQUEIDENTIFIER NULL,
+                    Url NVARCHAR(2048) NOT NULL,
+                    OptionsJson NVARCHAR(MAX) NOT NULL,
+                    Status NVARCHAR(32) NOT NULL,
+                    CrawlId NVARCHAR(64) NULL,
+                    ResultJson NVARCHAR(MAX) NULL,
+                    ErrorMessage NVARCHAR(MAX) NULL,
+                    CreatedAtUtc DATETIMEOFFSET NOT NULL,
+                    StartedAtUtc DATETIMEOFFSET NULL,
+                    CompletedAtUtc DATETIMEOFFSET NULL
+                );
+                CREATE INDEX IX_MirrorUrlQueueItems_BatchId ON dbo.MirrorUrlQueueItems (BatchId);
+                CREATE INDEX IX_MirrorUrlQueueItems_Status_Created ON dbo.MirrorUrlQueueItems (Status, CreatedAtUtc);
+            END
+
             """;
 
         await using var command = new SqlCommand(sql, connection);
@@ -499,6 +539,436 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
             Crawl = crawl,
             Pages = pages
         };
+    }
+
+    public async Task AppendTranslationArchiveAsync(
+        string scope,
+        string siteHost,
+        string version,
+        string language,
+        string? pagePath,
+        IReadOnlyList<TranslationArchiveRow> rows,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) || rows.Count == 0)
+        {
+            return;
+        }
+
+        var normalizedScope = scope.Trim();
+        if (normalizedScope.Length > 32)
+        {
+            normalizedScope = normalizedScope[..32];
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        const string insertSql = """
+            INSERT INTO dbo.TranslationArchive
+                (Scope, SiteHost, Version, Language, PagePath, TranslationKey, OriginalText, TranslatedValue, SavedAtUtc)
+            VALUES
+                (@Scope, @SiteHost, @Version, @Language, @PagePath, @TranslationKey, @OriginalText, @TranslatedValue, @SavedAtUtc);
+            """;
+
+        var savedAt = DateTimeOffset.UtcNow;
+        try
+        {
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrWhiteSpace(row.TranslationKey))
+                {
+                    continue;
+                }
+
+                await using var cmd = new SqlCommand(insertSql, connection, transaction);
+                cmd.Parameters.AddWithValue("@Scope", normalizedScope);
+                cmd.Parameters.AddWithValue("@SiteHost", siteHost);
+                cmd.Parameters.AddWithValue("@Version", version);
+                cmd.Parameters.AddWithValue("@Language", language);
+                var effectivePagePath = string.IsNullOrWhiteSpace(row.PagePath) ? pagePath : row.PagePath.Trim();
+                cmd.Parameters.AddWithValue("@PagePath", (object?)effectivePagePath ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@TranslationKey", row.TranslationKey);
+                cmd.Parameters.Add(new SqlParameter("@OriginalText", SqlDbType.NVarChar, -1)
+                {
+                    Value = (object?)row.OriginalText ?? DBNull.Value
+                });
+                cmd.Parameters.Add(new SqlParameter("@TranslatedValue", SqlDbType.NVarChar, -1)
+                {
+                    Value = row.TranslatedValue ?? string.Empty
+                });
+                cmd.Parameters.AddWithValue("@SavedAtUtc", savedAt);
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<TranslationArchiveRecordDto>> QueryTranslationArchiveAsync(
+        string? siteHost,
+        string? version,
+        string? language,
+        string? scope,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            return Array.Empty<TranslationArchiveRecordDto>();
+        }
+
+        var limit = Math.Clamp(take, 1, 5000);
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT TOP (@Take)
+                Id, Scope, SiteHost, Version, Language, PagePath, TranslationKey, OriginalText, TranslatedValue, SavedAtUtc
+            FROM dbo.TranslationArchive
+            WHERE (@SiteHost IS NULL OR SiteHost = @SiteHost)
+              AND (@Version IS NULL OR Version = @Version)
+              AND (@Language IS NULL OR Language = @Language)
+              AND (@Scope IS NULL OR Scope = @Scope)
+            ORDER BY SavedAtUtc DESC, Id DESC;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@Take", limit);
+        cmd.Parameters.AddWithValue("@SiteHost", string.IsNullOrWhiteSpace(siteHost) ? (object)DBNull.Value : siteHost.Trim());
+        cmd.Parameters.AddWithValue("@Version", string.IsNullOrWhiteSpace(version) ? (object)DBNull.Value : version.Trim());
+        cmd.Parameters.AddWithValue("@Language", string.IsNullOrWhiteSpace(language) ? (object)DBNull.Value : language.Trim());
+        cmd.Parameters.AddWithValue("@Scope", string.IsNullOrWhiteSpace(scope) ? (object)DBNull.Value : scope.Trim());
+
+        var list = new List<TranslationArchiveRecordDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        var ordPagePath = reader.GetOrdinal("PagePath");
+        var ordOrig = reader.GetOrdinal("OriginalText");
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            list.Add(new TranslationArchiveRecordDto
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Scope = reader.GetString(reader.GetOrdinal("Scope")),
+                SiteHost = reader.GetString(reader.GetOrdinal("SiteHost")),
+                Version = reader.GetString(reader.GetOrdinal("Version")),
+                Language = reader.GetString(reader.GetOrdinal("Language")),
+                PagePath = reader.IsDBNull(ordPagePath) ? null : reader.GetString(ordPagePath),
+                TranslationKey = reader.GetString(reader.GetOrdinal("TranslationKey")),
+                OriginalText = reader.IsDBNull(ordOrig) ? null : reader.GetString(ordOrig),
+                TranslatedValue = reader.GetString(reader.GetOrdinal("TranslatedValue")),
+                SavedAtUtc = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("SavedAtUtc"))
+            });
+        }
+
+        return list;
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetLatestCatalogEntriesFromArchiveAsync(
+        string siteHost,
+        string version,
+        string language,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) ||
+            string.IsNullOrWhiteSpace(siteHost) ||
+            string.IsNullOrWhiteSpace(version) ||
+            string.IsNullOrWhiteSpace(language))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT TranslationKey, TranslatedValue
+            FROM (
+                SELECT TranslationKey, TranslatedValue,
+                    ROW_NUMBER() OVER (PARTITION BY TranslationKey ORDER BY SavedAtUtc DESC, Id DESC) AS rn
+                FROM dbo.TranslationArchive
+                WHERE SiteHost = @SiteHost
+                  AND Version = @Version
+                  AND Language = @Language
+                  AND Scope = N'catalog'
+            ) x
+            WHERE x.rn = 1;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@SiteHost", siteHost.Trim());
+        cmd.Parameters.AddWithValue("@Version", version.Trim());
+        cmd.Parameters.AddWithValue("@Language", language.Trim());
+
+        var dict = new Dictionary<string, string>(StringComparer.Ordinal);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var key = reader.GetString(0);
+            var val = reader.GetString(1);
+            dict[key] = val;
+        }
+
+        return dict;
+    }
+
+    public async Task EnqueueMirrorUrlBatchAsync(
+        string batchId,
+        Guid? userId,
+        IReadOnlyList<string> urls,
+        MirrorQueueTemplate template,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            throw new InvalidOperationException("Database connection string is not configured.");
+        }
+
+        if (urls.Count == 0)
+        {
+            return;
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        var optionsJson = JsonSerializer.Serialize(template, JsonOptions);
+        var now = DateTimeOffset.UtcNow;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string insertSql = """
+            INSERT INTO dbo.MirrorUrlQueueItems
+                (BatchId, UserId, Url, OptionsJson, Status, CreatedAtUtc)
+            VALUES
+                (@BatchId, @UserId, @Url, @OptionsJson, N'pending', @CreatedAtUtc);
+            """;
+
+        try
+        {
+            foreach (var url in urls)
+            {
+                await using var cmd = new SqlCommand(insertSql, connection, (SqlTransaction)transaction);
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                cmd.Parameters.AddWithValue("@UserId", (object?)userId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Url", url);
+                cmd.Parameters.AddWithValue("@OptionsJson", optionsJson);
+                cmd.Parameters.AddWithValue("@CreatedAtUtc", now);
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<MirrorQueueClaimedItem?> TryClaimMirrorQueueItemAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            return null;
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        Guid? itemId = null;
+        try
+        {
+            const string selectSql = """
+                SELECT TOP (1) ItemId
+                FROM dbo.MirrorUrlQueueItems WITH (UPDLOCK, READPAST, ROWLOCK)
+                WHERE Status = N'pending'
+                ORDER BY CreatedAtUtc ASC;
+                """;
+
+            await using (var cmd = new SqlCommand(selectSql, connection, (SqlTransaction)transaction))
+            await using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+            {
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    itemId = reader.GetGuid(0);
+                }
+            }
+
+            if (itemId is null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return null;
+            }
+
+            const string updateSql = """
+                UPDATE dbo.MirrorUrlQueueItems
+                SET Status = N'running', StartedAtUtc = SYSDATETIMEOFFSET()
+                WHERE ItemId = @ItemId AND Status = N'pending';
+                """;
+
+            await using (var updateCmd = new SqlCommand(updateSql, connection, (SqlTransaction)transaction))
+            {
+                updateCmd.Parameters.AddWithValue("@ItemId", itemId.Value);
+                var updated = await updateCmd.ExecuteNonQueryAsync(cancellationToken);
+                if (updated == 0)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return null;
+                }
+            }
+
+            MirrorQueueClaimedItem? claimed = null;
+            const string readSql = """
+                SELECT BatchId, Url, OptionsJson, UserId
+                FROM dbo.MirrorUrlQueueItems
+                WHERE ItemId = @ItemId;
+                """;
+
+            await using (var readCmd = new SqlCommand(readSql, connection, (SqlTransaction)transaction))
+            {
+                readCmd.Parameters.AddWithValue("@ItemId", itemId.Value);
+                await using var reader = await readCmd.ExecuteReaderAsync(cancellationToken);
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    claimed = new MirrorQueueClaimedItem
+                    {
+                        ItemId = itemId.Value,
+                        BatchId = reader.GetString(0),
+                        Url = reader.GetString(1),
+                        OptionsJson = reader.GetString(2),
+                        UserId = reader.IsDBNull(3) ? null : reader.GetGuid(3)
+                    };
+                }
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return claimed;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task CompleteMirrorQueueItemAsync(
+        Guid itemId,
+        string status,
+        string? crawlId,
+        MirrorResult? result,
+        string? errorMessage,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            return;
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        var resultJson = result is null ? null : JsonSerializer.Serialize(result, JsonOptions);
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        const string sql = """
+            UPDATE dbo.MirrorUrlQueueItems
+            SET Status = @Status,
+                CrawlId = @CrawlId,
+                ResultJson = @ResultJson,
+                ErrorMessage = @ErrorMessage,
+                CompletedAtUtc = SYSDATETIMEOFFSET()
+            WHERE ItemId = @ItemId;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@ItemId", itemId);
+        cmd.Parameters.AddWithValue("@Status", status);
+        cmd.Parameters.AddWithValue("@CrawlId", (object?)crawlId ?? DBNull.Value);
+        cmd.Parameters.Add(new SqlParameter("@ResultJson", SqlDbType.NVarChar, -1)
+        {
+            Value = (object?)resultJson ?? DBNull.Value
+        });
+        cmd.Parameters.Add(new SqlParameter("@ErrorMessage", SqlDbType.NVarChar, -1)
+        {
+            Value = (object?)errorMessage ?? DBNull.Value
+        });
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MirrorQueueItemRow>> ListMirrorQueueBatchAsync(
+        string batchId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) || string.IsNullOrWhiteSpace(batchId))
+        {
+            return Array.Empty<MirrorQueueItemRow>();
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT ItemId, Url, Status, CrawlId, ResultJson, ErrorMessage
+            FROM dbo.MirrorUrlQueueItems
+            WHERE BatchId = @BatchId
+            ORDER BY CreatedAtUtc ASC;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@BatchId", batchId);
+
+        var list = new List<MirrorQueueItemRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        var ordCrawl = reader.GetOrdinal("CrawlId");
+        var ordRes = reader.GetOrdinal("ResultJson");
+        var ordErr = reader.GetOrdinal("ErrorMessage");
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            list.Add(new MirrorQueueItemRow
+            {
+                ItemId = reader.GetGuid(reader.GetOrdinal("ItemId")),
+                Url = reader.GetString(reader.GetOrdinal("Url")),
+                Status = reader.GetString(reader.GetOrdinal("Status")),
+                CrawlId = reader.IsDBNull(ordCrawl) ? null : reader.GetString(ordCrawl),
+                ResultJson = reader.IsDBNull(ordRes) ? null : reader.GetString(ordRes),
+                ErrorMessage = reader.IsDBNull(ordErr) ? null : reader.GetString(ordErr)
+            });
+        }
+
+        return list;
+    }
+
+    public async Task DeleteMirrorQueueBatchAsync(
+        string batchId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString) || string.IsNullOrWhiteSpace(batchId))
+        {
+            return;
+        }
+
+        await EnsureSchemaAsync(cancellationToken);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        const string sql = """
+            DELETE FROM dbo.MirrorUrlQueueItems
+            WHERE BatchId = @BatchId;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@BatchId", batchId);
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<bool> ColumnExistsAsync(

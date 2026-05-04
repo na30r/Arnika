@@ -13,8 +13,15 @@ namespace SiteMirror.Api.Controllers;
 public sealed class MirrorController(
     ISiteMirrorService mirrorService,
     IUserRepository userRepository,
-    CrawlReadDbContext crawlReadDbContext) : ControllerBase
+    CrawlReadDbContext crawlReadDbContext,
+    ICrawlRepository crawlRepository) : ControllerBase
 {
+    private static readonly JsonSerializerOptions QueueJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     [HttpPost]
     [ProducesResponseType(typeof(MirrorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -126,6 +133,139 @@ public sealed class MirrorController(
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpPost("queue")]
+    [ProducesResponseType(typeof(MirrorQueueEnqueueResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status402PaymentRequired)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<MirrorQueueEnqueueResponse>> EnqueueMirrorBatch(
+        [FromBody] MirrorQueueEnqueueRequest body,
+        CancellationToken cancellationToken)
+    {
+        var urls = (body.Urls ?? [])
+            .Select(u => u.Trim())
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (urls.Count == 0)
+        {
+            return BadRequest(new { message = "At least one URL is required." });
+        }
+
+        Guid? userId = null;
+        var hasAuthHeader = !string.IsNullOrWhiteSpace(Request.Headers.Authorization);
+        if (hasAuthHeader)
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized(new { message = "Invalid or expired Bearer token." });
+            }
+
+            var userClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userClaim) || !Guid.TryParse(userClaim, out var parsedUserId))
+            {
+                return Unauthorized(new { message = "Invalid token payload." });
+            }
+
+            var user = await userRepository.GetByIdAsync(parsedUserId, cancellationToken);
+            if (user is null)
+            {
+                return Unauthorized(new { message = "User not found." });
+            }
+
+            if (user.SubscriptionEndDateUtc.HasValue && user.SubscriptionEndDateUtc.Value < DateTimeOffset.UtcNow)
+            {
+                return StatusCode(402, new
+                {
+                    message = "Subscription has expired. Renew to run mirrors.",
+                    subscriptionEndDateUtc = user.SubscriptionEndDateUtc
+                });
+            }
+
+            userId = parsedUserId;
+        }
+
+        try
+        {
+            var batchId = $"batch-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N", null)[..8]}";
+            var template = body.ToTemplate();
+            await crawlRepository.EnqueueMirrorUrlBatchAsync(batchId, userId, urls, template, cancellationToken);
+            return Ok(new MirrorQueueEnqueueResponse { BatchId = batchId, QueuedCount = urls.Count });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("connection string", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCode(503, new { message = "Database is required for the mirror queue.", detail = ex.Message });
+        }
+    }
+
+    [HttpGet("queue/batch/{batchId}")]
+    [ProducesResponseType(typeof(MirrorQueueBatchStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MirrorQueueBatchStatusResponse>> GetMirrorQueueBatch(
+        [FromRoute] string batchId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(batchId))
+        {
+            return BadRequest(new { message = "batchId is required." });
+        }
+
+        var trimmedBatchId = batchId.Trim();
+        var rows = await crawlRepository.ListMirrorQueueBatchAsync(trimmedBatchId, cancellationToken);
+        if (rows.Count == 0)
+        {
+            return NotFound(new { message = $"Batch not found: {batchId}" });
+        }
+
+        var items = new List<MirrorQueueItemStatusDto>(rows.Count);
+        foreach (var row in rows)
+        {
+            MirrorResult? result = null;
+            if (string.Equals(row.Status, "completed", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(row.ResultJson))
+            {
+                try
+                {
+                    result = JsonSerializer.Deserialize<MirrorResult>(row.ResultJson, QueueJsonOptions);
+                }
+                catch
+                {
+                    // leave result null
+                }
+            }
+
+            items.Add(new MirrorQueueItemStatusDto
+            {
+                ItemId = row.ItemId,
+                Url = row.Url,
+                Status = row.Status,
+                CrawlId = row.CrawlId,
+                ErrorMessage = row.ErrorMessage,
+                Result = result
+            });
+        }
+
+        var allFinished = rows.All(r =>
+            string.Equals(r.Status, "completed", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(r.Status, "failed", StringComparison.OrdinalIgnoreCase));
+
+        var purged = false;
+        if (allFinished)
+        {
+            await crawlRepository.DeleteMirrorQueueBatchAsync(trimmedBatchId, cancellationToken);
+            purged = true;
+        }
+
+        return Ok(new MirrorQueueBatchStatusResponse
+        {
+            BatchId = trimmedBatchId,
+            Items = items,
+            AllFinished = allFinished,
+            PurgedFromDatabase = purged
+        });
     }
 
     [HttpPost("update-translations")]
@@ -497,6 +637,69 @@ public sealed class MirrorController(
             return BadRequest(new { message = ex.Message });
         }
         catch (FileNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("block-catalog/hosts")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListBlockCatalogHosts(CancellationToken cancellationToken)
+    {
+        var hosts = await mirrorService.ListMirrorBlockCatalogHostsAsync(cancellationToken);
+        return Ok(hosts);
+    }
+
+    [HttpGet("block-catalog/versions")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListBlockCatalogVersions(
+        [FromQuery] string siteHost,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var versions = await mirrorService.ListMirrorBlockCatalogVersionsAsync(siteHost, cancellationToken);
+            return Ok(versions);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("block-catalog/pages")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListBlockCatalogPages(
+        [FromQuery] string siteHost,
+        [FromQuery] string version,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var pages = await mirrorService.ListMirrorBlockCatalogPagePathsAsync(siteHost, version, cancellationToken);
+            return Ok(pages);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("block-exchange/to-flat-batch")]
+    [ProducesResponseType(typeof(BlockPageToFlatBatchResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BlockPageToFlatBatchResponse>> BlockPagesToFlatBatch(
+        [FromBody] BlockPagesToFlatBatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.BlockPagesToFlatBatchAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }

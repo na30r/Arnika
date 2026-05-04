@@ -1447,7 +1447,8 @@ public const string PerPageTemplatesFolderName = "pages";
         while (current is not null)
         {
             if (string.Equals(current.LocalName, "header", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(current.LocalName, "footer", StringComparison.OrdinalIgnoreCase))
+                string.Equals(current.LocalName, "footer", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(current.LocalName, "nav", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
