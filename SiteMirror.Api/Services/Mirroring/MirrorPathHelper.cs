@@ -107,7 +107,7 @@ internal sealed class MirrorPathHelper
         return semicolonIndex < 0 ? value : value[..semicolonIndex];
     }
 
-    private static string GuessExtensionFromMediaType(string? mediaType, string defaultExtension)
+    public static string GetExtensionForMediaType(string? mediaType, string defaultExtension = ".bin")
     {
         return mediaType?.ToLowerInvariant() switch
         {
@@ -125,4 +125,7 @@ internal sealed class MirrorPathHelper
             _ => defaultExtension
         };
     }
+
+    private static string GuessExtensionFromMediaType(string? mediaType, string defaultExtension) =>
+        GetExtensionForMediaType(mediaType, defaultExtension);
 }

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { authHeaders } from "../lib/auth";
+import { authHeaders, clearSession } from "../lib/auth";
 import { type Locale, t } from "../lib/i18n";
 import { TranslationReviewSection } from "./TranslationReviewSection";
 import { CrawledSitesSection } from "./CrawledSitesSection";
@@ -107,7 +107,7 @@ export function AdminDashboardMain() {
 
     async function pollOnce() {
       try {
-        const response = await fetch(`/api/mirror/queue/batch/${encodeURIComponent(queueBatchId!)}`, {
+        const response = await fetch(`/api/mirror/queue/batch/${encodeURIComponent(queueBatchId!)}/`, {
           headers: { ...authHeaders() },
           cache: "no-store"
         });
@@ -120,6 +120,9 @@ export function AdminDashboardMain() {
         }
         if (!response.ok) {
           if (cancelled) return;
+          if (response.status === 401) {
+            clearSession();
+          }
           const hint =
             response.status === 404
               ? " If the API is crawling but this says not found, Next.js MIRROR_API_BASE_URL may point at a different server than the one that received the enqueue."
@@ -247,7 +250,7 @@ export function AdminDashboardMain() {
         setQueueBatchSnapshot(null);
         setQueuePollActive(false);
 
-        const response = await fetch("/api/mirror/queue", {
+        const response = await fetch("/api/mirror/queue/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -267,6 +270,9 @@ export function AdminDashboardMain() {
           throw new Error(`Mirror queue API error (${response.status}). ${text.slice(0, 200)}`);
         }
         if (!response.ok) {
+          if (response.status === 401) {
+            clearSession();
+          }
           throw new Error(payload?.message || `Mirror queue request failed (${response.status}).`);
         }
         if (!payload?.batchId) {
@@ -292,7 +298,7 @@ export function AdminDashboardMain() {
         return;
       }
 
-      const response = await fetch("/api/mirror", {
+      const response = await fetch("/api/mirror/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -312,7 +318,14 @@ export function AdminDashboardMain() {
         throw new Error(`Mirror API error (${response.status}). ${text.slice(0, 200)}`);
       }
       if (!response.ok) {
-        throw new Error(payload?.message || `Mirror request failed (${response.status}).`);
+        if (response.status === 401) {
+          clearSession();
+        }
+        throw new Error(
+          response.status === 401
+            ? `${payload?.message || "Unauthorized."} Try again after signing in, or use the site without a session (guest mirror).`
+            : payload?.message || `Mirror request failed (${response.status}).`
+        );
       }
       if (!payload) {
         throw new Error("Empty response from mirror API.");
@@ -329,7 +342,11 @@ export function AdminDashboardMain() {
         setLanguagesText(payload.availableLanguages.join(", "));
       }
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unexpected error.";
+      let message = caught instanceof Error ? caught.message : "Unexpected error.";
+      if (caught instanceof TypeError && message === "Failed to fetch") {
+        message +=
+          " A browser extension (or network filter) may be blocking the request; try disabling it or use another profile.";
+      }
       setError(message);
     } finally {
       setIsLoading(false);

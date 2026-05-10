@@ -1,6 +1,45 @@
 const storageKey = "sitemirror_jwt";
 const userKey = "sitemirror_user";
 
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = (4 - (base64.length % 4)) % 4;
+    const json = atob(base64 + "=".repeat(pad));
+    return JSON.parse(json) as { exp?: number };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns the stored JWT only if it is not clearly expired (by `exp` claim).
+ * If the token is unparsable or expired, clears local session so API calls are not sent with a bad Bearer (which yields 401).
+ */
+export function getActiveAuthToken(): string | null {
+  const token = getToken();
+  if (!token) {
+    return null;
+  }
+  const payload = decodeJwtPayload(token);
+  if (!payload) {
+    clearSession();
+    return null;
+  }
+  if (typeof payload.exp === "number") {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.exp <= nowSec + 30) {
+      clearSession();
+      return null;
+    }
+  }
+  return token;
+}
+
 export type UserPayload = {
   userId: string;
   userName: string;
@@ -12,7 +51,9 @@ export function getToken(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return window.localStorage.getItem(storageKey);
+  const raw = window.localStorage.getItem(storageKey);
+  const trimmed = raw?.trim();
+  return trimmed || null;
 }
 
 export function getStoredUser(): UserPayload | null {
@@ -41,7 +82,7 @@ export function clearSession(): void {
 }
 
 export function authHeaders(): HeadersInit {
-  const token = getToken();
+  const token = getActiveAuthToken();
   if (!token) {
     return {};
   }

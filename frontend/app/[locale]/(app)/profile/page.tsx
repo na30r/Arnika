@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { authHeaders, getToken, getStoredUser, type UserPayload } from "../../../../lib/auth";
+import { authHeaders, getActiveAuthToken, getStoredUser, type UserPayload } from "../../../../lib/auth";
 import { localePath } from "../../../../lib/appPath";
 import { type Locale, t } from "../../../../lib/i18n";
 
@@ -27,7 +27,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!getActiveAuthToken()) {
       return;
     }
     (async () => {
@@ -60,7 +60,7 @@ export default function ProfilePage() {
   }, []);
 
   const display = remote ?? user;
-  if (!getToken() || !display) {
+  if (!getActiveAuthToken() || !display) {
     return (
       <main className="page narrow">
         <section className="card controls">

@@ -67,7 +67,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ICurrentUser, HttpContextCurrentUser>();
-builder.Services.AddSingleton<ICrawlRepository, SqlServerCrawlRepository>();
+builder.Services.AddSingleton<SqlServerCrawlRepository>();
+builder.Services.AddSingleton<ICrawlRepository>(sp => sp.GetRequiredService<SqlServerCrawlRepository>());
+builder.Services.AddSingleton<IMirrorContentAddressRegistry>(sp => sp.GetRequiredService<SqlServerCrawlRepository>());
 builder.Services.AddSingleton<MirrorGlobalExecutionGate>();
 builder.Services.AddHostedService<MirrorQueueBackgroundService>();
 builder.Services.AddSingleton<IUserRepository, SqlUserRepository>();

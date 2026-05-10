@@ -20,5 +20,7 @@ mirror-output/
 /frontend/node_modules
 /SiteMirror.Api/bin/Debug/net8.0
 /SiteMirror.Api/mirror-output
+/SiteMirror.Api/logs/
+/SiteMirror.Api/artifacts/
 /SiteMirror.Api/obj/Debug/net8.0
 /SiteMirror.Api/obj/Release/net8.0

@@ -51,4 +51,12 @@ public interface ISiteMirrorService
     Task<BlockPageToFlatBatchResponse> BlockPagesToFlatBatchAsync(
         BlockPagesToFlatBatchRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<MirrorStorageAnalyzeResult> AnalyzeStorageReachabilityAsync(
+        MirrorStorageAnalyzeRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<RebuildLocalizationResponse> RebuildLocalizationAsync(
+        RebuildLocalizationRequest request,
+        CancellationToken cancellationToken = default);
 }

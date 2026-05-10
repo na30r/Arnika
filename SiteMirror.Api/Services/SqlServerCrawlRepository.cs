@@ -1,12 +1,14 @@
 using System.Data;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using SiteMirror.Api.Models;
+using SiteMirror.Api.Services.Mirroring;
 
 namespace SiteMirror.Api.Services;
 
-public sealed class SqlServerCrawlRepository : ICrawlRepository
+public sealed class SqlServerCrawlRepository : ICrawlRepository, IMirrorContentAddressRegistry
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -15,14 +17,20 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
 
     private readonly string _connectionString;
     private readonly ILogger<SqlServerCrawlRepository> _logger;
+    private readonly MirrorSettings _mirrorSettings;
 
     public SqlServerCrawlRepository(
         IOptions<DatabaseSettings> options,
+        IOptions<MirrorSettings> mirrorOptions,
         ILogger<SqlServerCrawlRepository> logger)
     {
         _connectionString = options.Value.ConnectionString ?? string.Empty;
+        _mirrorSettings = mirrorOptions.Value;
         _logger = logger;
     }
+
+    public bool IsEnabled =>
+        !string.IsNullOrWhiteSpace(_connectionString) && _mirrorSettings.ContentAddressedMirrorFiles;
 
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
@@ -173,10 +181,180 @@ public sealed class SqlServerCrawlRepository : ICrawlRepository
                 CREATE INDEX IX_MirrorUrlQueueItems_Status_Created ON dbo.MirrorUrlQueueItems (Status, CreatedAtUtc);
             END
 
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MirrorContentBlobs')
+            BEGIN
+                CREATE TABLE dbo.MirrorContentBlobs
+                (
+                    SiteHost NVARCHAR(255) NOT NULL,
+                    Version NVARCHAR(128) NOT NULL,
+                    ContentSha256 CHAR(64) NOT NULL,
+                    RelativePath NVARCHAR(2048) NOT NULL,
+                    ByteLength BIGINT NOT NULL,
+                    MediaTypeHint NVARCHAR(255) NULL,
+                    CreatedAtUtc DATETIMEOFFSET NOT NULL,
+                    CONSTRAINT PK_MirrorContentBlobs PRIMARY KEY (SiteHost, Version, ContentSha256)
+                );
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MirrorUrlResourceMap')
+            BEGIN
+                CREATE TABLE dbo.MirrorUrlResourceMap
+                (
+                    SiteHost NVARCHAR(255) NOT NULL,
+                    Version NVARCHAR(128) NOT NULL,
+                    UrlKey NVARCHAR(2048) NOT NULL,
+                    ContentSha256 CHAR(64) NOT NULL,
+                    RelativePath NVARCHAR(2048) NOT NULL,
+                    ByteLength BIGINT NOT NULL,
+                    MediaTypeHint NVARCHAR(255) NULL,
+                    MappedAtUtc DATETIMEOFFSET NOT NULL,
+                    CONSTRAINT PK_MirrorUrlResourceMap PRIMARY KEY (SiteHost, Version, UrlKey)
+                );
+            END
+
             """;
 
         await using var command = new SqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<MirrorContentAddressResult> RegisterOrGetContentAsync(
+        string siteHost,
+        string version,
+        string mirrorSiteRoot,
+        string urlKey,
+        byte[] body,
+        string? mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsEnabled)
+        {
+            throw new InvalidOperationException("Content-addressed mirroring is not enabled (database or setting).");
+        }
+
+        if (body.Length == 0)
+        {
+            throw new ArgumentException("Body must not be empty.", nameof(body));
+        }
+
+        var hashHex = Convert.ToHexString(SHA256.HashData(body)).ToLowerInvariant();
+        var ext = MirrorPathHelper.GetExtensionForMediaType(mediaType, ".bin");
+        var relativePath = Path.Combine("_cas", hashHex[..2], $"{hashHex}{ext}");
+
+        await EnsureSchemaAsync(cancellationToken);
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        const string selectBlobSql = """
+            SELECT RelativePath
+            FROM dbo.MirrorContentBlobs
+            WHERE SiteHost = @SiteHost AND Version = @Version AND ContentSha256 = @Hash
+            """;
+
+        async Task<string?> TrySelectPathAsync()
+        {
+            await using var cmd = new SqlCommand(selectBlobSql, connection);
+            cmd.Parameters.AddWithValue("@SiteHost", siteHost);
+            cmd.Parameters.AddWithValue("@Version", version);
+            cmd.Parameters.AddWithValue("@Hash", hashHex);
+            var o = await cmd.ExecuteScalarAsync(cancellationToken);
+            return o is string s ? s : null;
+        }
+
+        async Task UpsertUrlMapAsync(string pathForUrl, CancellationToken ct)
+        {
+            const string mergeSql = """
+                MERGE dbo.MirrorUrlResourceMap AS t
+                USING (SELECT @SiteHost AS SiteHost, @Version AS Version, @UrlKey AS UrlKey) AS s
+                ON t.SiteHost = s.SiteHost AND t.Version = s.Version AND t.UrlKey = s.UrlKey
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        ContentSha256 = @Hash,
+                        RelativePath = @RelPath,
+                        ByteLength = @ByteLength,
+                        MediaTypeHint = @MediaType,
+                        MappedAtUtc = SYSDATETIMEOFFSET()
+                WHEN NOT MATCHED THEN
+                    INSERT (SiteHost, Version, UrlKey, ContentSha256, RelativePath, ByteLength, MediaTypeHint, MappedAtUtc)
+                    VALUES (@SiteHost, @Version, @UrlKey, @Hash, @RelPath, @ByteLength, @MediaType, SYSDATETIMEOFFSET());
+                """;
+            await using var cmd = new SqlCommand(mergeSql, connection);
+            cmd.Parameters.AddWithValue("@SiteHost", siteHost);
+            cmd.Parameters.AddWithValue("@Version", version);
+            cmd.Parameters.AddWithValue("@UrlKey", urlKey);
+            cmd.Parameters.AddWithValue("@Hash", hashHex);
+            cmd.Parameters.AddWithValue("@RelPath", pathForUrl);
+            cmd.Parameters.AddWithValue("@ByteLength", (long)body.Length);
+            cmd.Parameters.AddWithValue("@MediaType", (object?)mediaType ?? DBNull.Value);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        var existingPath = await TrySelectPathAsync();
+        if (existingPath is not null)
+        {
+            await UpsertUrlMapAsync(existingPath, cancellationToken);
+            var diskPath = Path.Combine(mirrorSiteRoot, existingPath);
+            var mustWrite = !File.Exists(diskPath);
+            if (mustWrite)
+            {
+                _logger.LogWarning(
+                    "CAS blob row exists for hash {Hash} but file missing at {Path}; caller will rewrite.",
+                    hashHex,
+                    diskPath);
+            }
+
+            return new MirrorContentAddressResult
+            {
+                RelativePath = existingPath,
+                CallerMustWriteFile = mustWrite,
+                ContentSha256Hex = hashHex
+            };
+        }
+
+        const string insertBlobSql = """
+            INSERT INTO dbo.MirrorContentBlobs (SiteHost, Version, ContentSha256, RelativePath, ByteLength, MediaTypeHint, CreatedAtUtc)
+            VALUES (@SiteHost, @Version, @Hash, @RelPath, @ByteLength, @MediaType, SYSDATETIMEOFFSET());
+            """;
+
+        try
+        {
+            await using (var ins = new SqlCommand(insertBlobSql, connection))
+            {
+                ins.Parameters.AddWithValue("@SiteHost", siteHost);
+                ins.Parameters.AddWithValue("@Version", version);
+                ins.Parameters.AddWithValue("@Hash", hashHex);
+                ins.Parameters.AddWithValue("@RelPath", relativePath);
+                ins.Parameters.AddWithValue("@ByteLength", (long)body.Length);
+                ins.Parameters.AddWithValue("@MediaType", (object?)mediaType ?? DBNull.Value);
+                await ins.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await UpsertUrlMapAsync(relativePath, cancellationToken);
+            return new MirrorContentAddressResult
+            {
+                RelativePath = relativePath,
+                CallerMustWriteFile = true,
+                ContentSha256Hex = hashHex
+            };
+        }
+        catch (SqlException ex) when (ex.Number is 2627 or 2601)
+        {
+            var pathAfterRace = await TrySelectPathAsync();
+            if (pathAfterRace is null)
+            {
+                throw;
+            }
+
+            await UpsertUrlMapAsync(pathAfterRace, cancellationToken);
+            var diskPath = Path.Combine(mirrorSiteRoot, pathAfterRace);
+            return new MirrorContentAddressResult
+            {
+                RelativePath = pathAfterRace,
+                CallerMustWriteFile = !File.Exists(diskPath),
+                ContentSha256Hex = hashHex
+            };
+        }
     }
 
     public async Task SaveCrawlAsync(

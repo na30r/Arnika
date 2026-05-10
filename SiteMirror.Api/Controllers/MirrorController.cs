@@ -87,6 +87,17 @@ public sealed class MirrorController(
                 hint = "Playwright navigation timed out. This is common on pages with long-running network traffic."
             });
         }
+        catch (OperationCanceledException)
+        {
+            return StatusCode(499, new
+            {
+                message = "The mirror was stopped because the HTTP connection was closed or timed out before work finished.",
+                hint =
+                    "Large mirrors can exceed browser, Next.js, or reverse-proxy timeouts (~2–5 minutes is common). " +
+                    "Try: call POST /api/mirror directly (e.g. Swagger on localhost:5196), reduce languages or crawl scope, " +
+                    "or increase proxy/client timeouts. Partial output may already exist under public/mirror."
+            });
+        }
     }
 
     [HttpPost("rewrite-links")]
@@ -132,6 +143,63 @@ public sealed class MirrorController(
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("storage-analyze")]
+    [ProducesResponseType(typeof(MirrorStorageAnalyzeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MirrorStorageAnalyzeResult>> AnalyzeMirrorStorage(
+        [FromBody] MirrorStorageAnalyzeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost) || string.IsNullOrWhiteSpace(request.Version))
+        {
+            return BadRequest(new { message = "siteHost and version are required." });
+        }
+
+        try
+        {
+            var result = await mirrorService.AnalyzeStorageReachabilityAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Regenerates <c>_i18n</c> from HTML on disk and/or rebuilds <c>_localized/{{lang}}</c> (e.g. after switching HTML to URL-based paths).
+    /// </summary>
+    [HttpPost("rebuild-localization")]
+    [ProducesResponseType(typeof(RebuildLocalizationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<RebuildLocalizationResponse>> RebuildLocalization(
+        [FromBody] RebuildLocalizationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mirrorService.RebuildLocalizationAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 

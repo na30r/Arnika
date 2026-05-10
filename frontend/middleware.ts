@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { adminAuthCookieName } from "./lib/adminAuthShared";
 
 const locales = ["en", "fa"];
 const defaultLocale = "en";
@@ -29,15 +28,7 @@ export function middleware(request: NextRequest) {
   }
 
   const isAdminLogin = /^\/(en|fa)\/admin\/login\/?$/i.test(pathname);
-  const isAdminArea = /^\/(en|fa)\/admin(\/.*)?$/i.test(pathname);
-  const hasAdminCookie = request.cookies.get(adminAuthCookieName)?.value === "1";
-
-  if (isAdminArea && !isAdminLogin && !hasAdminCookie) {
-    const locale = pathname.split("/").filter(Boolean)[0] || defaultLocale;
-    return NextResponse.redirect(new URL(`/${locale}/admin/login`, request.url));
-  }
-
-  if (isAdminLogin && hasAdminCookie) {
+  if (isAdminLogin) {
     const locale = pathname.split("/").filter(Boolean)[0] || defaultLocale;
     return NextResponse.redirect(new URL(`/${locale}/admin`, request.url));
   }

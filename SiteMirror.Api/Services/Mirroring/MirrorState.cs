@@ -6,6 +6,7 @@ using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
+using SiteMirror.Api.Services;
 
 namespace SiteMirror.Api.Services.Mirroring;
 
@@ -18,11 +19,24 @@ internal sealed class MirrorState
         "^[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>Matches <c>/en/docs</c> → group 2 is <c>/docs</c> (trailing path after locale).</summary>
+    private static readonly Regex LeadingLocalePathSegmentRegex = new(
+        @"^/([a-z]{2}(?:-[a-z]{2})?)(/.+)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex PathStartsWithLocaleSegmentRegex = new(
+        @"^/[a-z]{2}(?:-[a-z]{2})?/",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly Uri _rootUri;
     private readonly string _outputDir;
     private readonly MirrorPathHelper _pathHelper;
     private readonly HtmlRewriter _htmlRewriter;
     private readonly ILogger<MirrorState> _logger;
+    private readonly IMirrorContentAddressRegistry? _contentRegistry;
+    private readonly string? _siteHost;
+    private readonly string? _version;
+    private readonly bool _useContentAddressing;
 
     private readonly ConcurrentDictionary<string, string> _urlToRelativePath = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Uri> _htmlSourceByRelativePath = new(StringComparer.OrdinalIgnoreCase);
@@ -30,13 +44,26 @@ internal sealed class MirrorState
     private readonly HashSet<string> _htmlDocuments = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
-    public MirrorState(Uri rootUri, string outputDir, ILogger<MirrorState> logger)
+    public MirrorState(
+        Uri rootUri,
+        string outputDir,
+        ILogger<MirrorState> logger,
+        IMirrorContentAddressRegistry? contentRegistry = null,
+        string? siteHost = null,
+        string? version = null)
     {
         _rootUri = rootUri;
         _outputDir = outputDir;
         _pathHelper = new MirrorPathHelper(rootUri);
         _htmlRewriter = new HtmlRewriter();
         _logger = logger;
+        _contentRegistry = contentRegistry;
+        _siteHost = siteHost;
+        _version = version;
+        _useContentAddressing =
+            contentRegistry is { IsEnabled: true }
+            && !string.IsNullOrWhiteSpace(siteHost)
+            && !string.IsNullOrWhiteSpace(version);
     }
 
     public int TotalFilesWritten => _urlToRelativePath.Count;
@@ -53,9 +80,116 @@ internal sealed class MirrorState
     }
 
     /// <summary>
+    /// HTML must stay on URL-derived paths so <c>_i18n/blocks</c> and <c>_i18n/pages</c> stay editable and aligned with page URLs.
+    /// </summary>
+    private static bool IsUrlKeyedHtmlResponse(string mediaType, byte[] body)
+    {
+        if (mediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) ||
+            mediaType.StartsWith("application/xhtml+xml", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(mediaType))
+        {
+            return BodyLooksLikeHtml(body);
+        }
+
+        return false;
+    }
+
+    private static bool BodyLooksLikeHtml(ReadOnlySpan<byte> body)
+    {
+        var i = 0;
+        if (body.Length >= 3 && body[0] == 0xEF && body[1] == 0xBB && body[2] == 0xBF)
+        {
+            i = 3;
+        }
+
+        while (i < body.Length && body[i] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n')
+        {
+            i++;
+        }
+
+        if (i >= body.Length || body[i] != (byte)'<')
+        {
+            return false;
+        }
+
+        var take = Math.Min(body.Length - i, 64);
+        var prefix = Encoding.ASCII.GetString(body.Slice(i, take));
+        return prefix.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) ||
+            prefix.StartsWith("<html", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<string> PersistRawResponseAsync(
+        Uri resourceUri,
+        byte[] body,
+        string mediaType,
+        Uri? requestUri,
+        CancellationToken cancellationToken)
+    {
+        var useContentAddressingForThisFile =
+            _useContentAddressing && !IsUrlKeyedHtmlResponse(mediaType, body);
+
+        if (!_useContentAddressing || !useContentAddressingForThisFile)
+        {
+            var relativePath = _pathHelper.MapUriToRelativePath(resourceUri, mediaType);
+            var localPath = Path.Combine(_outputDir, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+            await File.WriteAllBytesAsync(localPath, body, cancellationToken);
+            RegisterMapping(resourceUri, relativePath);
+            if (requestUri is not null)
+            {
+                RegisterMapping(requestUri, relativePath);
+            }
+
+            return relativePath;
+        }
+
+        // Content-addressed storage (non-HTML assets only).
+        var urlKey = _pathHelper.NormalizeUri(resourceUri);
+        var cas = await _contentRegistry!.RegisterOrGetContentAsync(
+            _siteHost!,
+            _version!,
+            _outputDir,
+            urlKey,
+            body,
+            string.IsNullOrWhiteSpace(mediaType) ? null : mediaType,
+            cancellationToken);
+
+        if (cas.CallerMustWriteFile)
+        {
+            var localPath = Path.Combine(_outputDir, cas.RelativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+            await File.WriteAllBytesAsync(localPath, body, cancellationToken);
+        }
+
+        RegisterMapping(resourceUri, cas.RelativePath);
+        if (requestUri is not null)
+        {
+            RegisterMapping(requestUri, cas.RelativePath);
+            var altKey = _pathHelper.NormalizeUri(requestUri);
+            if (!string.Equals(altKey, urlKey, StringComparison.OrdinalIgnoreCase))
+            {
+                _ = await _contentRegistry.RegisterOrGetContentAsync(
+                    _siteHost!,
+                    _version!,
+                    _outputDir,
+                    altKey,
+                    body,
+                    string.IsNullOrWhiteSpace(mediaType) ? null : mediaType,
+                    cancellationToken);
+            }
+        }
+
+        return cas.RelativePath;
+    }
+
+    /// <summary>
     /// Persists a browser/network response and registers URL-to-local-file mappings for rewrite.
     /// </summary>
-    public async Task SaveResponseAsync(Uri resourceUri, byte[] body, IReadOnlyDictionary<string, string> headers, int statusCode, Uri? requestUri = null)
+    public async Task SaveResponseAsync(Uri resourceUri, byte[] body, IReadOnlyDictionary<string, string> headers, int statusCode, Uri? requestUri = null, CancellationToken cancellationToken = default)
     {
         if (statusCode is < 200 or >= 400 || body.Length == 0)
         {
@@ -63,24 +197,19 @@ internal sealed class MirrorState
         }
 
         var mediaType = MirrorPathHelper.ParseMediaType(headers);
-        var relativePath = _pathHelper.MapUriToRelativePath(resourceUri, mediaType);
-        var localPath = Path.Combine(_outputDir, relativePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-        await File.WriteAllBytesAsync(localPath, body);
-        _logger.LogDebug("Saved response file {LocalPath} ({Bytes} bytes)", localPath, body.Length);
-
-        RegisterMapping(resourceUri, relativePath);
-        if (requestUri is not null)
-        {
-            RegisterMapping(requestUri, relativePath);
-        }
+        var relativePath = await PersistRawResponseAsync(resourceUri, body, mediaType, requestUri, cancellationToken);
+        _logger.LogDebug("Persisted response -> {RelativePath} ({Bytes} bytes)", relativePath, body.Length);
 
         if (mediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
         {
+            var html = Encoding.UTF8.GetString(body);
             lock (_lock)
             {
-                _htmlDocuments.Add(relativePath);
-                _htmlSourceByRelativePath[relativePath] = resourceUri;
+                if (_htmlDocuments.Add(relativePath))
+                {
+                    _htmlSourceByRelativePath[relativePath] = resourceUri;
+                    _htmlRewriter.EnqueueResourcesFromHtml(resourceUri, html, AddToQueue);
+                }
             }
         }
     }
@@ -88,13 +217,10 @@ internal sealed class MirrorState
     /// <summary>
     /// Saves the final rendered HTML for the entry page and discovers linked resources.
     /// </summary>
-    public async Task SaveRenderedDocumentAsync(Uri pageUri, string html)
+    public async Task SaveRenderedDocumentAsync(Uri pageUri, string html, CancellationToken cancellationToken = default)
     {
-        var relativePath = _pathHelper.MapUriToRelativePath(pageUri, "text/html");
-        var localPath = Path.Combine(_outputDir, relativePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-        await File.WriteAllTextAsync(localPath, html, Encoding.UTF8);
-        RegisterMapping(pageUri, relativePath);
+        var bytes = Encoding.UTF8.GetBytes(html);
+        var relativePath = await PersistRawResponseAsync(pageUri, bytes, "text/html", null, cancellationToken);
 
         lock (_lock)
         {
@@ -103,7 +229,7 @@ internal sealed class MirrorState
         }
 
         _htmlRewriter.EnqueueResourcesFromHtml(pageUri, html, AddToQueue);
-        _logger.LogDebug("Saved rendered HTML for {PageUri}", pageUri);
+        _logger.LogDebug("Saved rendered HTML for {PageUri} -> {RelativePath}", pageUri, relativePath);
     }
 
     /// <summary>
@@ -162,16 +288,7 @@ internal sealed class MirrorState
                     }
 
                     var mediaType = res.Content.Headers.ContentType?.MediaType ?? string.Empty;
-                    var relativePath = _pathHelper.MapUriToRelativePath(uri, mediaType);
-                    var localPath = Path.Combine(_outputDir, relativePath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-                    await File.WriteAllBytesAsync(localPath, bytes, cancellationToken);
-                    RegisterMapping(uri, relativePath);
-                    var finalUri = res.RequestMessage?.RequestUri;
-                    if (finalUri is not null && MirrorPathHelper.IsHttpOrHttps(finalUri))
-                    {
-                        RegisterMapping(finalUri, relativePath);
-                    }
+                    var relativePath = await PersistRawResponseAsync(uri, bytes, mediaType, res.RequestMessage?.RequestUri, cancellationToken);
 
                     if (mediaType.StartsWith("text/css", StringComparison.OrdinalIgnoreCase))
                     {
@@ -184,11 +301,12 @@ internal sealed class MirrorState
                         var html = Encoding.UTF8.GetString(bytes);
                         lock (_lock)
                         {
-                            _htmlDocuments.Add(relativePath);
-                            _htmlSourceByRelativePath[relativePath] = uri;
+                            if (_htmlDocuments.Add(relativePath))
+                            {
+                                _htmlSourceByRelativePath[relativePath] = uri;
+                                _htmlRewriter.EnqueueResourcesFromHtml(uri, html, AddToQueue);
+                            }
                         }
-
-                        _htmlRewriter.EnqueueResourcesFromHtml(uri, html, AddToQueue);
                     }
                 }
                 catch
@@ -289,8 +407,14 @@ internal sealed class MirrorState
 
     public string GetEntryFile(Uri pageUri)
     {
-        var relative = _pathHelper.MapUriToRelativePath(pageUri, "text/html");
-        return Path.Combine(_outputDir, relative);
+        var key = _pathHelper.NormalizeUri(pageUri);
+        if (_urlToRelativePath.TryGetValue(key, out var relative))
+        {
+            return Path.Combine(_outputDir, relative);
+        }
+
+        var fallback = _pathHelper.MapUriToRelativePath(pageUri, "text/html");
+        return Path.Combine(_outputDir, fallback);
     }
 
     private Uri BuildUriFromRelativePath(string relativePath)
@@ -325,7 +449,7 @@ internal sealed class MirrorState
             }
 
             var body = await bodyTask;
-            await SaveResponseAsync(responseUri, body, response.Headers, response.Status, requestUri);
+            await SaveResponseAsync(responseUri, body, response.Headers, response.Status, requestUri, CancellationToken.None);
         }
         catch
         {
@@ -371,6 +495,57 @@ internal sealed class MirrorState
     }
 
     /// <summary>
+    /// Resolves a same-site URL to a mirrored relative file path when the crawl registered a variant
+    /// (e.g. link <c>/en/docs/foo</c> but the page was saved as <c>/docs/foo</c>).
+    /// </summary>
+    private bool TryGetMappedRelativePath(Uri absolute, out string targetRelativePath)
+    {
+        var triedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        targetRelativePath = string.Empty;
+
+        foreach (var candidate in EnumerateMappingUriCandidates(absolute))
+        {
+            var k = _pathHelper.NormalizeUri(candidate);
+            if (!triedKeys.Add(k))
+            {
+                continue;
+            }
+
+            if (_urlToRelativePath.TryGetValue(k, out var mapped))
+            {
+                targetRelativePath = mapped;
+                return true;
+            }
+        }
+
+        targetRelativePath = string.Empty;
+        return false;
+    }
+
+    private static IEnumerable<Uri> EnumerateMappingUriCandidates(Uri absolute)
+    {
+        yield return absolute;
+
+        var path = absolute.AbsolutePath;
+        if (path.Length > 1 && path.EndsWith("/", StringComparison.Ordinal))
+        {
+            path = path.TrimEnd('/');
+        }
+
+        var stripMatch = LeadingLocalePathSegmentRegex.Match(path);
+        if (stripMatch.Success)
+        {
+            yield return new UriBuilder(absolute) { Path = stripMatch.Groups[2].Value }.Uri;
+        }
+
+        // Common i18n routing (e.g. Next.js): HTML links use /en/... while the mirrored URL may omit the locale.
+        if (path.Length > 1 && !PathStartsWithLocaleSegmentRegex.IsMatch(path))
+        {
+            yield return new UriBuilder(absolute) { Path = "/en" + path }.Uri;
+        }
+    }
+
+    /// <summary>
     /// Rewrites an absolute/relative URL to a local relative path if possible.
     /// </summary>
     private string? RewriteUrl(Uri baseUri, string? originalUrl)
@@ -400,11 +575,10 @@ internal sealed class MirrorState
         }
 
         var currentRelativePath = ResolveCurrentDocumentRelativePath(baseUri);
-        var key = _pathHelper.NormalizeUri(absolute);
-        if (!_urlToRelativePath.TryGetValue(key, out var targetRelativePath))
+        if (!TryGetMappedRelativePath(absolute, out var targetRelativePath))
         {
             // Always normalize same-site links to their mirrored path shape, even if that target
-            // page/resource has not been crawled yet. This keeps navigation consistent.
+            // page/resource has not been crawled yet. This keeps navigation consistent (relative hrefs).
             if (IsSameSiteHost(absolute))
             {
                 targetRelativePath = _pathHelper.MapUriToRelativePath(absolute, mediaType: null);

@@ -18,12 +18,20 @@ namespace SiteMirror.Api.Services;
 public sealed class MirrorService : ISiteMirrorService
 {
     private const string MirrorRuntimeFileName = "_mirror-runtime.js";
+
+    /// <summary>
+    /// When <c>true</c>, skips all <c>TranslationArchive</c> SQL writes and the post-mirror catalog snapshot
+    /// that prepares those rows (faster local crawls). Set to <c>false</c> to restore DB audit behavior.
+    /// </summary>
+    /// <remarks>Kept as <c>static readonly</c> rather than <c>const</c> so the implementation is not treated as unreachable by the compiler.</remarks>
+    private static readonly bool SkipTranslationArchiveDbWrites = true;
     private static readonly string[] FallbackLocalizationLanguages = ["en"];
     private readonly MirrorSettings _settings;
     private readonly ILogger<MirrorService> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly LocalizationGenerator _localizationGenerator;
     private readonly ICrawlRepository _crawlRepository;
+    private readonly IMirrorContentAddressRegistry _contentAddressRegistry;
     private readonly MirrorGlobalExecutionGate _mirrorGate;
     private readonly string _contentRootPath;
     private readonly string _dbConnectionString;
@@ -48,6 +56,7 @@ public sealed class MirrorService : ISiteMirrorService
         ILogger<MirrorService> logger,
         ILoggerFactory loggerFactory,
         ICrawlRepository crawlRepository,
+        IMirrorContentAddressRegistry contentAddressRegistry,
         MirrorGlobalExecutionGate mirrorGate,
         IWebHostEnvironment hostEnvironment)
     {
@@ -57,6 +66,7 @@ public sealed class MirrorService : ISiteMirrorService
         _loggerFactory = loggerFactory;
         _localizationGenerator = new LocalizationGenerator(_loggerFactory.CreateLogger<LocalizationGenerator>());
         _crawlRepository = crawlRepository;
+        _contentAddressRegistry = contentAddressRegistry;
         _mirrorGate = mirrorGate;
         _contentRootPath = hostEnvironment.ContentRootPath;
     }
@@ -452,6 +462,79 @@ public sealed class MirrorService : ISiteMirrorService
             MirrorRootFolder = mirrorRoot,
             HtmlFilesDiscovered = htmlDiscovered,
             HtmlFilesRewritten = htmlRewritten
+        };
+    }
+
+    public async Task<RebuildLocalizationResponse> RebuildLocalizationAsync(
+        RebuildLocalizationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request.SiteHost));
+        }
+
+        var normalizedHost = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var normalizedVersion = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteOutputPath = Path.Combine(outputRoot, normalizedHost, normalizedVersion);
+        if (!Directory.Exists(siteOutputPath))
+        {
+            throw new DirectoryNotFoundException($"Mirror folder not found: {siteOutputPath}");
+        }
+
+        var langs = (request.Languages ?? [])
+            .Select(l => l?.Trim().ToLowerInvariant())
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Select(l => l!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (langs.Count == 0)
+        {
+            throw new ArgumentException("At least one language is required in Languages.", nameof(request.Languages));
+        }
+
+        if (request.RefreshI18nFromHtml)
+        {
+            var gen = await _localizationGenerator.GenerateLocalizedCopiesAsync(
+                siteOutputPath,
+                langs,
+                request.DoNotTranslateTexts,
+                request.GeneralTranslationClasses,
+                cancellationToken);
+
+            return new RebuildLocalizationResponse
+            {
+                SiteHost = normalizedHost,
+                Version = normalizedVersion,
+                RefreshedI18nFromHtml = true,
+                DefaultLanguage = gen.DefaultLanguage,
+                Languages = gen.AvailableLanguages.ToList(),
+                RebuiltHtmlFileCount = 0
+            };
+        }
+
+        var rebuiltCount = 0;
+        foreach (var lang in langs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var pages = await _localizationGenerator.RegenerateLocalizedPagesAsync(
+                siteOutputPath,
+                lang,
+                targetPages: null,
+                request.DoNotTranslateTexts,
+                cancellationToken);
+            rebuiltCount += pages.Count;
+        }
+
+        return new RebuildLocalizationResponse
+        {
+            SiteHost = normalizedHost,
+            Version = normalizedVersion,
+            RefreshedI18nFromHtml = false,
+            DefaultLanguage = langs[0],
+            Languages = langs,
+            RebuiltHtmlFileCount = rebuiltCount
         };
     }
 
@@ -1645,6 +1728,15 @@ public sealed class MirrorService : ISiteMirrorService
         }
     }
 
+    private MirrorState CreateMirrorState(Uri rootUri, string siteOutputPath, string siteHost, string version) =>
+        new(
+            rootUri,
+            siteOutputPath,
+            _loggerFactory.CreateLogger<MirrorState>(),
+            _contentAddressRegistry,
+            siteHost,
+            version);
+
     private async Task<PageExecutionResult> MirrorPageCoreAsync(
         Uri requestedUri,
         Uri rootUri,
@@ -1658,7 +1750,7 @@ public sealed class MirrorService : ISiteMirrorService
         CancellationToken cancellationToken)
     {
         var page = await browserContext.NewPageAsync();
-        var mirror = new MirrorState(rootUri, siteOutputPath, _loggerFactory.CreateLogger<MirrorState>());
+        var mirror = CreateMirrorState(rootUri, siteOutputPath, siteHost, version);
         var responseTasks = new ConcurrentBag<Task>();
 
         EventHandler<IResponse> responseHandler = (_, response) =>
@@ -1710,7 +1802,7 @@ public sealed class MirrorService : ISiteMirrorService
         }
 
         _logger.LogInformation("Stage save-rendered-document: saving rendered HTML for {FinalUrl}", finalUri);
-        await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml);
+        await mirror.SaveRenderedDocumentAsync(finalUri, renderedHtml, cancellationToken);
 
         _logger.LogInformation(
             "Stage download-linked-resources: downloading queued resources. QueueCount={QueueCount}",
@@ -3024,33 +3116,36 @@ public sealed class MirrorService : ISiteMirrorService
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_dbConnectionString))
+        if (!SkipTranslationArchiveDbWrites)
         {
-            _logger.LogWarning(
-                "TranslationArchive not written ({RowCount} row(s)): Database connection string is empty. Set Database:ConnectionString in appsettings.",
-                rows.Count);
-            return;
-        }
+            if (string.IsNullOrWhiteSpace(_dbConnectionString))
+            {
+                _logger.LogWarning(
+                    "TranslationArchive not written ({RowCount} row(s)): Database connection string is empty. Set Database:ConnectionString in appsettings.",
+                    rows.Count);
+                return;
+            }
 
-        try
-        {
-            await _crawlRepository.AppendTranslationArchiveAsync(
-                scope,
-                siteHost,
-                version,
-                language,
-                pagePath,
-                rows,
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "TranslationArchive write failed (non-fatal). Scope={Scope}, SiteHost={SiteHost}, Version={Version}",
-                scope,
-                siteHost,
-                version);
+            try
+            {
+                await _crawlRepository.AppendTranslationArchiveAsync(
+                    scope,
+                    siteHost,
+                    version,
+                    language,
+                    pagePath,
+                    rows,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "TranslationArchive write failed (non-fatal). Scope={Scope}, SiteHost={SiteHost}, Version={Version}",
+                    scope,
+                    siteHost,
+                    version);
+            }
         }
     }
 
@@ -3152,59 +3247,62 @@ public sealed class MirrorService : ISiteMirrorService
             return;
         }
 
-        var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
-        if (!Directory.Exists(i18nFolder))
+        if (!SkipTranslationArchiveDbWrites)
         {
-            return;
-        }
-
-        var keyToPage = await BuildTranslationKeyToPagePathMapFromI18nAsync(i18nFolder, cancellationToken);
-        const int maxRowsPerLanguage = 12_000;
-        foreach (var language in languages)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var lang = language.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(lang))
+            var i18nFolder = Path.Combine(siteOutputPath, LocalizationGenerator.CatalogRootFolderName);
+            if (!Directory.Exists(i18nFolder))
             {
-                continue;
+                return;
             }
 
-            var catalogPath = Path.Combine(i18nFolder, $"{lang}.json");
-            var entries = await LoadLanguageEntriesAsync(catalogPath, cancellationToken);
-            if (entries.Count == 0)
+            var keyToPage = await BuildTranslationKeyToPagePathMapFromI18nAsync(i18nFolder, cancellationToken);
+            const int maxRowsPerLanguage = 12_000;
+            foreach (var language in languages)
             {
-                continue;
-            }
-
-            var rows = entries
-                .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
-                .Take(maxRowsPerLanguage)
-                .Select(kv =>
+                cancellationToken.ThrowIfCancellationRequested();
+                var lang = language.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(lang))
                 {
-                    var k = kv.Key.Trim();
-                    keyToPage.TryGetValue(k, out var page);
-                    return new TranslationArchiveRow
+                    continue;
+                }
+
+                var catalogPath = Path.Combine(i18nFolder, $"{lang}.json");
+                var entries = await LoadLanguageEntriesAsync(catalogPath, cancellationToken);
+                if (entries.Count == 0)
+                {
+                    continue;
+                }
+
+                var rows = entries
+                    .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+                    .Take(maxRowsPerLanguage)
+                    .Select(kv =>
                     {
-                        TranslationKey = k,
-                        OriginalText = null,
-                        TranslatedValue = kv.Value ?? string.Empty,
-                        PagePath = page
-                    };
-                })
-                .ToList();
+                        var k = kv.Key.Trim();
+                        keyToPage.TryGetValue(k, out var page);
+                        return new TranslationArchiveRow
+                        {
+                            TranslationKey = k,
+                            OriginalText = null,
+                            TranslatedValue = kv.Value ?? string.Empty,
+                            PagePath = page
+                        };
+                    })
+                    .ToList();
 
-            if (rows.Count == 0)
-            {
-                continue;
+                if (rows.Count == 0)
+                {
+                    continue;
+                }
+
+                await TryArchiveTranslationRowsAsync("catalog", siteHost, version, lang, null, rows, cancellationToken);
+                _logger.LogInformation(
+                    "TranslationArchive: mirrored catalog snapshot {Count} row(s) for {SiteHost}/{Version}/{Language}.",
+                    rows.Count,
+                    siteHost,
+                    version,
+                    lang);
             }
-
-            await TryArchiveTranslationRowsAsync("catalog", siteHost, version, lang, null, rows, cancellationToken);
-            _logger.LogInformation(
-                "TranslationArchive: mirrored catalog snapshot {Count} row(s) for {SiteHost}/{Version}/{Language}.",
-                rows.Count,
-                siteHost,
-                version,
-                lang);
         }
     }
 
@@ -3321,6 +3419,29 @@ public sealed class MirrorService : ISiteMirrorService
         {
             _logger.LogWarning(ex, "Failed to persist crawl {CrawlId} to SQL Server.", crawl.CrawlId);
         }
+    }
+
+    public Task<MirrorStorageAnalyzeResult> AnalyzeStorageReachabilityAsync(
+        MirrorStorageAnalyzeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(request.SiteHost))
+        {
+            throw new ArgumentException("SiteHost is required.", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Version))
+        {
+            throw new ArgumentException("Version is required.", nameof(request));
+        }
+
+        var host = MirrorPathHelper.SanitizePathSegment(request.SiteHost.Trim());
+        var version = NormalizeVersion(request.Version);
+        var outputRoot = ResolveOutputRoot(_settings.OutputFolder);
+        var siteRoot = Path.Combine(outputRoot, host, version);
+        var result = MirrorReachabilityAnalyzer.Run(siteRoot, request);
+        return Task.FromResult(result);
     }
 
     private sealed record PageExecutionResult

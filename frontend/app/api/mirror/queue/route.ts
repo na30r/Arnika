@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-type MirrorRequestBody = {
-  url?: string;
+type MirrorQueueBody = {
+  urls?: string[];
   version?: string;
   linkDrillCount?: number;
   crawlUrlAllowPrefixes?: string[];
@@ -17,32 +17,29 @@ type MirrorRequestBody = {
 };
 
 export async function POST(request: NextRequest) {
-  let body: MirrorRequestBody;
+  let body: MirrorQueueBody;
   try {
-    body = (await request.json()) as MirrorRequestBody;
+    body = (await request.json()) as MirrorQueueBody;
   } catch {
-    return NextResponse.json(
-      { message: "Request body must be valid JSON." },
-      { status: 400 }
-    );
+    return NextResponse.json({ message: "Request body must be valid JSON." }, { status: 400 });
   }
 
-  const trimmedUrl = body.url?.trim();
-  if (!trimmedUrl) {
-    return NextResponse.json(
-      { message: "URL is required." },
-      { status: 400 }
-    );
+  const urls = (body.urls ?? [])
+    .map((u) => u.trim())
+    .filter((u) => u.length > 0);
+  if (urls.length === 0) {
+    return NextResponse.json({ message: "At least one URL is required." }, { status: 400 });
   }
-  const version = body.version?.trim() || "latest";
 
   const backendBaseUrl = process.env.MIRROR_API_BASE_URL ?? "http://localhost:5196";
-  const backendUrl = new URL("/api/mirror", backendBaseUrl).toString();
-  const auth = request.headers.get("authorization");
+  const backendUrl = new URL("/api/mirror/queue", backendBaseUrl).toString();
+  const auth =
+    request.headers.get("authorization") ?? request.headers.get("Authorization");
   const hasBearer = !!auth && auth.startsWith("Bearer ");
+
   const payload = {
-    url: trimmedUrl,
-    version,
+    urls,
+    version: body.version?.trim() || "latest",
     linkDrillCount: body.linkDrillCount ?? 0,
     crawlUrlAllowPrefixes: body.crawlUrlAllowPrefixes,
     crawlUrlDenyPrefixes: body.crawlUrlDenyPrefixes,
@@ -74,10 +71,9 @@ export async function POST(request: NextRequest) {
   }
 
   if (!backendResponse.ok) {
-    return NextResponse.json(
-      responsePayload ?? { message: "Mirror API request failed." },
-      { status: backendResponse.status }
-    );
+    return NextResponse.json(responsePayload ?? { message: "Mirror queue API request failed." }, {
+      status: backendResponse.status
+    });
   }
 
   return NextResponse.json(responsePayload);

@@ -13,4 +13,10 @@ public sealed class MirrorSettings
     /// written concurrently (avoids Windows file-sharing violations on the same paths).
     /// </summary>
     public int MirrorQueueMaxConcurrent { get; init; } = 1;
+
+    /// <summary>
+    /// When true and a database connection string is configured, mirrored assets are stored under <c>_cas/&lt;hashPrefix&gt;/&lt;sha256&gt;.&lt;ext&gt;</c>
+    /// and deduplicated by content hash (URL → hash → path is recorded in SQL).
+    /// </summary>
+    public bool ContentAddressedMirrorFiles { get; init; } = true;
 }
